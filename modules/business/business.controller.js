@@ -19,11 +19,35 @@ async function setupBusiness(req, res) {
       openingCashBalance,
     } = req.body;
 
-    if (!name || !name.trim()) {
-      return res.status(400).json({ message: "Business name is required." });
+    const rawName = String(name || "").trim();
+    const rawMobile = String(mobileNumber || "").trim();
+    const rawWhatsapp = String(whatsappNumber || "").trim();
+    const rawEmail = String(email || "").trim().toLowerCase();
+
+    if (!rawName || rawName.length < 2) {
+      return res.status(400).json({ message: "Business name must be at least 2 characters long." });
     }
-    if (!mobileNumber || !mobileNumber.trim()) {
-      return res.status(400).json({ message: "Primary mobile number is required." });
+    if (rawName.length > 100) {
+      return res.status(400).json({ message: "Business name cannot exceed 100 characters." });
+    }
+
+    const cleanMobile = rawMobile.replace(/[^0-9+]/g, "");
+    if (!cleanMobile || cleanMobile.replace(/[^0-9]/g, "").length < 10) {
+      return res.status(400).json({ message: "Please provide a valid primary mobile number (min 10 digits)." });
+    }
+
+    if (rawWhatsapp) {
+      const cleanWhatsapp = rawWhatsapp.replace(/[^0-9+]/g, "");
+      if (cleanWhatsapp.replace(/[^0-9]/g, "").length < 10) {
+        return res.status(400).json({ message: "Please provide a valid WhatsApp number." });
+      }
+    }
+
+    if (rawEmail) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(rawEmail)) {
+        return res.status(400).json({ message: "Please enter a valid email address." });
+      }
     }
 
     const userId = Number(req.user?.id);
