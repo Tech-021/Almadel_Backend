@@ -56,4 +56,52 @@ function normalizeUserId(value) {
   return Number.isInteger(value) && value > 0 ? value : null;
 }
 
-module.exports = { requireAdmin, requireAuth };
+
+async function requireBusiness(req, res, next) {
+  if (!req.user || !req.user.id) {
+    return res.status(401).json({ message: "Authentication required." });
+  }
+
+  const headerBizId = req.headers["x-business-id"];
+  const userId = Number(req.user.id);
+
+  let businessId = headerBizId && !isNaN(Number(headerBizId)) ? Number(headerBizId) : null;
+  let member = null;
+
+  if (businessId) {
+    member = await prisma.businessMember.findUnique({
+      where: {
+        businessId_userId: {
+          businessId,
+          userId,
+        },
+      },
+    });
+  }
+
+  // If header businessId is missing or doesn't belong to this user (e.g. stale localStorage),
+  // fallback to the user's primary/first business
+  if (!member) {
+    const primary = await prisma.businessMember.findFirst({
+      where: { userId },
+      orderBy: { createdAt: "asc" },
+    });
+    if (primary) {
+      businessId = primary.businessId;
+      member = primary;
+    }
+  }
+
+  if (!member || !businessId) {
+    return res.status(400).json({
+      message: "No active business found. Please set up a business first.",
+      requiresBusinessSetup: true,
+    });
+  }
+
+  req.businessId = businessId;
+  req.businessRole = member.role;
+  return next();
+}
+
+module.exports = { requireAdmin, requireAuth, requireBusiness };

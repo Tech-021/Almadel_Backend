@@ -1,6 +1,6 @@
 const express = require("express");
 
-const { requireAdmin, requireAuth } = require("../../middleware/auth");
+const { requireAdmin, requireAuth, requireBusiness } = require("../../middleware/auth");
 const {
   createProduct,
   deleteProduct,
@@ -17,7 +17,7 @@ const {
 
 const productsRouter = express.Router();
 
-productsRouter.use(requireAuth);
+productsRouter.use(requireAuth, requireBusiness);
 productsRouter.get("/", listProducts);
 productsRouter.get("/search", searchProducts);
 productsRouter.get("/barcode/:barcode", findProductByBarcode);

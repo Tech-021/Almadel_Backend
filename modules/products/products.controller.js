@@ -5,7 +5,7 @@ const { productAccessWhere } = require("./product-access");
 async function listProducts(req, res) {
   const products = await prisma.product.findMany({
     orderBy: { name: "asc" },
-    where: productAccessWhere(req.user),
+    where: productAccessWhere(req),
   });
 
   res.json(products);
@@ -22,7 +22,7 @@ async function searchProducts(req, res) {
   const products = await prisma.product.findMany({
     orderBy: { name: "asc" },
     take: 50,
-    where: productAccessWhere(req.user, {
+    where: productAccessWhere(req, {
       OR: [
         { barcode: { startsWith: query } },
         { category: { contains: query, mode: "insensitive" } },
@@ -42,7 +42,7 @@ async function searchProducts(req, res) {
 async function findProductByBarcode(req, res) {
   const barcode = String(req.params.barcode ?? "").trim();
   const product = await prisma.product.findFirst({
-    where: productAccessWhere(req.user, {
+    where: productAccessWhere(req, {
       OR: [{ barcode }, { qrCode: barcode }],
     }),
   });
@@ -79,6 +79,7 @@ async function createProduct(req, res) {
     const product = await prisma.product.create({
       data: {
         barcode,
+        businessId: req.businessId,
         category: category || null,
         costPrice,
         createdByUserId: req.user.id,
@@ -139,6 +140,14 @@ async function updateProduct(req, res) {
       });
     }
 
+    const existing = await prisma.product.findFirst({
+      where: { id, businessId: req.businessId },
+    });
+
+    if (!existing) {
+      return res.status(404).json({ message: "Product not found." });
+    }
+
     const product = await prisma.product.update({
       data: {
         barcode,
@@ -160,7 +169,7 @@ async function updateProduct(req, res) {
   } catch (error) {
     if (error.code === "P2002") {
       return res.status(409).json({
-        message: "Product barcode already exists.",
+        message: "Product barcode already exists in this business.",
       });
     }
 
@@ -212,7 +221,9 @@ async function importProducts(req, res) {
           throw new Error("Barcode and product name are required.");
         }
 
-        const existing = await prisma.product.findUnique({ where: { barcode } });
+        const existing = await prisma.product.findFirst({
+          where: { businessId: req.businessId, barcode },
+        });
 
         if (existing) {
           await prisma.product.update({
@@ -228,13 +239,14 @@ async function importProducts(req, res) {
               sku: sku || null,
               stock,
             },
-            where: { barcode },
+            where: { id: existing.id },
           });
           result.updated += 1;
         } else {
           await prisma.product.create({
             data: {
               barcode,
+              businessId: req.businessId,
               category: category || null,
               costPrice,
               createdByUserId: req.user.id,
@@ -272,6 +284,14 @@ async function deleteProduct(req, res) {
 
     if (!Number.isInteger(id)) {
       return res.status(400).json({ message: "Invalid product id." });
+    }
+
+    const existing = await prisma.product.findFirst({
+      where: { id, businessId: req.businessId },
+    });
+
+    if (!existing) {
+      return res.status(404).json({ message: "Product not found." });
     }
 
     const saleItemCount = await prisma.saleItem.count({

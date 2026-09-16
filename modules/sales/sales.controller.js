@@ -11,7 +11,7 @@ async function checkout(req, res) {
     }
 
     const sale = await prisma.$transaction((tx) =>
-      createSale(tx, req.user, items, req.body),
+      createSale(tx, { ...req.user, businessId: req.businessId }, items, req.body),
     );
 
     return res.status(201).json(invoiceResponse(sale));
@@ -32,6 +32,7 @@ async function getInvoice(req, res) {
     include: { items: true, user: true },
     where: {
       id: saleId,
+      businessId: req.businessId,
       ...(req.user.role === "admin" ? {} : { userId: req.user.id }),
     },
   });

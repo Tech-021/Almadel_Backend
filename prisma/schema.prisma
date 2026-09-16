@@ -24,6 +24,51 @@ model User {
   products            Product[]            @relation("ProductCreator")
   sales               Sale[]
   stockLogs           StockLog[]
+  ownedBusinesses     Business[]           @relation("BusinessOwner")
+  businessMemberships BusinessMember[]
+}
+
+model Business {
+  id                  Int              @id @default(autoincrement())
+  name                String
+  businessType        String           @default("Mobile Shop")
+  businessCategory    String?
+  mobileNumber        String
+  whatsappNumber      String?
+  email               String?
+  address             String?
+  city                String?
+  area                String?
+  province            String?
+  accountingStartDate DateTime?
+  openingCashBalance  Float            @default(0)
+  ownerId             Int
+  owner               User             @relation("BusinessOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  members             BusinessMember[]
+  products            Product[]
+  sales               Sale[]
+  customers           Customer[]
+  stockLogs           StockLog[]
+  activityLogs        ActivityLog[]
+
+  @@index([ownerId])
+  @@map("businesses")
+}
+
+model BusinessMember {
+  id         Int      @id @default(autoincrement())
+  businessId Int
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role       String   @default("owner")
+  createdAt  DateTime @default(now())
+
+  @@unique([businessId, userId])
+  @@index([userId])
+  @@map("business_members")
 }
 
 model PasswordResetToken {
@@ -39,27 +84,32 @@ model PasswordResetToken {
 }
 
 model Product {
-  id              Int        @id @default(autoincrement())
-  barcode         String     @unique
-  sku             String?    @unique
-  qrCode          String?    @unique
-  name            String
-  category        String?
-  imageUrl        String?
-  costPrice       Float      @default(0)
-  price           Float
-  sellingPrice    Float      @default(0)
-  stock           Int        @default(0)
+  id                Int        @id @default(autoincrement())
+  businessId        Int?
+  business          Business?  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  barcode           String
+  sku               String?
+  qrCode            String?
+  name              String
+  category          String?
+  imageUrl          String?
+  costPrice         Float      @default(0)
+  price             Float
+  sellingPrice      Float      @default(0)
+  stock             Int        @default(0)
   lowStockThreshold Int        @default(5)
-  createdAt       DateTime   @default(now())
-  updatedAt       DateTime   @updatedAt
-  createdByUserId Int?
-  createdByUser   User?      @relation("ProductCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
-  saleItems       SaleItem[]
-  stockLogs       StockLog[]
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  createdByUserId   Int?
+  createdByUser     User?      @relation("ProductCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  saleItems         SaleItem[]
+  stockLogs         StockLog[]
 
+  @@unique([businessId, barcode])
+  @@index([businessId])
   @@index([name])
   @@index([category])
+  @@map("products")
 }
 
 model SaleItem {
@@ -72,74 +122,95 @@ model SaleItem {
   quantity  Int
   total     Float
   sale      Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
-  product   Product @relation(fields: [productId], references: [id])
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("sale_items")
 }
 
 model StockLog {
-  id            Int      @id @default(autoincrement())
+  id            Int       @id @default(autoincrement())
+  businessId    Int?
+  business      Business? @relation(fields: [businessId], references: [id], onDelete: Cascade)
   productId     Int
   barcode       String
   quantity      Int
   previousStock Int
   newStock      Int
   note          String?
-  createdAt     DateTime @default(now())
+  createdAt     DateTime  @default(now())
   userId        Int?
-  product       Product  @relation(fields: [productId], references: [id])
-  user          User?    @relation(fields: [userId], references: [id])  
+  product       Product   @relation(fields: [productId], references: [id])
+  user          User?     @relation(fields: [userId], references: [id])
+
+  @@index([businessId])
+  @@map("stock_logs")
 }
 
 model Customer {
   id           Int       @id @default(autoincrement())
+  businessId   Int?
+  business     Business? @relation(fields: [businessId], references: [id], onDelete: Cascade)
   name         String
-  mobile       String    @unique
+  mobile       String
   passwordHash String?
-  email        String?   @unique
+  email        String?
   totalSpent   Float     @default(0)
   visitCount   Int       @default(0)
   lastVisit    DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   sales        Sale[]
+
+  @@unique([businessId, mobile])
+  @@index([businessId])
+  @@map("customers")
 }
 
 model Sale {
-  id              Int        @id @default(autoincrement())
-  invoiceNumber   String     @unique
-  subtotal        Float
-  discountType    String     @default("none")
-  discountValue   Float      @default(0)
-  discountAmount  Float      @default(0)
-  totalAmount     Float
-  totalItems      Int
-  paymentMethod   String     @default("cash")
-  customerName    String?
-  customerMobile  String?
-  createdAt       DateTime   @default(now())
-  userId          Int?
-  user            User?      @relation(fields: [userId], references: [id])
-  customerId      Int?
-  customer        Customer?  @relation(fields: [customerId], references: [id])
-  items           SaleItem[]
+  id             Int        @id @default(autoincrement())
+  businessId     Int?
+  business       Business?  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  invoiceNumber  String     @unique
+  subtotal       Float
+  discountType   String     @default("none")
+  discountValue  Float      @default(0)
+  discountAmount Float      @default(0)
+  totalAmount    Float
+  totalItems     Int
+  paymentMethod  String     @default("cash")
+  customerName   String?
+  customerMobile String?
+  createdAt      DateTime   @default(now())
+  userId         Int?
+  user           User?      @relation(fields: [userId], references: [id])
+  customerId     Int?
+  customer       Customer?  @relation(fields: [customerId], references: [id])
+  items          SaleItem[]
+
+  @@index([businessId])
+  @@map("sales")
 }
 
 model ActivityLog {
-  id        Int      @id @default(autoincrement())
-  timestamp DateTime @default(now())
+  id         Int       @id @default(autoincrement())
+  businessId Int?
+  business   Business? @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  timestamp  DateTime  @default(now())
   
   // User info
-  userId    Int?     @map("user_id")
-  userName  String   @map("user_name")
-  userEmail String   @map("user_email")
-  userRole  String   @default("staff") @map("user_role")
+  userId     Int?      @map("user_id")
+  userName   String    @map("user_name")
+  userEmail  String    @map("user_email")
+  userRole   String    @default("staff") @map("user_role")
   
   // Event details
-  action    String
-  category  String
-  details   String   @db.Text
-  target    String?
-  meta      Json?    @default("{}")
+  action     String
+  category   String
+  details    String    @db.Text
+  target     String?
+  meta       Json?     @default("{}")
 
+  @@index([businessId])
   @@index([timestamp(sort: Desc)])
   @@index([category])
   @@index([userEmail])

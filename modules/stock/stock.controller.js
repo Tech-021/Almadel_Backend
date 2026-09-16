@@ -6,7 +6,7 @@ async function receiveOne(req, res) {
   try {
     const code = String(req.body.barcode || req.body.qrCode || "").trim();
     const product = await prisma.product.findFirst({
-      where: productAccessWhere(req.user, { OR: [{ barcode: code }, { qrCode: code }] }),
+      where: productAccessWhere(req, { OR: [{ barcode: code }, { qrCode: code }] }),
     });
 
     if (!product) {
@@ -32,7 +32,7 @@ async function addStock(req, res) {
     const quantity = toPositiveInteger(req.body.quantity, "Quantity");
     const note = String(req.body.note ?? "").trim();
     const product = await prisma.product.findFirst({
-      where: productAccessWhere(req.user, { OR: [{ barcode: code }, { qrCode: code }] }),
+      where: productAccessWhere(req, { OR: [{ barcode: code }, { qrCode: code }] }),
     });
 
     if (!product) {
@@ -48,6 +48,7 @@ async function addStock(req, res) {
       await tx.stockLog.create({
         data: {
           barcode: product.barcode,
+          businessId: req.businessId,
           newStock: updated.stock,
           note: note || "Stock added",
           previousStock: product.stock,

@@ -1,11 +1,11 @@
 const express = require("express");
 
-const { requireAuth } = require("../../middleware/auth");
+const { requireAuth, requireBusiness } = require("../../middleware/auth");
 const { checkout, getInvoice } = require("./sales.controller");
 
 const salesRouter = express.Router();
 
-salesRouter.use(requireAuth);
+salesRouter.use(requireAuth, requireBusiness);
 salesRouter.post("/checkout", checkout);
 salesRouter.get("/:saleId", getInvoice);
 
