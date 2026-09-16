@@ -20,7 +20,7 @@ async function requireAuth(req, res, next) {
     }
 
     const user = await prisma.user.findUnique({
-      select: { authVersion: true, id: true, role: true },
+      select: { authVersion: true, id: true, role: true, email: true, fullName: true },
       where: { id: userId },
     });
 

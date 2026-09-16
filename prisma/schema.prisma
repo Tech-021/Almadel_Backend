@@ -122,3 +122,26 @@ model Sale {
   customer        Customer?  @relation(fields: [customerId], references: [id])
   items           SaleItem[]
 }
+
+model ActivityLog {
+  id        Int      @id @default(autoincrement())
+  timestamp DateTime @default(now())
+  
+  // User info
+  userId    Int?     @map("user_id")
+  userName  String   @map("user_name")
+  userEmail String   @map("user_email")
+  userRole  String   @default("staff") @map("user_role")
+  
+  // Event details
+  action    String
+  category  String
+  details   String   @db.Text
+  target    String?
+  meta      Json?    @default("{}")
+
+  @@index([timestamp(sort: Desc)])
+  @@index([category])
+  @@index([userEmail])
+  @@map("activity_logs")
+}
