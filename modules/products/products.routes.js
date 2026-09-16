@@ -1,0 +1,30 @@
+const express = require("express");
+
+const { requireAdmin, requireAuth } = require("../../middleware/auth");
+const {
+  createProduct,
+  deleteProduct,
+  findProductByBarcode,
+  importProducts,
+  listProducts,
+  searchProducts,
+  updateProduct,
+} = require("./products.controller");
+const {
+  upload,
+  uploadProductImage,
+} = require("./product-image-upload");
+
+const productsRouter = express.Router();
+
+productsRouter.use(requireAuth);
+productsRouter.get("/", listProducts);
+productsRouter.get("/search", searchProducts);
+productsRouter.get("/barcode/:barcode", findProductByBarcode);
+productsRouter.post("/", requireAdmin, createProduct);
+productsRouter.post("/images", requireAdmin, upload.single("image"), uploadProductImage);
+productsRouter.post("/import", requireAdmin, importProducts);
+productsRouter.patch("/:id", requireAdmin, updateProduct);
+productsRouter.delete("/:id", requireAdmin, deleteProduct);
+
+module.exports = { productsRouter };

@@ -1,0 +1,124 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  admin
+  staff
+}
+
+model User {
+  id                  Int                  @id @default(autoincrement())
+  email               String               @unique
+  fullName            String?
+  passwordHash        String
+  authVersion         Int                  @default(0)
+  role                UserRole             @default(staff)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  passwordResetTokens PasswordResetToken[]
+  products            Product[]            @relation("ProductCreator")
+  sales               Sale[]
+  stockLogs           StockLog[]
+}
+
+model PasswordResetToken {
+  id        Int       @id @default(autoincrement())
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  userId    Int
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+model Product {
+  id              Int        @id @default(autoincrement())
+  barcode         String     @unique
+  sku             String?    @unique
+  qrCode          String?    @unique
+  name            String
+  category        String?
+  imageUrl        String?
+  costPrice       Float      @default(0)
+  price           Float
+  sellingPrice    Float      @default(0)
+  stock           Int        @default(0)
+  lowStockThreshold Int        @default(5)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  createdByUserId Int?
+  createdByUser   User?      @relation("ProductCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  saleItems       SaleItem[]
+  stockLogs       StockLog[]
+
+  @@index([name])
+  @@index([category])
+}
+
+model SaleItem {
+  id        Int     @id @default(autoincrement())
+  saleId    Int
+  productId Int
+  barcode   String
+  name      String
+  price     Float
+  quantity  Int
+  total     Float
+  sale      Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id])
+}
+
+model StockLog {
+  id            Int      @id @default(autoincrement())
+  productId     Int
+  barcode       String
+  quantity      Int
+  previousStock Int
+  newStock      Int
+  note          String?
+  createdAt     DateTime @default(now())
+  userId        Int?
+  product       Product  @relation(fields: [productId], references: [id])
+  user          User?    @relation(fields: [userId], references: [id])
+}
+
+model Customer {
+  id           Int       @id @default(autoincrement())
+  name         String
+  mobile       String    @unique
+  passwordHash String?
+  email        String?   @unique
+  totalSpent   Float     @default(0)
+  visitCount   Int       @default(0)
+  lastVisit    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  sales        Sale[]
+}
+
+model Sale {
+  id              Int        @id @default(autoincrement())
+  invoiceNumber   String     @unique
+  subtotal        Float
+  discountType    String     @default("none")
+  discountValue   Float      @default(0)
+  discountAmount  Float      @default(0)
+  totalAmount     Float
+  totalItems      Int
+  paymentMethod   String     @default("cash")
+  customerName    String?
+  customerMobile  String?
+  createdAt       DateTime   @default(now())
+  userId          Int?
+  user            User?      @relation(fields: [userId], references: [id])
+  customerId      Int?
+  customer        Customer?  @relation(fields: [customerId], references: [id])
+  items           SaleItem[]
+}

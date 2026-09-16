@@ -1,0 +1,31 @@
+ALTER TABLE "User"
+ADD COLUMN IF NOT EXISTS "authVersion" INTEGER NOT NULL DEFAULT 0;
+
+ALTER TABLE "Product"
+ADD COLUMN IF NOT EXISTS "sellingPrice" DOUBLE PRECISION NOT NULL DEFAULT 0;
+
+UPDATE "Product"
+SET "sellingPrice" = "price"
+WHERE "sellingPrice" = 0;
+
+ALTER TABLE "Sale"
+ADD COLUMN IF NOT EXISTS "invoiceNumber" TEXT,
+ADD COLUMN IF NOT EXISTS "subtotal" DOUBLE PRECISION NOT NULL DEFAULT 0,
+ADD COLUMN IF NOT EXISTS "discountType" TEXT NOT NULL DEFAULT 'none',
+ADD COLUMN IF NOT EXISTS "discountValue" DOUBLE PRECISION NOT NULL DEFAULT 0,
+ADD COLUMN IF NOT EXISTS "discountAmount" DOUBLE PRECISION NOT NULL DEFAULT 0,
+ADD COLUMN IF NOT EXISTS "paymentMethod" TEXT NOT NULL DEFAULT 'cash',
+ADD COLUMN IF NOT EXISTS "customerName" TEXT,
+ADD COLUMN IF NOT EXISTS "customerMobile" TEXT;
+
+UPDATE "Sale"
+SET
+  "invoiceNumber" = 'ALM-' || LPAD("id"::TEXT, 6, '0'),
+  "subtotal" = "totalAmount"
+WHERE "invoiceNumber" IS NULL;
+
+ALTER TABLE "Sale"
+ALTER COLUMN "invoiceNumber" SET NOT NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS "Product_qrCode_key" ON "Product"("qrCode");
+CREATE UNIQUE INDEX IF NOT EXISTS "Sale_invoiceNumber_key" ON "Sale"("invoiceNumber");
