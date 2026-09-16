@@ -65,34 +65,38 @@ async function requireBusiness(req, res, next) {
   const headerBizId = req.headers["x-business-id"];
   const userId = Number(req.user.id);
 
-  let businessId = headerBizId ? Number(headerBizId) : null;
+  let businessId = headerBizId && !isNaN(Number(headerBizId)) ? Number(headerBizId) : null;
+  let member = null;
 
-  if (!businessId || isNaN(businessId)) {
+  if (businessId) {
+    member = await prisma.businessMember.findUnique({
+      where: {
+        businessId_userId: {
+          businessId,
+          userId,
+        },
+      },
+    });
+  }
+
+  // If header businessId is missing or doesn't belong to this user (e.g. stale localStorage),
+  // fallback to the user's primary/first business
+  if (!member) {
     const primary = await prisma.businessMember.findFirst({
       where: { userId },
       orderBy: { createdAt: "asc" },
     });
-    businessId = primary ? primary.businessId : null;
+    if (primary) {
+      businessId = primary.businessId;
+      member = primary;
+    }
   }
 
-  if (!businessId) {
+  if (!member || !businessId) {
     return res.status(400).json({
       message: "No active business found. Please set up a business first.",
       requiresBusinessSetup: true,
     });
-  }
-
-  const member = await prisma.businessMember.findUnique({
-    where: {
-      businessId_userId: {
-        businessId,
-        userId,
-      },
-    },
-  });
-
-  if (!member) {
-    return res.status(403).json({ message: "You do not have access to this business." });
   }
 
   req.businessId = businessId;
