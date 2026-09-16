@@ -56,4 +56,48 @@ function normalizeUserId(value) {
   return Number.isInteger(value) && value > 0 ? value : null;
 }
 
-module.exports = { requireAdmin, requireAuth };
+
+async function requireBusiness(req, res, next) {
+  if (!req.user || !req.user.id) {
+    return res.status(401).json({ message: "Authentication required." });
+  }
+
+  const headerBizId = req.headers["x-business-id"];
+  const userId = Number(req.user.id);
+
+  let businessId = headerBizId ? Number(headerBizId) : null;
+
+  if (!businessId || isNaN(businessId)) {
+    const primary = await prisma.businessMember.findFirst({
+      where: { userId },
+      orderBy: { createdAt: "asc" },
+    });
+    businessId = primary ? primary.businessId : null;
+  }
+
+  if (!businessId) {
+    return res.status(400).json({
+      message: "No active business found. Please set up a business first.",
+      requiresBusinessSetup: true,
+    });
+  }
+
+  const member = await prisma.businessMember.findUnique({
+    where: {
+      businessId_userId: {
+        businessId,
+        userId,
+      },
+    },
+  });
+
+  if (!member) {
+    return res.status(403).json({ message: "You do not have access to this business." });
+  }
+
+  req.businessId = businessId;
+  req.businessRole = member.role;
+  return next();
+}
+
+module.exports = { requireAdmin, requireAuth, requireBusiness };

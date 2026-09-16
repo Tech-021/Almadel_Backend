@@ -11,6 +11,7 @@ function getTodayRange() {
 
 async function getAdminDashboard(req, res) {
   const { startOfDay, endOfDay } = getTodayRange();
+  const businessId = req.businessId;
   
   const [
     products,
@@ -21,14 +22,15 @@ async function getAdminDashboard(req, res) {
     unassignedProductCount,
     todaySalesData,
   ] = await Promise.all([
-    prisma.product.findMany({ orderBy: { name: "asc" } }),
-    prisma.sale.findMany({ orderBy: { createdAt: "desc" }, take: 500 }),
-    prisma.user.count({ where: { role: "staff" } }),
-    prisma.product.count({ where: { createdByUserId: req.user.id } }),
-    prisma.product.count({ where: { createdByUser: { role: "staff" } } }),
-    prisma.product.count({ where: { createdByUserId: null } }),
+    prisma.product.findMany({ where: { businessId }, orderBy: { name: "asc" } }),
+    prisma.sale.findMany({ where: { businessId }, orderBy: { createdAt: "desc" }, take: 500 }),
+    prisma.businessMember.count({ where: { businessId, role: "staff" } }),
+    prisma.product.count({ where: { businessId, createdByUserId: req.user.id } }),
+    prisma.product.count({ where: { businessId, createdByUser: { role: "staff" } } }),
+    prisma.product.count({ where: { businessId, createdByUserId: null } }),
     prisma.sale.findMany({
       where: {
+        businessId,
         createdAt: { gte: startOfDay, lt: endOfDay },
       },
     }),
@@ -53,15 +55,17 @@ async function getAdminDashboard(req, res) {
 
 async function getMyDashboard(req, res) {
   const { startOfDay, endOfDay } = getTodayRange();
+  const businessId = req.businessId;
   
   const [sales, todaySalesData] = await Promise.all([
     prisma.sale.findMany({
       orderBy: { createdAt: "desc" },
       take: 500,
-      where: { userId: req.user.id },
+      where: { businessId, userId: req.user.id },
     }),
     prisma.sale.findMany({
       where: {
+        businessId,
         userId: req.user.id,
         createdAt: { gte: startOfDay, lt: endOfDay },
       },

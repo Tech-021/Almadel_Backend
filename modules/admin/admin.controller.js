@@ -16,44 +16,68 @@ function isValidEmail(value) {
 }
 
 async function listStaff(req, res) {
-  const staff = await prisma.user.findMany({
-    orderBy: [{ fullName: "asc" }, { email: "asc" }],
-    select: {
-      _count: {
-        select: { products: true, sales: true, stockLogs: true },
+  const businessId = req.businessId;
+
+  const members = await prisma.businessMember.findMany({
+    where: { businessId, role: "staff" },
+    include: {
+      user: {
+        select: {
+          email: true,
+          fullName: true,
+          id: true,
+          role: true,
+        },
       },
-      email: true,
-      fullName: true,
-      id: true,
-      role: true,
     },
-    where: { role: "staff" },
+    orderBy: { createdAt: "asc" },
   });
 
-  const staffIds = staff.map((user) => user.id);
-  const saleTotals =
+  const staffUsers = members.map((m) => m.user);
+  const staffIds = staffUsers.map((user) => user.id);
+
+  const [saleTotals, productCounts, stockLogCounts] = await Promise.all([
     staffIds.length > 0
-      ? await prisma.sale.groupBy({
+      ? prisma.sale.groupBy({
           by: ["userId"],
+          _count: { id: true },
           _sum: { totalAmount: true, totalItems: true },
-          where: { userId: { in: staffIds } },
+          where: { businessId, userId: { in: staffIds } },
         })
-      : [];
-  const totalsByUser = new Map(
-    saleTotals.map((total) => [total.userId, total]),
-  );
+      : [],
+    staffIds.length > 0
+      ? prisma.product.groupBy({
+          by: ["createdByUserId"],
+          _count: { id: true },
+          where: { businessId, createdByUserId: { in: staffIds } },
+        })
+      : [],
+    staffIds.length > 0
+      ? prisma.stockLog.groupBy({
+          by: ["userId"],
+          _count: { id: true },
+          where: { businessId, userId: { in: staffIds } },
+        })
+      : [],
+  ]);
+
+  const salesByUser = new Map(saleTotals.map((t) => [t.userId, t]));
+  const productsByUser = new Map(productCounts.map((p) => [p.createdByUserId, p._count.id]));
+  const stockLogsByUser = new Map(stockLogCounts.map((s) => [s.userId, s._count.id]));
 
   res.json({
-    staff: staff.map((user) => {
-      const totals = totalsByUser.get(user.id);
+    staff: staffUsers.map((user) => {
+      const saleStat = salesByUser.get(user.id);
+      const prodCount = productsByUser.get(user.id) || 0;
+      const stockCount = stockLogsByUser.get(user.id) || 0;
 
       return {
         stats: {
-          products: user._count.products,
-          sales: user._count.sales,
-          stockLogs: user._count.stockLogs,
-          totalItemsSold: totals?._sum.totalItems ?? 0,
-          totalSales: totals?._sum.totalAmount ?? 0,
+          products: prodCount,
+          sales: saleStat?._count?.id ?? 0,
+          stockLogs: stockCount,
+          totalItemsSold: saleStat?._sum?.totalItems ?? 0,
+          totalSales: saleStat?._sum?.totalAmount ?? 0,
         },
         user: userResponse(user),
       };
@@ -66,6 +90,7 @@ async function createStaff(req, res) {
     const email = normalizeEmail(req.body.email);
     const password = String(req.body.password ?? "");
     const fullName = String(req.body.fullName ?? "").trim();
+    const businessId = req.businessId;
 
     if (!fullName || !isValidEmail(email)) {
       return res.status(400).json({
@@ -80,14 +105,38 @@ async function createStaff(req, res) {
     }
 
     const passwordHash = await bcrypt.hash(password, PASSWORD_HASH_ROUNDS);
-    const user = await prisma.user.create({
-      data: { email, fullName, passwordHash, role: "staff" },
+
+    let user = await prisma.user.findUnique({ where: { email } });
+
+    if (user) {
+      const existingMember = await prisma.businessMember.findUnique({
+        where: { businessId_userId: { businessId, userId: user.id } },
+      });
+      if (existingMember) {
+        return res.status(409).json({ message: "Staff member is already added to this business." });
+      }
+
+      await prisma.businessMember.create({
+        data: { businessId, userId: user.id, role: "staff" },
+      });
+
+      return res.status(201).json(userResponse(user));
+    }
+
+    const newUser = await prisma.$transaction(async (tx) => {
+      const created = await tx.user.create({
+        data: { email, fullName, passwordHash, role: "staff" },
+      });
+      await tx.businessMember.create({
+        data: { businessId, userId: created.id, role: "staff" },
+      });
+      return created;
     });
 
-    return res.status(201).json(userResponse(user));
+    return res.status(201).json(userResponse(newUser));
   } catch (error) {
     if (error.code === "P2002") {
-      return res.status(409).json({ message: "Email is already registered." });
+      return res.status(409).json({ message: "Staff member already exists." });
     }
 
     console.error("Create staff error:", error);
@@ -98,17 +147,18 @@ async function createStaff(req, res) {
 async function updateStaff(req, res) {
   try {
     const id = Number(req.params.id);
+    const businessId = req.businessId;
 
     if (!Number.isInteger(id)) {
       return res.status(400).json({ message: "Invalid staff id." });
     }
 
-    const existing = await prisma.user.findFirst({
-      where: { id, role: "staff" },
+    const member = await prisma.businessMember.findUnique({
+      where: { businessId_userId: { businessId, userId: id } },
     });
 
-    if (!existing) {
-      return res.status(404).json({ message: "Staff account not found." });
+    if (!member) {
+      return res.status(404).json({ message: "Staff account not found in this business." });
     }
 
     const data = {};
@@ -163,17 +213,30 @@ async function updateStaff(req, res) {
 async function deleteStaff(req, res) {
   try {
     const id = Number(req.params.id);
+    const businessId = req.businessId;
 
     if (!Number.isInteger(id)) {
       return res.status(400).json({ message: "Invalid staff id." });
     }
 
-    const deleted = await prisma.user.deleteMany({
-      where: { id, role: "staff" },
+    const member = await prisma.businessMember.findUnique({
+      where: { businessId_userId: { businessId, userId: id } },
     });
 
-    if (deleted.count !== 1) {
-      return res.status(404).json({ message: "Staff account not found." });
+    if (!member) {
+      return res.status(404).json({ message: "Staff account not found in this business." });
+    }
+
+    await prisma.businessMember.delete({
+      where: { businessId_userId: { businessId, userId: id } },
+    });
+
+    const remainingMemberships = await prisma.businessMember.count({
+      where: { userId: id },
+    });
+
+    if (remainingMemberships === 0) {
+      await prisma.user.delete({ where: { id } }).catch(() => null);
     }
 
     return res.json({ deleted: true });

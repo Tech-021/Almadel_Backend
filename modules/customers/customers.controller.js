@@ -8,6 +8,7 @@ function hashPassword(password) {
 
 async function getCustomers(req, res) {
   const customers = await prisma.customer.findMany({
+    where: { businessId: req.businessId },
     orderBy: { createdAt: "desc" },
   });
   res.json({ customers: customers.map(customerResponse) });
@@ -23,6 +24,7 @@ async function createCustomer(req, res) {
   try {
     const customer = await prisma.customer.create({
       data: {
+        businessId: req.businessId,
         name,
         mobile,
         email: email || null,
@@ -32,7 +34,7 @@ async function createCustomer(req, res) {
     res.status(201).json(customerResponse(customer));
   } catch (error) {
     if (error.code === "P2002") {
-      return res.status(400).json({ message: "Customer with this mobile already exists." });
+      return res.status(400).json({ message: "Customer with this mobile already exists in this business." });
     }
     return res.status(400).json({ message: error.message ?? "Could not create customer." });
   }
@@ -42,6 +44,13 @@ async function updateCustomer(req, res) {
   const customerId = Number(req.params.customerId);
   if (!Number.isInteger(customerId) || customerId <= 0) {
     return res.status(400).json({ message: "Invalid customer ID." });
+  }
+
+  const existing = await prisma.customer.findFirst({
+    where: { id: customerId, businessId: req.businessId },
+  });
+  if (!existing) {
+    return res.status(404).json({ message: "Customer not found." });
   }
 
   const { name, mobile, email, password } = req.body;
@@ -60,7 +69,7 @@ async function updateCustomer(req, res) {
     res.json(customerResponse(customer));
   } catch (error) {
     if (error.code === "P2002") {
-      return res.status(400).json({ message: "Customer with this mobile already exists." });
+      return res.status(400).json({ message: "Customer with this mobile already exists in this business." });
     }
     if (error.code === "P2025") {
       return res.status(404).json({ message: "Customer not found." });
@@ -73,6 +82,13 @@ async function deleteCustomer(req, res) {
   const customerId = Number(req.params.customerId);
   if (!Number.isInteger(customerId) || customerId <= 0) {
     return res.status(400).json({ message: "Invalid customer ID." });
+  }
+
+  const existing = await prisma.customer.findFirst({
+    where: { id: customerId, businessId: req.businessId },
+  });
+  if (!existing) {
+    return res.status(404).json({ message: "Customer not found." });
   }
 
   try {

@@ -69,7 +69,9 @@ function createInvoiceNumber() {
   return `ALM-${date}-${suffix}`;
 }
 
-async function createSale(tx, user, rawItems, rawDetails) {
+async function createSale(tx, userOrReq, rawItems, rawDetails) {
+  const businessId = userOrReq?.businessId;
+  const userId = userOrReq?.id || userOrReq?.user?.id;
   const details = normalizeCheckoutDetails(rawDetails);
   const saleItems = [];
 
@@ -81,7 +83,7 @@ async function createSale(tx, user, rawItems, rawDetails) {
     const barcode = String(item.barcode ?? "").trim();
     const quantity = toPositiveInteger(item.quantity, "Quantity");
     const product = await tx.product.findFirst({
-      where: productAccessWhere(user, { OR: [{ barcode }, { qrCode: barcode }] }),
+      where: productAccessWhere({ businessId }, { OR: [{ barcode }, { qrCode: barcode }] }),
     });
 
     if (!product) throw new Error(`Product not found: ${barcode}`);
@@ -114,8 +116,8 @@ async function createSale(tx, user, rawItems, rawDetails) {
 
   let customerId = null;
   if (details.customerMobile) {
-    const customer = await tx.customer.findUnique({
-      where: { mobile: details.customerMobile },
+    const customer = await tx.customer.findFirst({
+      where: { businessId, mobile: details.customerMobile },
     });
     if (!customer) {
       throw new Error("Customer mobile number was not found.");
@@ -133,12 +135,13 @@ async function createSale(tx, user, rawItems, rawDetails) {
     data: {
       ...details,
       ...totals,
+      businessId,
       customerId,
       invoiceNumber: createInvoiceNumber(),
       items: { create: saleItems },
       subtotal,
       totalItems,
-      userId: user.id,
+      userId: userId || null,
     },
     include: { items: true, user: true },
   });

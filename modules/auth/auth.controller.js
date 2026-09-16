@@ -26,6 +26,10 @@ function publicUser(user) {
 }
 
 async function signUpStaff(req, res) {
+  return signUpOwner(req, res);
+}
+
+async function signUpOwner(req, res) {
   try {
     const email = normalizeEmail(req.body.email);
     const password = String(req.body.password ?? "");
@@ -39,20 +43,22 @@ async function signUpStaff(req, res) {
 
     const passwordHash = await bcrypt.hash(password, PASSWORD_HASH_ROUNDS);
     const user = await prisma.user.create({
-      data: { email, fullName, passwordHash, role: "staff" },
+      data: { email, fullName, passwordHash, role: "admin" },
     });
 
     return res.status(201).json({
       token: createAccessToken(user),
       user: publicUser(user),
+      isOwner: true,
+      hasBusiness: false,
     });
   } catch (error) {
     if (error.code === "P2002") {
       return res.status(409).json({ message: "Email is already registered." });
     }
 
-    console.error("Staff sign up error:", error);
-    return res.status(500).json({ message: "Could not create staff account." });
+    console.error("Owner sign up error:", error);
+    return res.status(500).json({ message: "Could not create account." });
   }
 }
 
@@ -61,7 +67,14 @@ async function signIn(req, res) {
     const email = normalizeEmail(req.body.email);
     const password = String(req.body.password ?? "");
     const requestedRole = req.body.role;
-    const user = await prisma.user.findUnique({ where: { email } });
+    const user = await prisma.user.findUnique({
+      where: { email },
+      include: {
+        businessMemberships: {
+          include: { business: true },
+        },
+      },
+    });
 
     if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
       return res.status(401).json({ message: "Invalid email or password." });
@@ -79,9 +92,19 @@ async function signIn(req, res) {
       });
     }
 
+    const businesses = (user.businessMemberships || []).map((m) => ({
+      id: m.business.id,
+      name: m.business.name,
+      businessType: m.business.businessType,
+      role: m.role,
+    }));
+
     return res.json({
       token: createAccessToken(user),
       user: publicUser(user),
+      businesses,
+      hasBusiness: businesses.length > 0,
+      activeBusinessId: businesses[0]?.id || null,
     });
   } catch (error) {
     console.error("Sign in error:", error);
@@ -214,4 +237,4 @@ function normalizeEmail(value) {
   return String(value ?? "").trim().toLowerCase();
 }
 
-module.exports = { forgotPassword, resetPassword, signIn, signUpStaff };
+module.exports = { forgotPassword, resetPassword, signIn, signUpStaff, signUpOwner };

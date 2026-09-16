@@ -1,3 +1,4 @@
+const { businessRouter } = require("./modules/business/business.routes");
 const cors = require("cors");
 const express = require("express");
 const path = require("path");
@@ -37,6 +38,7 @@ function createApp() {
   app.use("/dashboard", dashboardRouter);
   app.use("/customers", customersRouter);
   app.use("/admin", adminRouter);
+  app.use("/business", businessRouter);
   // Connect it with /admin/logs prefix:
   app.use("/logs", logsRoutes);
 

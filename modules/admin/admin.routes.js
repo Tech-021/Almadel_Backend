@@ -1,7 +1,7 @@
 const logsRoutes = require("../logs/logs.routes");
 const express = require("express");
 
-const { requireAdmin, requireAuth } = require("../../middleware/auth");
+const { requireAdmin, requireAuth, requireBusiness } = require("../../middleware/auth");
 const {
   createStaff,
   deleteStaff,
@@ -11,11 +11,12 @@ const {
 
 const adminRouter = express.Router();
 
-adminRouter.get("/staff", requireAuth, requireAdmin, listStaff);
-adminRouter.post("/staff", requireAuth, requireAdmin, createStaff);
-adminRouter.patch("/staff/:id", requireAuth, requireAdmin, updateStaff);
-adminRouter.delete("/staff/:id", requireAuth, requireAdmin, deleteStaff);
+adminRouter.use(requireAuth, requireBusiness, requireAdmin);
+adminRouter.get("/staff", listStaff);
+adminRouter.post("/staff", createStaff);
+adminRouter.patch("/staff/:id", updateStaff);
+adminRouter.delete("/staff/:id", deleteStaff);
 
-adminRouter.use("/logs", requireAuth, requireAdmin, logsRoutes);
+adminRouter.use("/logs", logsRoutes);
 
 module.exports = { adminRouter };
