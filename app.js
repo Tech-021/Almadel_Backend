@@ -11,6 +11,9 @@ const { healthRouter } = require("./modules/health/health.routes");
 const { productsRouter } = require("./modules/products/products.routes");
 const { salesRouter } = require("./modules/sales/sales.routes");
 const { stockRouter } = require("./modules/stock/stock.routes");
+const logsRoutes = require("./modules/logs/logs.routes");
+
+
 
 function createApp() {
   const app = express();
@@ -34,6 +37,8 @@ function createApp() {
   app.use("/dashboard", dashboardRouter);
   app.use("/customers", customersRouter);
   app.use("/admin", adminRouter);
+  // Connect it with /admin/logs prefix:
+  app.use("/logs", logsRoutes);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
