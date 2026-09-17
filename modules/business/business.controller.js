@@ -79,6 +79,8 @@ async function setupBusiness(req, res) {
           province: province?.trim() || null,
           accountingStartDate: startDate,
           openingCashBalance: openingBalanceNum,
+          subscriptionStatus: "trialing",
+          trialEndsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
           ownerId: userId,
         },
       });
