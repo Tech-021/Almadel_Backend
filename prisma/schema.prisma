@@ -55,6 +55,7 @@ model Business {
   strn                String?
   taxBusinessName     String?
   logoUrl             String?
+  workspaceMode       String           @default("pos")
   ownerId             Int
   owner               User             @relation("BusinessOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   createdAt           DateTime         @default(now())
