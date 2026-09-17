@@ -21,6 +21,22 @@ function createApp() {
 
   app.disable("x-powered-by");
   app.use(cors());
+
+  if (process.env.API_REQUEST_LOGS === "true") {
+    app.use((req, res, next) => {
+      const startedAt = process.hrtime.bigint();
+
+      res.on("finish", () => {
+        const durationMs = Number(process.hrtime.bigint() - startedAt) / 1e6;
+        console.log(
+          `[HTTP] ${req.method} ${req.path} ${res.statusCode} ${durationMs.toFixed(1)}ms`,
+        );
+      });
+
+      next();
+    });
+  }
+
   app.use(express.json({ limit: "1mb" }));
   app.use(
     "/uploads",
