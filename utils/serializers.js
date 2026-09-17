@@ -45,6 +45,8 @@ function customerResponse(customer) {
     email: customer.email,
     totalSpent: customer.totalSpent,
     visitCount: customer.visitCount,
+    openingBalance: customer.openingBalance ?? 0,
+    currentBalance: customer.currentBalance ?? 0,
     lastVisit: customer.lastVisit,
     createdAt: customer.createdAt,
   };

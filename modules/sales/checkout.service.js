@@ -153,7 +153,22 @@ async function createSale(tx, userOrReq, rawItems, rawDetails) {
         totalSpent: { increment: totals.totalAmount },
         visitCount: { increment: 1 },
         lastVisit: new Date(),
+        ...(details.paymentMethod === "credit" ? { currentBalance: { increment: totals.totalAmount } } : {}),
       },
+    });
+  }
+
+  if (details.paymentMethod !== "credit") {
+    const accountName = details.paymentMethod === "cash" ? "Cash in hand" : "Online / Wallet";
+    const account = await tx.account.upsert({
+      where: { businessId_name: { businessId, name: accountName } },
+      update: {}, create: { businessId, name: accountName, type: details.paymentMethod === "cash" ? "cash" : "online" },
+    });
+    const payment = await tx.payment.create({
+      data: { businessId, accountId: account.id, saleId: sale.id, customerId, amount: totals.totalAmount, type: "sale", method: details.paymentMethod, createdById: userId || null },
+    });
+    await tx.ledgerTransaction.create({
+      data: { businessId, accountId: account.id, paymentId: payment.id, type: "sale", direction: "credit", amount: totals.totalAmount, reference: sale.invoiceNumber, createdById: userId || null },
     });
   }
 

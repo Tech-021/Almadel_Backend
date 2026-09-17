@@ -1,0 +1,10 @@
+const express = require("express");
+const { requireAuth, requireBusiness, requireAdmin } = require("../../middleware/auth");
+const c = require("./suppliers.controller");
+const router = express.Router();
+router.use(requireAuth, requireBusiness);
+router.get("/", c.list);
+router.post("/", requireAdmin, c.create);
+router.patch("/:id", requireAdmin, c.update);
+router.delete("/:id", requireAdmin, c.remove);
+module.exports = { suppliersRouter: router };

@@ -79,6 +79,8 @@ async function setupBusiness(req, res) {
           province: province?.trim() || null,
           accountingStartDate: startDate,
           openingCashBalance: openingBalanceNum,
+          subscriptionStatus: "trialing",
+          trialEndsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
           ownerId: userId,
         },
       });
@@ -259,8 +261,280 @@ async function updateBusiness(req, res) {
   }
 }
 
+// POST /business/:id/financial-setup
+async function completeFinancialSetup(req, res) {
+  try {
+    const businessId = Number(req.params.id);
+    const userId = Number(req.user?.id);
+    const memberModel = prisma.businessMember || prisma.BusinessMember;
+    const bizModel = prisma.business || prisma.Business;
+    const custModel = prisma.customer || prisma.Customer;
+    const suppModel = prisma.supplier || prisma.Supplier;
+    const prodModel = prisma.product || prisma.Product;
+    const logModel = prisma.activityLog || prisma.ActivityLog;
+    const stockLogModel = prisma.stockLog || prisma.StockLog;
+
+    if (!bizModel) {
+      return res.status(500).json({ message: "Business model not available." });
+    }
+
+    // Verify ownership / membership
+    if (memberModel) {
+      const membership = await memberModel.findUnique({
+        where: { businessId_userId: { businessId, userId } },
+      });
+      if (!membership && req.user.role !== "admin") {
+        return res.status(403).json({ message: "You do not have access to manage this business." });
+      }
+    }
+
+    const {
+      accountingStartDate,
+      openingCashBalance,
+      openingBankBalance,
+      bankAccounts,
+      hasCustomerUdhaar,
+      customerReceivable,
+      customers,
+      hasSupplierUdhaar,
+      supplierPayable,
+      suppliers,
+      manageStock,
+      currentStockValue,
+      products,
+      taxRegistered,
+      ntn,
+      strn,
+      taxBusinessName,
+      logoUrl,
+    } = req.body;
+
+    let startDate = undefined;
+    if (accountingStartDate) {
+      const parsedDate = new Date(accountingStartDate);
+      if (isNaN(parsedDate.getTime())) {
+        return res.status(400).json({ message: "Please provide a valid accounting start date." });
+      }
+      startDate = parsedDate;
+    }
+
+    const cashNum = Number(openingCashBalance);
+    if (isNaN(cashNum) || cashNum < 0) {
+      return res.status(400).json({ message: "Opening cash balance must be a non-negative number." });
+    }
+
+    const bankNum = Number(openingBankBalance);
+    if (isNaN(bankNum) || bankNum < 0) {
+      return res.status(400).json({ message: "Opening bank balance must be a non-negative number." });
+    }
+
+    const custRecNum = Number(customerReceivable);
+    if (isNaN(custRecNum) || custRecNum < 0) {
+      return res.status(400).json({ message: "Customer receivable amount must be a non-negative number." });
+    }
+
+    const suppPayNum = Number(supplierPayable);
+    if (isNaN(suppPayNum) || suppPayNum < 0) {
+      return res.status(400).json({ message: "Supplier payable amount must be a non-negative number." });
+    }
+
+    const stockValNum = Number(currentStockValue);
+    if (isNaN(stockValNum) || stockValNum < 0) {
+      return res.status(400).json({ message: "Current stock value must be a non-negative number." });
+    }
+
+    if (taxRegistered === "yes") {
+      const cleanNtn = String(ntn || "").trim();
+      if (!cleanNtn || cleanNtn.length < 5) {
+        return res.status(400).json({ message: "Please enter a valid National Tax Number (NTN)." });
+      }
+    }
+
+    await prisma.$transaction(async (tx) => {
+      const txBiz = tx.business || tx.Business;
+      const txCust = tx.customer || tx.Customer;
+      const txSupp = tx.supplier || tx.Supplier;
+      const txProd = tx.product || tx.Product;
+      const txStockLog = tx.stockLog || tx.StockLog;
+      const txLog = tx.activityLog || tx.ActivityLog;
+
+      // 1. Update Business entity with Sections 4-8 settings
+      await txBiz.update({
+        where: { id: businessId },
+        data: {
+          accountingStartDate: startDate,
+          openingCashBalance: cashNum,
+          openingBankBalance: bankNum,
+          bankAccounts: Array.isArray(bankAccounts) ? bankAccounts : [],
+          hasCustomerUdhaar: Boolean(hasCustomerUdhaar),
+          customerReceivable: custRecNum,
+          hasSupplierUdhaar: Boolean(hasSupplierUdhaar),
+          supplierPayable: suppPayNum,
+          manageStock: manageStock !== undefined ? Boolean(manageStock) : true,
+          currentStockValue: stockValNum,
+          taxRegistered: taxRegistered || "no",
+          ntn: ntn ? String(ntn).trim() : null,
+          strn: strn ? String(strn).trim() : null,
+          taxBusinessName: taxBusinessName ? String(taxBusinessName).trim() : null,
+          logoUrl: logoUrl ? String(logoUrl).trim() : null,
+          workspaceMode: "financial",
+        },
+      });
+
+      // 2. Section 5: Add initial customers if provided
+      if (Array.isArray(customers) && customers.length > 0 && txCust) {
+        for (const c of customers) {
+          const cName = String(c.name || "").trim();
+          const cMobile = String(c.mobile || "").trim();
+          const cBal = Number(c.openingBalance) || 0;
+          if (cName && cMobile) {
+            const existing = await txCust.findUnique({
+              where: { businessId_mobile: { businessId, mobile: cMobile } },
+            });
+            if (!existing) {
+              await txCust.create({
+                data: {
+                  businessId,
+                  name: cName,
+                  mobile: cMobile,
+                  openingBalance: cBal,
+                  currentBalance: cBal,
+                },
+              });
+            }
+          }
+        }
+      }
+
+      // 3. Section 5: Add initial suppliers if provided
+      if (Array.isArray(suppliers) && suppliers.length > 0 && txSupp) {
+        for (const s of suppliers) {
+          const sName = String(s.name || "").trim();
+          const sMobile = String(s.mobile || "").trim() || null;
+          const sEmail = String(s.email || "").trim() || null;
+          const sBal = Number(s.openingBalance) || 0;
+          if (sName) {
+            await txSupp.create({
+              data: {
+                businessId,
+                name: sName,
+                mobile: sMobile,
+                email: sEmail,
+                openingBalance: sBal,
+                currentBalance: sBal,
+              },
+            });
+          }
+        }
+      }
+
+      // 4. Section 6: Add initial products & stock logs if provided
+      if (Array.isArray(products) && products.length > 0 && txProd) {
+        for (const p of products) {
+          const pName = String(p.name || "").trim();
+          const pBarcode = String(p.barcode || "").trim() || `AUTO-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+          const pSellingPrice = Number(p.sellingPrice ?? p.price ?? 0);
+          const pCostPrice = Number(p.costPrice ?? 0);
+          const pStock = Math.max(0, Math.floor(Number(p.stock ?? 0)));
+          const pLowStock = Math.max(1, Math.floor(Number(p.lowStockThreshold ?? 5)));
+          const pCategory = p.category ? String(p.category).trim() : "General";
+
+          if (pName) {
+            const createdProd = await txProd.upsert({
+              where: { businessId_barcode: { businessId, barcode: pBarcode } },
+              update: {
+                name: pName,
+                sellingPrice: pSellingPrice,
+                price: pSellingPrice,
+                costPrice: pCostPrice,
+                stock: pStock,
+                lowStockThreshold: pLowStock,
+                category: pCategory,
+              },
+              create: {
+                businessId,
+                name: pName,
+                barcode: pBarcode,
+                sellingPrice: pSellingPrice,
+                price: pSellingPrice,
+                costPrice: pCostPrice,
+                stock: pStock,
+                lowStockThreshold: pLowStock,
+                category: pCategory,
+                createdByUserId: userId,
+              },
+            });
+
+            if (pStock > 0 && txStockLog) {
+              await txStockLog.create({
+                data: {
+                  businessId,
+                  productId: createdProd.id,
+                  barcode: pBarcode,
+                  quantity: pStock,
+                  previousStock: 0,
+                  newStock: pStock,
+                  note: "Initial stock setup (Financial Onboarding)",
+                  userId,
+                },
+              });
+            }
+          }
+        }
+      }
+
+      // 5. Activity log
+      if (txLog) {
+        try {
+          await txLog.create({
+            data: {
+              businessId,
+              action: "FINANCIAL_SETUP",
+              category: "Business",
+              details: `Financial setup completed (Cash: ₨ ${cashNum.toLocaleString()}, Bank: ₨ ${bankNum.toLocaleString()}, Tax: ${taxRegistered})`,
+              target: `Business #${businessId}`,
+              meta: {
+                openingCashBalance: cashNum,
+                openingBankBalance: bankNum,
+                customerReceivable: custRecNum,
+                supplierPayable: suppPayNum,
+                taxRegistered,
+              },
+              userId,
+              userName: req.user?.fullName || req.user?.name || "Owner",
+              userEmail: req.user?.email || "admin@almadel.com",
+              userRole: req.user?.role || "admin",
+            },
+          });
+        } catch (e) {
+          console.warn("Log notice:", e.message);
+        }
+      }
+    });
+
+    const updatedBiz = await bizModel.findUnique({
+      where: { id: businessId },
+      include: {
+        customers: true,
+        suppliers: true,
+        products: { take: 50 },
+      },
+    });
+
+    return res.json({
+      success: true,
+      message: "Financial setup completed successfully.",
+      business: updatedBiz,
+    });
+  } catch (error) {
+    console.error("Financial setup error:", error);
+    return res.status(500).json({ message: "Failed to save financial setup.", error: error.message });
+  }
+}
+
 module.exports = {
   setupBusiness,
+  completeFinancialSetup,
   getMyBusinesses,
   getBusinessDetails,
   updateBusiness,
