@@ -1,0 +1,26 @@
+CREATE UNIQUE INDEX IF NOT EXISTS "accounts_businessId_name_key" ON "accounts"("businessId", "name");
+CREATE INDEX IF NOT EXISTS "accounts_businessId_type_idx" ON "accounts"("businessId", "type");
+CREATE INDEX IF NOT EXISTS "ledger_transactions_businessId_occurredAt_idx" ON "ledger_transactions"("businessId", "occurredAt");
+CREATE INDEX IF NOT EXISTS "ledger_transactions_accountId_occurredAt_idx" ON "ledger_transactions"("accountId", "occurredAt");
+CREATE INDEX IF NOT EXISTS "expenses_businessId_occurredAt_idx" ON "expenses"("businessId", "occurredAt");
+CREATE INDEX IF NOT EXISTS "payments_businessId_occurredAt_idx" ON "payments"("businessId", "occurredAt");
+CREATE UNIQUE INDEX IF NOT EXISTS "daily_closings_businessId_businessDate_key" ON "daily_closings"("businessId", "businessDate");
+CREATE INDEX IF NOT EXISTS "daily_closings_businessId_status_idx" ON "daily_closings"("businessId", "status");
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'accounts_businessId_fkey') THEN ALTER TABLE "accounts" ADD CONSTRAINT "accounts_businessId_fkey" FOREIGN KEY ("businessId") REFERENCES "businesses"("id") ON DELETE CASCADE ON UPDATE CASCADE; END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ledger_transactions_businessId_fkey') THEN ALTER TABLE "ledger_transactions" ADD CONSTRAINT "ledger_transactions_businessId_fkey" FOREIGN KEY ("businessId") REFERENCES "businesses"("id") ON DELETE CASCADE ON UPDATE CASCADE; END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ledger_transactions_accountId_fkey') THEN ALTER TABLE "ledger_transactions" ADD CONSTRAINT "ledger_transactions_accountId_fkey" FOREIGN KEY ("accountId") REFERENCES "accounts"("id") ON DELETE RESTRICT ON UPDATE CASCADE; END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ledger_transactions_createdById_fkey') THEN ALTER TABLE "ledger_transactions" ADD CONSTRAINT "ledger_transactions_createdById_fkey" FOREIGN KEY ("createdById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE; END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'expenses_businessId_fkey') THEN ALTER TABLE "expenses" ADD CONSTRAINT "expenses_businessId_fkey" FOREIGN KEY ("businessId") REFERENCES "businesses"("id") ON DELETE CASCADE ON UPDATE CASCADE; END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'expenses_accountId_fkey') THEN ALTER TABLE "expenses" ADD CONSTRAINT "expenses_accountId_fkey" FOREIGN KEY ("accountId") REFERENCES "accounts"("id") ON DELETE RESTRICT ON UPDATE CASCADE; END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'expenses_createdById_fkey') THEN ALTER TABLE "expenses" ADD CONSTRAINT "expenses_createdById_fkey" FOREIGN KEY ("createdById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE; END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'payments_businessId_fkey') THEN ALTER TABLE "payments" ADD CONSTRAINT "payments_businessId_fkey" FOREIGN KEY ("businessId") REFERENCES "businesses"("id") ON DELETE CASCADE ON UPDATE CASCADE; END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'payments_accountId_fkey') THEN ALTER TABLE "payments" ADD CONSTRAINT "payments_accountId_fkey" FOREIGN KEY ("accountId") REFERENCES "accounts"("id") ON DELETE RESTRICT ON UPDATE CASCADE; END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'payments_customerId_fkey') THEN ALTER TABLE "payments" ADD CONSTRAINT "payments_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "customers"("id") ON DELETE SET NULL ON UPDATE CASCADE; END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'payments_supplierId_fkey') THEN ALTER TABLE "payments" ADD CONSTRAINT "payments_supplierId_fkey" FOREIGN KEY ("supplierId") REFERENCES "suppliers"("id") ON DELETE SET NULL ON UPDATE CASCADE; END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'payments_saleId_fkey') THEN ALTER TABLE "payments" ADD CONSTRAINT "payments_saleId_fkey" FOREIGN KEY ("saleId") REFERENCES "sales"("id") ON DELETE SET NULL ON UPDATE CASCADE; END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'payments_createdById_fkey') THEN ALTER TABLE "payments" ADD CONSTRAINT "payments_createdById_fkey" FOREIGN KEY ("createdById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE; END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ledger_transactions_paymentId_fkey') THEN ALTER TABLE "ledger_transactions" ADD CONSTRAINT "ledger_transactions_paymentId_fkey" FOREIGN KEY ("paymentId") REFERENCES "payments"("id") ON DELETE SET NULL ON UPDATE CASCADE; END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'daily_closings_businessId_fkey') THEN ALTER TABLE "daily_closings" ADD CONSTRAINT "daily_closings_businessId_fkey" FOREIGN KEY ("businessId") REFERENCES "businesses"("id") ON DELETE CASCADE ON UPDATE CASCADE; END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'daily_closings_closedById_fkey') THEN ALTER TABLE "daily_closings" ADD CONSTRAINT "daily_closings_closedById_fkey" FOREIGN KEY ("closedById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE; END IF;
+END $$;

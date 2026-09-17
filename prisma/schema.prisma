@@ -26,6 +26,10 @@ model User {
   stockLogs           StockLog[]
   ownedBusinesses     Business[]           @relation("BusinessOwner")
   businessMemberships BusinessMember[]
+  createdExpenses Expense[] @relation("ExpenseCreator")
+  createdLedgerTransactions LedgerTransaction[] @relation("LedgerCreator")
+  createdDailyClosings DailyClosing[] @relation("ClosingCreator")
+  createdPayments Payment[] @relation("PaymentCreator")
 }
 
 model Business {
@@ -67,6 +71,11 @@ model Business {
   suppliers           Supplier[]
   stockLogs           StockLog[]
   activityLogs        ActivityLog[]
+  accounts            Account[]
+  ledgerTransactions  LedgerTransaction[]
+  expenses            Expense[]
+  dailyClosings       DailyClosing[]
+  payments            Payment[]
 
   @@index([ownerId])
   @@map("businesses")
@@ -176,6 +185,7 @@ model Customer {
   lastVisit      DateTime?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
+  payments       Payment[]
   sales          Sale[]
 
   @@unique([businessId, mobile])
@@ -194,6 +204,7 @@ model Supplier {
   currentBalance Float     @default(0)
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
+  payments       Payment[]
 
   @@index([businessId])
   @@map("suppliers")
@@ -219,6 +230,7 @@ model Sale {
   customerId     Int?
   customer       Customer?  @relation(fields: [customerId], references: [id])
   items          SaleItem[]
+  payments       Payment[]
 
   @@index([businessId])
   @@map("sales")
@@ -248,4 +260,110 @@ model ActivityLog {
   @@index([category])
   @@index([userEmail])
   @@map("activity_logs")
+}
+
+model Account {
+  id Int @id @default(autoincrement())
+  businessId Int
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name String
+  type String @default("cash")
+  openingBalance Float @default(0)
+  isActive Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  transactions LedgerTransaction[]
+  payments Payment[]
+  expenses Expense[]
+  @@unique([businessId, name])
+  @@index([businessId, type])
+  @@map("accounts")
+}
+
+model LedgerTransaction {
+  id Int @id @default(autoincrement())
+  businessId Int
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  accountId Int
+  account Account @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  type String
+  direction String
+  amount Float
+  reference String?
+  note String?
+  occurredAt DateTime @default(now())
+  createdAt DateTime @default(now())
+  createdById Int?
+  createdBy User? @relation("LedgerCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  paymentId Int?
+  payment Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  @@index([businessId, occurredAt])
+  @@index([accountId, occurredAt])
+  @@map("ledger_transactions")
+}
+
+model Expense {
+  id Int @id @default(autoincrement())
+  businessId Int
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  accountId Int
+  account Account @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  amount Float
+  category String
+  description String?
+  occurredAt DateTime @default(now())
+  createdById Int?
+  createdBy User? @relation("ExpenseCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([businessId, occurredAt])
+  @@map("expenses")
+}
+
+model Payment {
+  id Int @id @default(autoincrement())
+  businessId Int
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  accountId Int
+  account Account @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  customerId Int?
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  supplierId Int?
+  supplier Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  saleId Int?
+  sale Sale? @relation(fields: [saleId], references: [id], onDelete: SetNull)
+  amount Float
+  type String
+  method String
+  reference String?
+  status String @default("completed")
+  occurredAt DateTime @default(now())
+  createdById Int?
+  createdBy User? @relation("PaymentCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+  ledgerTransactions LedgerTransaction[]
+  @@index([businessId, occurredAt])
+  @@map("payments")
+}
+
+model DailyClosing {
+  id Int @id @default(autoincrement())
+  businessId Int
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  businessDate DateTime @db.Date
+  status String @default("open")
+  openingCash Float @default(0)
+  expectedCash Float @default(0)
+  countedCash Float?
+  difference Float?
+  note String?
+  closedById Int?
+  closedBy User? @relation("ClosingCreator", fields: [closedById], references: [id], onDelete: SetNull)
+  closedAt DateTime?
+  reopenedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([businessId, businessDate])
+  @@index([businessId, status])
+  @@map("daily_closings")
 }

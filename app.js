@@ -13,6 +13,8 @@ const { productsRouter } = require("./modules/products/products.routes");
 const { salesRouter } = require("./modules/sales/sales.routes");
 const { stockRouter } = require("./modules/stock/stock.routes");
 const logsRoutes = require("./modules/logs/logs.routes");
+const { financeRouter } = require("./modules/finance/finance.routes");
+const { suppliersRouter } = require("./modules/suppliers/suppliers.routes");
 
 
 
@@ -41,6 +43,8 @@ function createApp() {
   app.use("/business", businessRouter);
   // Connect it with /admin/logs prefix:
   app.use("/logs", logsRoutes);
+  app.use("/finance", financeRouter);
+  app.use("/suppliers", suppliersRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
