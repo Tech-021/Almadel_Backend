@@ -341,6 +341,7 @@ async function completeFinancialSetup(req, res) {
           strn: strn ? String(strn).trim() : null,
           taxBusinessName: taxBusinessName ? String(taxBusinessName).trim() : null,
           logoUrl: logoUrl ? String(logoUrl).trim() : null,
+          workspaceMode: "financial",
         },
       });
 
