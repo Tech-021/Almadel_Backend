@@ -60,6 +60,13 @@ model Business {
   taxBusinessName     String?
   logoUrl             String?
   workspaceMode       String           @default("pos")
+  subscriptionStatus  String           @default("trialing")
+  trialEndsAt         DateTime?
+  stripeCustomerId    String?
+  stripeSubscriptionId String?
+  stripePriceId       String?
+  currentPeriodEnd    DateTime?
+  cancelAtPeriodEnd   Boolean          @default(false)
   ownerId             Int
   owner               User             @relation("BusinessOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   createdAt           DateTime         @default(now())
