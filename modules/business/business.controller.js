@@ -79,6 +79,8 @@ async function setupBusiness(req, res) {
           province: province?.trim() || null,
           accountingStartDate: startDate,
           openingCashBalance: openingBalanceNum,
+          subscriptionStatus: "trialing",
+          trialEndsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
           ownerId: userId,
         },
       });
@@ -307,12 +309,46 @@ async function completeFinancialSetup(req, res) {
       logoUrl,
     } = req.body;
 
-    const startDate = accountingStartDate ? new Date(accountingStartDate) : undefined;
-    const cashNum = Number(openingCashBalance) || 0;
-    const bankNum = Number(openingBankBalance) || 0;
-    const custRecNum = Number(customerReceivable) || 0;
-    const suppPayNum = Number(supplierPayable) || 0;
-    const stockValNum = Number(currentStockValue) || 0;
+    let startDate = undefined;
+    if (accountingStartDate) {
+      const parsedDate = new Date(accountingStartDate);
+      if (isNaN(parsedDate.getTime())) {
+        return res.status(400).json({ message: "Please provide a valid accounting start date." });
+      }
+      startDate = parsedDate;
+    }
+
+    const cashNum = Number(openingCashBalance);
+    if (isNaN(cashNum) || cashNum < 0) {
+      return res.status(400).json({ message: "Opening cash balance must be a non-negative number." });
+    }
+
+    const bankNum = Number(openingBankBalance);
+    if (isNaN(bankNum) || bankNum < 0) {
+      return res.status(400).json({ message: "Opening bank balance must be a non-negative number." });
+    }
+
+    const custRecNum = Number(customerReceivable);
+    if (isNaN(custRecNum) || custRecNum < 0) {
+      return res.status(400).json({ message: "Customer receivable amount must be a non-negative number." });
+    }
+
+    const suppPayNum = Number(supplierPayable);
+    if (isNaN(suppPayNum) || suppPayNum < 0) {
+      return res.status(400).json({ message: "Supplier payable amount must be a non-negative number." });
+    }
+
+    const stockValNum = Number(currentStockValue);
+    if (isNaN(stockValNum) || stockValNum < 0) {
+      return res.status(400).json({ message: "Current stock value must be a non-negative number." });
+    }
+
+    if (taxRegistered === "yes") {
+      const cleanNtn = String(ntn || "").trim();
+      if (!cleanNtn || cleanNtn.length < 5) {
+        return res.status(400).json({ message: "Please enter a valid National Tax Number (NTN)." });
+      }
+    }
 
     await prisma.$transaction(async (tx) => {
       const txBiz = tx.business || tx.Business;
