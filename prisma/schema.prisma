@@ -42,6 +42,19 @@ model Business {
   province            String?
   accountingStartDate DateTime?
   openingCashBalance  Float            @default(0)
+  openingBankBalance  Float            @default(0)
+  bankAccounts        Json?            @default("[]")
+  hasCustomerUdhaar   Boolean          @default(false)
+  customerReceivable  Float            @default(0)
+  hasSupplierUdhaar   Boolean          @default(false)
+  supplierPayable     Float            @default(0)
+  manageStock         Boolean          @default(true)
+  currentStockValue   Float            @default(0)
+  taxRegistered       String?          @default("no")
+  ntn                 String?
+  strn                String?
+  taxBusinessName     String?
+  logoUrl             String?
   ownerId             Int
   owner               User             @relation("BusinessOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   createdAt           DateTime         @default(now())
@@ -50,6 +63,7 @@ model Business {
   products            Product[]
   sales               Sale[]
   customers           Customer[]
+  suppliers           Supplier[]
   stockLogs           StockLog[]
   activityLogs        ActivityLog[]
 
@@ -154,16 +168,34 @@ model Customer {
   mobile       String
   passwordHash String?
   email        String?
-  totalSpent   Float     @default(0)
-  visitCount   Int       @default(0)
-  lastVisit    DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  sales        Sale[]
+  totalSpent     Float     @default(0)
+  visitCount     Int       @default(0)
+  openingBalance Float     @default(0)
+  currentBalance Float     @default(0)
+  lastVisit      DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  sales          Sale[]
 
   @@unique([businessId, mobile])
   @@index([businessId])
   @@map("customers")
+}
+
+model Supplier {
+  id             Int       @id @default(autoincrement())
+  businessId     Int?
+  business       Business? @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name           String
+  mobile         String?
+  email          String?
+  openingBalance Float     @default(0)
+  currentBalance Float     @default(0)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([businessId])
+  @@map("suppliers")
 }
 
 model Sale {
