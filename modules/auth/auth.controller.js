@@ -204,6 +204,19 @@ async function resetPassword(req, res) {
   }
 }
 
+async function updateMe(req, res) {
+  const fullName = req.body.fullName === undefined ? undefined : String(req.body.fullName).trim();
+  const email = req.body.email === undefined ? undefined : normalizeEmail(req.body.email);
+  if (fullName !== undefined && fullName.length < 2) return res.status(400).json({ message: "Name must be at least 2 characters." });
+  if (email !== undefined && !email.includes("@")) return res.status(400).json({ message: "Please enter a valid email address." });
+  try {
+    const user = await prisma.user.update({ where: { id: Number(req.user.id) }, data: { fullName, email } });
+    return res.json({ user: publicUser(user) });
+  } catch (error) {
+    return res.status(error.code === "P2002" ? 409 : 400).json({ message: error.code === "P2002" ? "Email is already registered." : "Could not update account details." });
+  }
+}
+
 async function replacePassword(resetToken, password) {
   const passwordHash = await bcrypt.hash(password, PASSWORD_HASH_ROUNDS);
   const usedAt = new Date();
@@ -237,4 +250,4 @@ function normalizeEmail(value) {
   return String(value ?? "").trim().toLowerCase();
 }
 
-module.exports = { forgotPassword, resetPassword, signIn, signUpStaff, signUpOwner };
+module.exports = { forgotPassword, resetPassword, signIn, signUpStaff, signUpOwner, updateMe };
