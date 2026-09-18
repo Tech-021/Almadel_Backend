@@ -24,10 +24,20 @@ function createApp() {
   const app = express();
 
   app.disable("x-powered-by");
-  app.use(cors());
+  const allowedOrigins = (process.env.CORS_ORIGINS || "https://web-app-allmadal.vercel.app")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+  app.use(
+    cors({
+      origin(origin, callback) {
+        callback(null, !origin || allowedOrigins.includes(origin));
+      },
+    }),
+  );
   app.use(
     express.json({
-      limit: "1mb",
+      limit: "5mb",
       verify: (req, res, buf) => {
         req.rawBody = buf;
       },
