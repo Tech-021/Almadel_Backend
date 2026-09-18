@@ -8,6 +8,7 @@
     "dev": "node --watch index.js",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
+    "db:stress:seed": "node stress-seed.js",
     "db:studio": "prisma studio",
     "admin:create": "node create-admin.js",
     "seed": "node seed.js"
