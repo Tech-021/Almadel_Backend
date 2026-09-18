@@ -24,15 +24,34 @@ function createApp() {
   const app = express();
 
   app.disable("x-powered-by");
-  const allowedOrigins = (process.env.CORS_ORIGINS || "https://web-app-allmadal.vercel.app")
+  const defaultAllowedOrigins = [
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3000",
+    "https://web-app-allmadal.vercel.app",
+  ];
+  const customOrigins = (process.env.CORS_ORIGINS || "")
     .split(",")
-    .map((origin) => origin.trim())
+    .map((o) => o.trim())
     .filter(Boolean);
+  const allowedOrigins = [...new Set([...defaultAllowedOrigins, ...customOrigins])];
+
   app.use(
     cors({
       origin(origin, callback) {
-        callback(null, !origin || allowedOrigins.includes(origin));
+        if (
+          !origin ||
+          allowedOrigins.includes(origin) ||
+          origin.endsWith(".vercel.app") ||
+          origin.startsWith("http://localhost:") ||
+          origin.startsWith("http://127.0.0.1:")
+        ) {
+          callback(null, true);
+        } else {
+          callback(new Error(`CORS blocked for origin: ${origin}`));
+        }
       },
+      credentials: true,
     }),
   );
   app.use(
