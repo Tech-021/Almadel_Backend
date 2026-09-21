@@ -11,13 +11,13 @@ const port = Number(process.env.API_PORT ?? 4000);
 const host = process.env.API_HOST ?? "0.0.0.0";
 const app = createApp();
 const httpServer = http.createServer(app);
-registerSocketHandlers(httpServer);
 const BCRYPT_WARMUP_HASH =
   "$2b$10$dd8VjgLGcM5PyVsow0oVkejuRB/FdT80KQV7t240GJDqW1FEsc/Bu";
 
 async function startServer() {
   await prisma.$queryRaw`SELECT 1`;
   await bcrypt.compare("warmup", BCRYPT_WARMUP_HASH);
+  await registerSocketHandlers(httpServer);
 
   httpServer.listen(port, host, () => {
     console.log(`API server running on http://localhost:${port}`);
