@@ -10,7 +10,10 @@ function isAllowedOrigin(origin) {
   if (!origin) return true;
   const defaults = ["http://localhost:3000", "http://localhost:3001", "http://127.0.0.1:3000"];
   const custom = (process.env.CORS_ORIGINS || "").split(",").map((value) => value.trim()).filter(Boolean);
-  return [...defaults, ...custom, process.env.FRONTEND_URL].filter(Boolean).includes(origin);
+  return (
+    [...defaults, ...custom, process.env.FRONTEND_URL].filter(Boolean).includes(origin) ||
+    origin.endsWith(".vercel.app")
+  );
 }
 
 async function authenticateSocket(socket, next) {
@@ -59,6 +62,14 @@ async function registerSocketHandlers(httpServer) {
     connectionStateRecovery: { maxDisconnectionDuration: 120_000, skipMiddlewares: false },
   });
 
+  io.engine.on("connection_error", (error) => {
+    console.error("Socket.IO connection error:", {
+      message: error.message,
+      code: error.code,
+      context: error.context,
+    });
+  });
+
   if (process.env.REDIS_URL) {
     const pubClient = createClient({ url: process.env.REDIS_URL });
     const subClient = pubClient.duplicate();
@@ -99,4 +110,3 @@ function emitBusinessEvent(businessId, event, payload) {
 }
 
 module.exports = { emitBusinessEvent, registerSocketHandlers };
-
