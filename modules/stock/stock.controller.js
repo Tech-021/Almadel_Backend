@@ -1,6 +1,7 @@
-const { prisma } = require("../../db");
+﻿const { prisma } = require("../../db");
 const { toPositiveInteger } = require("../../utils/numbers");
 const { productAccessWhere } = require("../products/product-access");
+const { emitBusinessEvent } = require("../realtime/socket");
 
 async function receiveOne(req, res) {
   try {
@@ -18,6 +19,7 @@ async function receiveOne(req, res) {
       where: { id: product.id },
     });
 
+    emitBusinessEvent(req.businessId, "stock.updated", updatedProduct);
     return res.json(updatedProduct);
   } catch (error) {
     return res.status(400).json({
@@ -61,6 +63,7 @@ async function addStock(req, res) {
       return updated;
     });
 
+    emitBusinessEvent(req.businessId, "stock.updated", updatedProduct);
     return res.json(updatedProduct);
   } catch (error) {
     return res.status(400).json({
@@ -70,3 +73,4 @@ async function addStock(req, res) {
 }
 
 module.exports = { addStock, receiveOne };
+

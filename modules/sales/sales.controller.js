@@ -1,6 +1,7 @@
-const { prisma } = require("../../db");
+﻿const { prisma } = require("../../db");
 const { invoiceResponse } = require("../../utils/serializers");
 const { createSale } = require("./checkout.service");
+const { emitBusinessEvent } = require("../realtime/socket");
 
 async function checkout(req, res) {
   try {
@@ -14,6 +15,7 @@ async function checkout(req, res) {
       createSale(tx, { ...req.user, businessId: req.businessId }, items, req.body),
     );
 
+    emitBusinessEvent(req.businessId, "sale.created", invoiceResponse(sale));
     return res.status(201).json(invoiceResponse(sale));
   } catch (error) {
     return res.status(400).json({
@@ -53,3 +55,5 @@ async function listSales(req, res) {
 }
 
 module.exports = { checkout, getInvoice, listSales };
+
+
