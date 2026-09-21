@@ -24,26 +24,39 @@ function createApp() {
   const app = express();
 
   app.disable("x-powered-by");
-  app.use(cors());
-
-  if (process.env.API_REQUEST_LOGS === "true") {
-    app.use((req, res, next) => {
-      const startedAt = process.hrtime.bigint();
-
-      res.on("finish", () => {
-        const durationMs = Number(process.hrtime.bigint() - startedAt) / 1e6;
-        console.log(
-          `[HTTP] ${req.method} ${req.path} ${res.statusCode} ${durationMs.toFixed(1)}ms`,
-        );
-      });
-
-      next();
-    });
-  }
+  const defaultAllowedOrigins = [
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3000",
+    "https://web-app-allmadal.vercel.app",
+  ];
+  const customOrigins = (process.env.CORS_ORIGINS || "")
+    .split(",")
+    .map((o) => o.trim())
+    .filter(Boolean);
+  const allowedOrigins = [...new Set([...defaultAllowedOrigins, ...customOrigins])];
 
   app.use(
+    cors({
+      origin(origin, callback) {
+        if (
+          !origin ||
+          allowedOrigins.includes(origin) ||
+          origin.endsWith(".vercel.app") ||
+          origin.startsWith("http://localhost:") ||
+          origin.startsWith("http://127.0.0.1:")
+        ) {
+          callback(null, true);
+        } else {
+          callback(new Error(`CORS blocked for origin: ${origin}`));
+        }
+      },
+      credentials: true,
+    }),
+  );
+  app.use(
     express.json({
-      limit: "1mb",
+      limit: "5mb",
       verify: (req, res, buf) => {
         req.rawBody = buf;
       },

@@ -18,6 +18,14 @@ CREATE TABLE "expenses" (
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL,
   CONSTRAINT "expenses_pkey" PRIMARY KEY ("id")
 );
+CREATE TABLE "suppliers" (
+  "id" SERIAL NOT NULL, "businessId" INTEGER, "name" TEXT NOT NULL,
+  "mobile" TEXT, "email" TEXT, "openingBalance" DOUBLE PRECISION NOT NULL DEFAULT 0,
+  "currentBalance" DOUBLE PRECISION NOT NULL DEFAULT 0,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL,
+  CONSTRAINT "suppliers_pkey" PRIMARY KEY ("id")
+);
 CREATE TABLE "payments" (
   "id" SERIAL NOT NULL, "businessId" INTEGER NOT NULL, "accountId" INTEGER NOT NULL,
   "customerId" INTEGER, "supplierId" INTEGER, "saleId" INTEGER, "amount" DOUBLE PRECISION NOT NULL,
@@ -38,6 +46,7 @@ CREATE INDEX "accounts_businessId_type_idx" ON "accounts"("businessId", "type");
 CREATE INDEX "ledger_transactions_businessId_occurredAt_idx" ON "ledger_transactions"("businessId", "occurredAt");
 CREATE INDEX "ledger_transactions_accountId_occurredAt_idx" ON "ledger_transactions"("accountId", "occurredAt");
 CREATE INDEX "expenses_businessId_occurredAt_idx" ON "expenses"("businessId", "occurredAt");
+CREATE INDEX "suppliers_businessId_idx" ON "suppliers"("businessId");
 CREATE INDEX "payments_businessId_occurredAt_idx" ON "payments"("businessId", "occurredAt");
 CREATE UNIQUE INDEX "daily_closings_businessId_businessDate_key" ON "daily_closings"("businessId", "businessDate");
 CREATE INDEX "daily_closings_businessId_status_idx" ON "daily_closings"("businessId", "status");
@@ -48,6 +57,7 @@ ALTER TABLE "ledger_transactions" ADD CONSTRAINT "ledger_transactions_createdByI
 ALTER TABLE "expenses" ADD CONSTRAINT "expenses_businessId_fkey" FOREIGN KEY ("businessId") REFERENCES "businesses"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "expenses" ADD CONSTRAINT "expenses_accountId_fkey" FOREIGN KEY ("accountId") REFERENCES "accounts"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "expenses" ADD CONSTRAINT "expenses_createdById_fkey" FOREIGN KEY ("createdById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "suppliers" ADD CONSTRAINT "suppliers_businessId_fkey" FOREIGN KEY ("businessId") REFERENCES "businesses"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "payments" ADD CONSTRAINT "payments_businessId_fkey" FOREIGN KEY ("businessId") REFERENCES "businesses"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "payments" ADD CONSTRAINT "payments_accountId_fkey" FOREIGN KEY ("accountId") REFERENCES "accounts"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "payments" ADD CONSTRAINT "payments_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "customers"("id") ON DELETE SET NULL ON UPDATE CASCADE;

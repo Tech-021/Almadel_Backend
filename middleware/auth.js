@@ -32,6 +32,8 @@ async function requireAuth(req, res, next) {
       ...payload,
       id: user.id,
       role: user.role,
+      email: user.email,
+      fullName: user.fullName,
     };
 
     return next();
@@ -104,4 +106,30 @@ async function requireBusiness(req, res, next) {
   return next();
 }
 
-module.exports = { requireAdmin, requireAuth, requireBusiness };
+async function optionalBusiness(req, res, next) {
+  if (!req.user || !req.user.id) return next();
+
+  const headerBizId = req.headers["x-business-id"];
+  const userId = Number(req.user.id);
+  let businessId = headerBizId && !isNaN(Number(headerBizId)) ? Number(headerBizId) : null;
+
+  if (businessId) {
+    req.businessId = businessId;
+    return next();
+  }
+
+  try {
+    const primary = await prisma.businessMember.findFirst({
+      where: { userId },
+      orderBy: { createdAt: "asc" },
+    });
+    if (primary) {
+      req.businessId = primary.businessId;
+      req.businessRole = primary.role;
+    }
+  } catch {}
+
+  return next();
+}
+
+module.exports = { requireAdmin, requireAuth, requireBusiness, optionalBusiness };
