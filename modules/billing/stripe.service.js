@@ -83,23 +83,40 @@ async function createCheckoutSession({ businessId, userEmail, businessName, succ
     ];
   }
 
-  const session = await stripe.checkout.sessions.create({
-    mode: "subscription",
-    payment_method_types: ["card"],
-    customer: customerId,
-    client_reference_id: String(businessId),
-    line_items: lineItems,
-    metadata: {
-      businessId: String(businessId),
-    },
-    subscription_data: {
+    // Calculate remaining trial days or 30 days if starting trial
+    let trialPeriodDays = undefined;
+    const isTrialing = biz.subscriptionStatus === "trialing" || !biz.stripeSubscriptionId;
+    if (isTrialing) {
+      if (biz.trialEndsAt) {
+        const remainingDays = Math.ceil((new Date(biz.trialEndsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+        trialPeriodDays = remainingDays > 0 ? remainingDays : undefined;
+      } else {
+        trialPeriodDays = 30;
+      }
+    }
+
+    const session = await stripe.checkout.sessions.create({
+      mode: "subscription",
+      payment_method_types: ["card"],
+      customer: customerId,
+      client_reference_id: String(businessId),
+      line_items: lineItems,
       metadata: {
         businessId: String(businessId),
       },
-    },
-    success_url: successUrl || `${process.env.FRONTEND_URL || "http://localhost:3000"}/dashboard?payment=success&session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: cancelUrl || `${process.env.FRONTEND_URL || "http://localhost:3000"}/payments?payment=canceled`,
-  });
+      subscription_data: {
+        trial_period_days: trialPeriodDays,
+        metadata: {
+          businessId: String(businessId),
+        },
+      },
+      success_url: successUrl
+        ? (successUrl.includes("{CHECKOUT_SESSION_ID}")
+            ? successUrl
+            : `${successUrl}${successUrl.includes("?") ? "&" : "?"}session_id={CHECKOUT_SESSION_ID}`)
+        : `${process.env.FRONTEND_URL || "http://localhost:3000"}/dashboard?payment=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: cancelUrl || `${process.env.FRONTEND_URL || "http://localhost:3000"}/payments?payment=canceled`,
+    });
 
   return session;
 }
@@ -119,7 +136,7 @@ async function verifyCheckoutSession(sessionId) {
   }
 
   const businessId = Number(session.client_reference_id || session.metadata?.businessId);
-  if (businessId && (session.status === "complete" || session.payment_status === "paid")) {
+  if (businessId && (session.status === "complete" || session.payment_status === "paid" || session.payment_status === "no_payment_required")) {
     const updated = await prisma.business.update({
       where: { id: businessId },
       data: {
@@ -133,6 +150,71 @@ async function verifyCheckoutSession(sessionId) {
 
   return null;
 }
+
+/**
+ * Actively syncs subscription status directly from Stripe API for a given business.
+ */
+async function syncBusinessSubscription(businessId) {
+  const stripe = getStripeClient();
+  if (!stripe || !businessId) {
+    return null;
+  }
+
+  const biz = await prisma.business.findUnique({
+    where: { id: Number(businessId) },
+  });
+
+  if (!biz) {
+    return null;
+  }
+
+  let customerId = biz.stripeCustomerId;
+
+  // If customerId is not in DB, search Stripe by business metadata or email
+  if (!customerId) {
+    try {
+      const searchRes = await stripe.customers.search({
+        query: `metadata['businessId']:'${businessId}'`,
+      });
+      if (searchRes.data && searchRes.data.length > 0) {
+        customerId = searchRes.data[0].id;
+      }
+    } catch (e) {
+      // Fallback search
+    }
+  }
+
+  if (customerId) {
+    try {
+      const subs = await stripe.subscriptions.list({
+        customer: customerId,
+        limit: 1,
+      });
+
+      if (subs.data && subs.data.length > 0) {
+        const sub = subs.data[0];
+        const isActive = sub.status === "active" || sub.status === "trialing";
+        if (isActive) {
+          const updated = await prisma.business.update({
+            where: { id: Number(businessId) },
+            data: {
+              subscriptionStatus: "active",
+              stripeCustomerId: customerId,
+              stripeSubscriptionId: sub.id,
+              cancelAtPeriodEnd: sub.cancel_at_period_end || false,
+            },
+          });
+          return updated;
+        }
+      }
+    } catch (err) {
+      console.warn("Stripe customer subscription lookup notice:", err.message);
+    }
+  }
+
+  return biz;
+}
+
 
 /**
  * Creates a Stripe Customer Portal session for managing billing.
@@ -200,22 +282,38 @@ async function handleWebhookEvent(rawBody, signature) {
     case "customer.subscription.updated": {
       const subscription = dataObject;
       const customerId = String(subscription.customer);
-      const status = subscription.status;
+      const status = subscription.status === "trialing" ? "active" : subscription.status;
       const periodEnd = subscription.current_period_end
         ? new Date(subscription.current_period_end * 1000)
         : undefined;
 
-      await prisma.business.updateMany({
-        where: { stripeCustomerId: customerId },
-        data: {
-          subscriptionStatus: status,
-          stripeSubscriptionId: subscription.id,
-          currentPeriodEnd: periodEnd,
-          cancelAtPeriodEnd: subscription.cancel_at_period_end || false,
-        },
-      });
+      const businessId = Number(subscription.metadata?.businessId);
+
+      if (businessId) {
+        await prisma.business.update({
+          where: { id: businessId },
+          data: {
+            subscriptionStatus: status,
+            stripeCustomerId: customerId,
+            stripeSubscriptionId: subscription.id,
+            currentPeriodEnd: periodEnd,
+            cancelAtPeriodEnd: subscription.cancel_at_period_end || false,
+          },
+        });
+      } else {
+        await prisma.business.updateMany({
+          where: { stripeCustomerId: customerId },
+          data: {
+            subscriptionStatus: status,
+            stripeSubscriptionId: subscription.id,
+            currentPeriodEnd: periodEnd,
+            cancelAtPeriodEnd: subscription.cancel_at_period_end || false,
+          },
+        });
+      }
       break;
     }
+
 
     case "customer.subscription.deleted": {
       const subscription = dataObject;
@@ -266,6 +364,8 @@ module.exports = {
   getStripeClient,
   createCheckoutSession,
   verifyCheckoutSession,
+  syncBusinessSubscription,
   createPortalSession,
   handleWebhookEvent,
 };
+

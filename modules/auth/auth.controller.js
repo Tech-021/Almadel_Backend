@@ -9,6 +9,7 @@ const {
   resetTokenExpiry,
 } = require("./password-reset.service");
 const { createAccessToken } = require("./token.service");
+const { formatBusinessSubscription } = require("../business/business.controller");
 
 const GENERIC_RESET_RESPONSE = {
   message:
@@ -104,10 +105,9 @@ async function signIn(req, res) {
     }
 
     const businesses = (user.businessMemberships || []).map((m) => ({
-      id: m.business.id,
-      name: m.business.name,
-      businessType: m.business.businessType,
+      ...formatBusinessSubscription(m.business),
       role: m.role,
+      membershipRole: m.role,
     }));
 
     return res.json({

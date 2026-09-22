@@ -130,6 +130,30 @@ async function setupBusiness(req, res) {
   }
 }
 
+function formatBusinessSubscription(biz) {
+  if (!biz) return biz;
+  const hasStripeSub = Boolean(biz.stripeSubscriptionId);
+  const isSubscribed = biz.subscriptionStatus === "active" || (hasStripeSub && biz.subscriptionStatus !== "canceled");
+  const isTrial = !isSubscribed;
+  const trialExpired = Boolean(
+    !isSubscribed &&
+    biz.trialEndsAt &&
+    new Date(biz.trialEndsAt).getTime() < Date.now()
+  );
+  let daysRemaining = 0;
+  if (biz.trialEndsAt) {
+    daysRemaining = Math.max(0, Math.ceil((new Date(biz.trialEndsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
+  }
+  return {
+    ...biz,
+    isTrial,
+    isSubscribed,
+    isTrialExpired: trialExpired,
+    trialDaysRemaining: daysRemaining,
+  };
+}
+
+
 // GET /business/my-businesses
 async function getMyBusinesses(req, res) {
   try {
@@ -147,7 +171,7 @@ async function getMyBusinesses(req, res) {
     });
 
     const businesses = memberships.map((m) => ({
-      ...m.business,
+      ...formatBusinessSubscription(m.business),
       membershipRole: m.role,
     }));
 
@@ -179,14 +203,15 @@ async function getBusinessDetails(req, res) {
       return res.status(403).json({ message: "You do not have access to this business." });
     }
 
-    const business = membership
+    const rawBiz = membership
       ? { ...membership.business, membershipRole: membership.role }
       : await bizModel.findUnique({ where: { id: businessId } });
 
-    if (!business) {
+    if (!rawBiz) {
       return res.status(404).json({ message: "Business not found." });
     }
 
+    const business = formatBusinessSubscription(rawBiz);
     return res.json({ success: true, business });
   } catch (error) {
     console.error("Get business details error:", error);
@@ -532,4 +557,6 @@ module.exports = {
   getMyBusinesses,
   getBusinessDetails,
   updateBusiness,
+  formatBusinessSubscription,
 };
+
