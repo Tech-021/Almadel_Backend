@@ -41,10 +41,8 @@ async function create(req, res) {
     return res.status(400).json({ message: nameVal.error });
   }
 
-  if (req.body.mobile) {
-    const phoneVal = validatePhone(req.body.mobile, { required: false, fieldName: "Supplier mobile" });
-    if (!phoneVal.valid) return res.status(400).json({ message: phoneVal.error });
-  }
+  const phoneVal = validatePhone(req.body.mobile, { required: true, fieldName: "Supplier mobile" });
+  if (!phoneVal.valid) return res.status(400).json({ message: phoneVal.error });
 
   if (req.body.email) {
     const emailVal = validateEmail(req.body.email, { required: false });
@@ -82,8 +80,8 @@ async function update(req, res) {
     if (!nameVal.valid) return res.status(400).json({ message: nameVal.error });
   }
 
-  if (req.body.mobile) {
-    const phoneVal = validatePhone(req.body.mobile, { required: false, fieldName: "Supplier mobile" });
+  if (req.body.mobile !== undefined) {
+    const phoneVal = validatePhone(req.body.mobile, { required: true, fieldName: "Supplier mobile" });
     if (!phoneVal.valid) return res.status(400).json({ message: phoneVal.error });
   }
 
