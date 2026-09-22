@@ -80,16 +80,27 @@ async function signIn(req, res) {
       return res.status(401).json({ message: "Invalid email or password." });
     }
 
-    if (requestedRole === "admin" && user.role !== "admin") {
-      return res.status(403).json({
-        message: "Only admin accounts can use admin login.",
-      });
-    }
-
-    if (requestedRole === "staff" && user.role === "admin") {
-      return res.status(403).json({
-        message: "Please use admin login for this account.",
-      });
+    if (requestedRole && requestedRole !== user.role) {
+      if (requestedRole === "admin" && user.role !== "admin") {
+        return res.status(403).json({
+          message: "Only admin accounts can use admin login.",
+        });
+      }
+      if (requestedRole === "staff" && user.role === "admin") {
+        return res.status(403).json({
+          message: "Please use admin login for this account.",
+        });
+      }
+      if (requestedRole === "staff" && user.role !== "staff") {
+        return res.status(403).json({
+          message: `This account is registered as ${user.role}. Please use ${user.role} login.`,
+        });
+      }
+      if (requestedRole === "accountant" && user.role !== "accountant") {
+        return res.status(403).json({
+          message: `This account is registered as ${user.role}. Please use ${user.role} login.`,
+        });
+      }
     }
 
     const businesses = (user.businessMemberships || []).map((m) => ({

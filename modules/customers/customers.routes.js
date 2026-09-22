@@ -1,6 +1,6 @@
 const express = require("express");
 
-const { requireAdmin, requireAuth, requireBusiness } = require("../../middleware/auth");
+const { requireFinanceAccess, requireAuth, requireBusiness } = require("../../middleware/auth");
 const {
   getCustomers,
   createCustomer,
@@ -11,9 +11,9 @@ const {
 const customersRouter = express.Router();
 
 customersRouter.use(requireAuth, requireBusiness);
-customersRouter.get("/", requireAdmin, getCustomers);
-customersRouter.post("/", requireAdmin, createCustomer);
-customersRouter.patch("/:customerId", requireAdmin, updateCustomer);
-customersRouter.delete("/:customerId", requireAdmin, deleteCustomer);
+customersRouter.get("/", requireFinanceAccess, getCustomers);
+customersRouter.post("/", requireFinanceAccess, createCustomer);
+customersRouter.patch("/:customerId", requireFinanceAccess, updateCustomer);
+customersRouter.delete("/:customerId", requireFinanceAccess, deleteCustomer);
 
 module.exports = { customersRouter };
