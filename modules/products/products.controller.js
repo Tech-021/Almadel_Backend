@@ -1,4 +1,4 @@
-﻿const { prisma } = require("../../db");
+const { prisma } = require("../../db");
 const { toNonNegativeNumber } = require("../../utils/numbers");
 const { productAccessWhere } = require("./product-access");
 const { emitBusinessEvent } = require("../realtime/socket");
@@ -71,9 +71,15 @@ async function createProduct(req, res) {
       toNonNegativeNumber(req.body.stock ?? 0, "Opening stock"),
     );
 
-    if (!barcode || !name) {
+    if (!barcode || !name || name.length < 2) {
       return res.status(400).json({
-        message: "Barcode and product name are required.",
+        message: "Barcode and a valid product name (min 2 characters) are required.",
+      });
+    }
+
+    if (sellingPrice <= 0) {
+      return res.status(400).json({
+        message: "Selling price must be greater than 0.",
       });
     }
 
@@ -136,9 +142,15 @@ async function updateProduct(req, res) {
       toNonNegativeNumber(req.body.stock ?? 0, "Current stock"),
     );
 
-    if (!barcode || !name) {
+    if (!barcode || !name || name.length < 2) {
       return res.status(400).json({
-        message: "Barcode and product name are required.",
+        message: "Barcode and a valid product name (min 2 characters) are required.",
+      });
+    }
+
+    if (sellingPrice <= 0) {
+      return res.status(400).json({
+        message: "Selling price must be greater than 0.",
       });
     }
 

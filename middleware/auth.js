@@ -37,7 +37,8 @@ async function requireAuth(req, res, next) {
     };
 
     return next();
-  } catch {
+  } catch (err) {
+    console.error("requireAuth error:", err.message);
     return res.status(401).json({ message: "Invalid or expired session." });
   }
 }
@@ -67,11 +68,8 @@ function requireFinanceAccess(req, res, next) {
 }
 
 function normalizeUserId(value) {
-  if (typeof value === "string" && value.trim()) {
-    return value.trim();
-  }
-
-  return Number.isInteger(value) && value > 0 ? value : null;
+  const num = Number(value);
+  return Number.isInteger(num) && num > 0 ? num : null;
 }
 
 

@@ -1,5 +1,6 @@
 const db = require("../../db");
 const prisma = db.prisma || db;
+const { validatePhone, validateEmail, validateText, validateNumber } = require("../../utils/validators");
 
 // POST /business/setup - Create new business & link owner
 async function setupBusiness(req, res) {
@@ -19,34 +20,27 @@ async function setupBusiness(req, res) {
       openingCashBalance,
     } = req.body;
 
-    const rawName = String(name || "").trim();
-    const rawMobile = String(mobileNumber || "").trim();
-    const rawWhatsapp = String(whatsappNumber || "").trim();
-    const rawEmail = String(email || "").trim().toLowerCase();
-
-    if (!rawName || rawName.length < 2) {
-      return res.status(400).json({ message: "Business name must be at least 2 characters long." });
-    }
-    if (rawName.length > 100) {
-      return res.status(400).json({ message: "Business name cannot exceed 100 characters." });
+    const nameVal = validateText(name, { minLength: 2, maxLength: 100, fieldName: "Business name" });
+    if (!nameVal.valid) {
+      return res.status(400).json({ message: nameVal.error });
     }
 
-    const cleanMobile = rawMobile.replace(/[^0-9+]/g, "");
-    if (!cleanMobile || cleanMobile.replace(/[^0-9]/g, "").length < 10) {
-      return res.status(400).json({ message: "Please provide a valid primary mobile number (min 10 digits)." });
+    const phoneVal = validatePhone(mobileNumber, { required: true, fieldName: "Primary mobile number" });
+    if (!phoneVal.valid) {
+      return res.status(400).json({ message: phoneVal.error });
     }
 
-    if (rawWhatsapp) {
-      const cleanWhatsapp = rawWhatsapp.replace(/[^0-9+]/g, "");
-      if (cleanWhatsapp.replace(/[^0-9]/g, "").length < 10) {
-        return res.status(400).json({ message: "Please provide a valid WhatsApp number." });
+    if (whatsappNumber) {
+      const whatsappVal = validatePhone(whatsappNumber, { required: false, fieldName: "WhatsApp number" });
+      if (!whatsappVal.valid) {
+        return res.status(400).json({ message: whatsappVal.error });
       }
     }
 
-    if (rawEmail) {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(rawEmail)) {
-        return res.status(400).json({ message: "Please enter a valid email address." });
+    if (email) {
+      const emailVal = validateEmail(email, { required: false, fieldName: "Business email" });
+      if (!emailVal.valid) {
+        return res.status(400).json({ message: emailVal.error });
       }
     }
 
