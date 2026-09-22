@@ -1,7 +1,8 @@
-const bcrypt = require("bcryptjs");
+﻿const bcrypt = require("bcryptjs");
 
 const { prisma } = require("../../db");
 const { userResponse } = require("../../utils/serializers");
+const { emitBusinessEvent } = require("../realtime/socket");
 
 const PASSWORD_HASH_ROUNDS = Number(process.env.PASSWORD_HASH_ROUNDS ?? 10);
 
@@ -120,7 +121,9 @@ async function createStaff(req, res) {
         data: { businessId, userId: user.id, role: "staff" },
       });
 
-      return res.status(201).json(userResponse(user));
+      const response = userResponse(user);
+      emitBusinessEvent(businessId, "staff.created", response);
+      return res.status(201).json(response);
     }
 
     const newUser = await prisma.$transaction(async (tx) => {
@@ -133,7 +136,9 @@ async function createStaff(req, res) {
       return created;
     });
 
-    return res.status(201).json(userResponse(newUser));
+    const response = userResponse(newUser);
+    emitBusinessEvent(businessId, "staff.created", response);
+    return res.status(201).json(response);
   } catch (error) {
     if (error.code === "P2002") {
       return res.status(409).json({ message: "Staff member already exists." });
@@ -195,7 +200,9 @@ async function updateStaff(req, res) {
 
     const user = await prisma.user.update({ data, where: { id } });
 
-    return res.json(userResponse(user));
+    const response = userResponse(user);
+    emitBusinessEvent(businessId, "staff.updated", response);
+    return res.json(response);
   } catch (error) {
     if (error.code === "P2002") {
       return res.status(409).json({ message: "Email is already registered." });
@@ -239,6 +246,7 @@ async function deleteStaff(req, res) {
       await prisma.user.delete({ where: { id } }).catch(() => null);
     }
 
+    emitBusinessEvent(businessId, "staff.deleted", { id });
     return res.json({ deleted: true });
   } catch (error) {
     console.error("Delete staff error:", error);
@@ -247,3 +255,5 @@ async function deleteStaff(req, res) {
 }
 
 module.exports = { createStaff, deleteStaff, listStaff, updateStaff };
+
+

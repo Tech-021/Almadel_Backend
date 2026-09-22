@@ -1,6 +1,7 @@
-const { prisma } = require("../../db");
+﻿const { prisma } = require("../../db");
 const { toNonNegativeNumber } = require("../../utils/numbers");
 const { productAccessWhere } = require("./product-access");
+const { emitBusinessEvent } = require("../realtime/socket");
 
 async function listProducts(req, res) {
   const products = await prisma.product.findMany({
@@ -94,6 +95,7 @@ async function createProduct(req, res) {
       },
     });
 
+    emitBusinessEvent(req.businessId, "product.created", product);
     return res.status(201).json(product);
   } catch (error) {
     if (error.code === "P2002") {
@@ -165,6 +167,7 @@ async function updateProduct(req, res) {
       where: { id },
     });
 
+    emitBusinessEvent(req.businessId, "product.updated", product);
     return res.json(product);
   } catch (error) {
     if (error.code === "P2002") {
@@ -310,6 +313,7 @@ async function deleteProduct(req, res) {
       prisma.product.delete({ where: { id } }),
     ]);
 
+    emitBusinessEvent(req.businessId, "product.deleted", { id });
     return res.json({ deleted: true });
   } catch (error) {
     if (error.code === "P2025") {
@@ -330,3 +334,4 @@ module.exports = {
   searchProducts,
   updateProduct,
 };
+
