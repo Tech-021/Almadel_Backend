@@ -37,7 +37,8 @@ async function requireAuth(req, res, next) {
     };
 
     return next();
-  } catch {
+  } catch (err) {
+    console.error("requireAuth error:", err.message);
     return res.status(401).json({ message: "Invalid or expired session." });
   }
 }
@@ -50,12 +51,25 @@ function requireAdmin(req, res, next) {
   return next();
 }
 
-function normalizeUserId(value) {
-  if (typeof value === "string" && value.trim()) {
-    return value.trim();
+function requireFinanceAccess(req, res, next) {
+  const role = req.user?.role;
+  const bizRole = req.businessRole;
+  if (
+    role === "admin" ||
+    role === "accountant" ||
+    bizRole === "admin" ||
+    bizRole === "owner" ||
+    bizRole === "accountant"
+  ) {
+    return next();
   }
 
-  return Number.isInteger(value) && value > 0 ? value : null;
+  return res.status(403).json({ message: "Financial or accountant access required." });
+}
+
+function normalizeUserId(value) {
+  const num = Number(value);
+  return Number.isInteger(num) && num > 0 ? num : null;
 }
 
 
@@ -132,4 +146,10 @@ async function optionalBusiness(req, res, next) {
   return next();
 }
 
-module.exports = { requireAdmin, requireAuth, requireBusiness, optionalBusiness };
+module.exports = {
+  requireAdmin,
+  requireAuth,
+  requireBusiness,
+  optionalBusiness,
+  requireFinanceAccess,
+};

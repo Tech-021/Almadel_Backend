@@ -1,6 +1,6 @@
 const express = require("express");
 
-const { requireAdmin, requireAuth, requireBusiness } = require("../../middleware/auth");
+const { requireFinanceAccess, requireAuth, requireBusiness } = require("../../middleware/auth");
 const {
   getAdminDashboard,
   getMyDashboard,
@@ -9,7 +9,7 @@ const {
 const dashboardRouter = express.Router();
 
 dashboardRouter.use(requireAuth, requireBusiness);
-dashboardRouter.get("/", requireAdmin, getAdminDashboard);
+dashboardRouter.get("/", requireFinanceAccess, getAdminDashboard);
 dashboardRouter.get("/me", getMyDashboard);
 
 module.exports = { dashboardRouter };
