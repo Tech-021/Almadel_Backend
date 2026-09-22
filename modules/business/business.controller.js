@@ -1,5 +1,6 @@
 const db = require("../../db");
 const prisma = db.prisma || db;
+const { validatePhone, validateEmail, validateText, validateNumber } = require("../../utils/validators");
 
 // POST /business/setup - Create new business & link owner
 async function setupBusiness(req, res) {
@@ -19,34 +20,27 @@ async function setupBusiness(req, res) {
       openingCashBalance,
     } = req.body;
 
-    const rawName = String(name || "").trim();
-    const rawMobile = String(mobileNumber || "").trim();
-    const rawWhatsapp = String(whatsappNumber || "").trim();
-    const rawEmail = String(email || "").trim().toLowerCase();
-
-    if (!rawName || rawName.length < 2) {
-      return res.status(400).json({ message: "Business name must be at least 2 characters long." });
-    }
-    if (rawName.length > 100) {
-      return res.status(400).json({ message: "Business name cannot exceed 100 characters." });
+    const nameVal = validateText(name, { minLength: 2, maxLength: 100, fieldName: "Business name" });
+    if (!nameVal.valid) {
+      return res.status(400).json({ message: nameVal.error });
     }
 
-    const cleanMobile = rawMobile.replace(/[^0-9+]/g, "");
-    if (!cleanMobile || cleanMobile.replace(/[^0-9]/g, "").length < 10) {
-      return res.status(400).json({ message: "Please provide a valid primary mobile number (min 10 digits)." });
+    const phoneVal = validatePhone(mobileNumber, { required: true, fieldName: "Primary mobile number" });
+    if (!phoneVal.valid) {
+      return res.status(400).json({ message: phoneVal.error });
     }
 
-    if (rawWhatsapp) {
-      const cleanWhatsapp = rawWhatsapp.replace(/[^0-9+]/g, "");
-      if (cleanWhatsapp.replace(/[^0-9]/g, "").length < 10) {
-        return res.status(400).json({ message: "Please provide a valid WhatsApp number." });
+    if (whatsappNumber) {
+      const whatsappVal = validatePhone(whatsappNumber, { required: false, fieldName: "WhatsApp number" });
+      if (!whatsappVal.valid) {
+        return res.status(400).json({ message: whatsappVal.error });
       }
     }
 
-    if (rawEmail) {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(rawEmail)) {
-        return res.status(400).json({ message: "Please enter a valid email address." });
+    if (email) {
+      const emailVal = validateEmail(email, { required: false, fieldName: "Business email" });
+      if (!emailVal.valid) {
+        return res.status(400).json({ message: emailVal.error });
       }
     }
 
@@ -136,6 +130,30 @@ async function setupBusiness(req, res) {
   }
 }
 
+function formatBusinessSubscription(biz) {
+  if (!biz) return biz;
+  const hasStripeSub = Boolean(biz.stripeSubscriptionId);
+  const isSubscribed = biz.subscriptionStatus === "active" || (hasStripeSub && biz.subscriptionStatus !== "canceled");
+  const isTrial = !isSubscribed;
+  const trialExpired = Boolean(
+    !isSubscribed &&
+    biz.trialEndsAt &&
+    new Date(biz.trialEndsAt).getTime() < Date.now()
+  );
+  let daysRemaining = 0;
+  if (biz.trialEndsAt) {
+    daysRemaining = Math.max(0, Math.ceil((new Date(biz.trialEndsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
+  }
+  return {
+    ...biz,
+    isTrial,
+    isSubscribed,
+    isTrialExpired: trialExpired,
+    trialDaysRemaining: daysRemaining,
+  };
+}
+
+
 // GET /business/my-businesses
 async function getMyBusinesses(req, res) {
   try {
@@ -153,7 +171,7 @@ async function getMyBusinesses(req, res) {
     });
 
     const businesses = memberships.map((m) => ({
-      ...m.business,
+      ...formatBusinessSubscription(m.business),
       membershipRole: m.role,
     }));
 
@@ -185,14 +203,15 @@ async function getBusinessDetails(req, res) {
       return res.status(403).json({ message: "You do not have access to this business." });
     }
 
-    const business = membership
+    const rawBiz = membership
       ? { ...membership.business, membershipRole: membership.role }
       : await bizModel.findUnique({ where: { id: businessId } });
 
-    if (!business) {
+    if (!rawBiz) {
       return res.status(404).json({ message: "Business not found." });
     }
 
+    const business = formatBusinessSubscription(rawBiz);
     return res.json({ success: true, business });
   } catch (error) {
     console.error("Get business details error:", error);
@@ -538,4 +557,6 @@ module.exports = {
   getMyBusinesses,
   getBusinessDetails,
   updateBusiness,
+  formatBusinessSubscription,
 };
+
