@@ -251,6 +251,7 @@ async function updateBusiness(req, res) {
       city,
       area,
       province,
+      logoUrl,
     } = req.body;
 
     const updated = await bizModel.update({
@@ -266,6 +267,7 @@ async function updateBusiness(req, res) {
         city: city !== undefined ? city.trim() : undefined,
         area: area !== undefined ? area.trim() : undefined,
         province: province !== undefined ? province.trim() : undefined,
+        logoUrl: logoUrl !== undefined ? (logoUrl ? String(logoUrl).trim() : null) : undefined,
       },
     });
 
