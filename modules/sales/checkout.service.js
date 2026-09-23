@@ -80,20 +80,33 @@ async function createSale(tx, userOrReq, rawItems, rawDetails) {
   }
 
   for (const item of rawItems) {
+    const productId = Number(item.productId || item.id) || null;
     const barcode = String(item.barcode ?? "").trim();
     const quantity = toPositiveInteger(item.quantity, "Quantity");
-    const product = await tx.product.findFirst({
-      where: productAccessWhere({ businessId }, { OR: [{ barcode }, { qrCode: barcode }] }),
-    });
 
-    if (!product) throw new Error(`Product not found: ${barcode}`);
+    let product = null;
+    if (productId) {
+      product = await tx.product.findFirst({
+        where: productAccessWhere({ businessId }, { id: productId }),
+      });
+    }
+
+    if (!product && barcode) {
+      product = await tx.product.findFirst({
+        where: productAccessWhere({ businessId }, { OR: [{ barcode }, { qrCode: barcode }] }),
+      });
+    }
+
+    if (!product) {
+      throw new Error(`Product not found: ${barcode || productId || "Unknown item"}`);
+    }
     if (product.stock < quantity) {
-      throw new Error(`Not enough stock for ${product.name}.`);
+      throw new Error(`Not enough stock for ${product.name} (Available: ${product.stock}, Requested: ${quantity}).`);
     }
 
     const price = roundMoney(product.sellingPrice || product.price);
     saleItems.push({
-      barcode: product.barcode,
+      barcode: product.barcode || "",
       name: product.name,
       price,
       productId: product.id,
@@ -116,11 +129,17 @@ async function createSale(tx, userOrReq, rawItems, rawDetails) {
 
   let customerId = null;
   if (details.customerMobile) {
-    const customer = await tx.customer.findFirst({
+    let customer = await tx.customer.findFirst({
       where: { businessId, mobile: details.customerMobile },
     });
     if (!customer) {
-      throw new Error("Customer mobile number was not found.");
+      customer = await tx.customer.create({
+        data: {
+          businessId,
+          name: details.customerName || "Walk-in Customer",
+          mobile: details.customerMobile,
+        },
+      });
     }
     customerId = customer.id;
   }
