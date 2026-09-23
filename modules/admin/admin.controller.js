@@ -3,8 +3,10 @@ const bcrypt = require("bcryptjs");
 const { prisma } = require("../../db");
 const { userResponse } = require("../../utils/serializers");
 const { emitBusinessEvent } = require("../realtime/socket");
+const { sendCredentialsEmail } = require("../auth/email.service");
 
 const PASSWORD_HASH_ROUNDS = Number(process.env.PASSWORD_HASH_ROUNDS ?? 10);
+
 
 function normalizeEmail(value) {
   return String(value ?? "").trim().toLowerCase();
@@ -111,6 +113,13 @@ async function createStaff(req, res) {
 
     const passwordHash = await bcrypt.hash(password, PASSWORD_HASH_ROUNDS);
 
+    const business = await prisma.business.findUnique({
+      where: { id: businessId },
+      select: { name: true },
+    });
+    const businessName = business?.name || "Your Store";
+    const loginUrl = `${process.env.FRONTEND_URL || "http://localhost:3000"}/login`;
+
     let user = await prisma.user.findUnique({ where: { email } });
 
     if (user) {
@@ -125,8 +134,30 @@ async function createStaff(req, res) {
         data: { businessId, userId: user.id, role },
       });
 
+      if (password) {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { passwordHash, authVersion: { increment: 1 } },
+        });
+      }
+
       const response = userResponse({ ...user, role });
       emitBusinessEvent(businessId, "staff.created", response);
+
+      // Send credentials email
+      try {
+        await sendCredentialsEmail({
+          email,
+          fullName: fullName || user.fullName,
+          role,
+          password,
+          businessName,
+          loginUrl,
+        });
+      } catch (mailError) {
+        console.error("Failed to send credentials email:", mailError.message);
+      }
+
       return res.status(201).json(response);
     }
 
@@ -142,6 +173,21 @@ async function createStaff(req, res) {
 
     const response = userResponse(newUser);
     emitBusinessEvent(businessId, "staff.created", response);
+
+    // Send credentials email
+    try {
+      await sendCredentialsEmail({
+        email,
+        fullName,
+        role,
+        password,
+        businessName,
+        loginUrl,
+      });
+    } catch (mailError) {
+      console.error("Failed to send credentials email:", mailError.message);
+    }
+
     return res.status(201).json(response);
   } catch (error) {
     if (error.code === "P2002") {
@@ -164,6 +210,7 @@ async function updateStaff(req, res) {
 
     const member = await prisma.businessMember.findUnique({
       where: { businessId_userId: { businessId, userId: id } },
+      include: { user: true },
     });
 
     if (!member) {
@@ -213,9 +260,30 @@ async function updateStaff(req, res) {
 
     const user = await prisma.user.update({ data, where: { id } });
 
+    // If password was updated, send new credentials email
+    if (password) {
+      try {
+        const business = await prisma.business.findUnique({
+          where: { id: businessId },
+          select: { name: true },
+        });
+        await sendCredentialsEmail({
+          email: user.email,
+          fullName: user.fullName,
+          role: role || member.role,
+          password,
+          businessName: business?.name || "Your Store",
+          loginUrl: `${process.env.FRONTEND_URL || "http://localhost:3000"}/login`,
+        });
+      } catch (mailError) {
+        console.error("Failed to send updated credentials email:", mailError.message);
+      }
+    }
+
     const response = userResponse({ ...user, role: role || member.role });
     emitBusinessEvent(businessId, "staff.updated", response);
     return res.json(response);
+
   } catch (error) {
     if (error.code === "P2002") {
       return res.status(409).json({ message: "Email is already registered." });
