@@ -9,6 +9,7 @@ const {
   resetTokenExpiry,
 } = require("./password-reset.service");
 const { createAccessToken } = require("./token.service");
+const { formatBusinessSubscription } = require("../business/business.controller");
 
 const GENERIC_RESET_RESPONSE = {
   message:
@@ -80,23 +81,10 @@ async function signIn(req, res) {
       return res.status(401).json({ message: "Invalid email or password." });
     }
 
-    if (requestedRole === "admin" && user.role !== "admin") {
-      return res.status(403).json({
-        message: "Only admin accounts can use admin login.",
-      });
-    }
-
-    if (requestedRole === "staff" && user.role === "admin") {
-      return res.status(403).json({
-        message: "Please use admin login for this account.",
-      });
-    }
-
     const businesses = (user.businessMemberships || []).map((m) => ({
-      id: m.business.id,
-      name: m.business.name,
-      businessType: m.business.businessType,
+      ...formatBusinessSubscription(m.business),
       role: m.role,
+      membershipRole: m.role,
     }));
 
     return res.json({

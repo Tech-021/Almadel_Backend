@@ -1,5 +1,6 @@
 const { prisma } = require("../../db");
 const { customerResponse } = require("../../utils/serializers");
+const { validatePhone, validateEmail, validateText } = require("../../utils/validators");
 const { randomBytes, createHash } = require("node:crypto");
 
 function hashPassword(password) {
@@ -7,27 +8,89 @@ function hashPassword(password) {
 }
 
 async function getCustomers(req, res) {
+  const search = String(req.query.q || req.query.search || "").trim();
+  const where = {
+    businessId: req.businessId,
+    ...(search
+      ? {
+          OR: [
+            { name: { contains: search, mode: "insensitive" } },
+            { mobile: { contains: search } },
+            { email: { contains: search, mode: "insensitive" } },
+          ],
+        }
+      : {}),
+  };
+
   const customers = await prisma.customer.findMany({
-    where: { businessId: req.businessId },
+    where,
     orderBy: { createdAt: "desc" },
   });
   res.json({ customers: customers.map(customerResponse) });
 }
 
+async function getCustomerHistory(req, res) {
+  const customerId = Number(req.params.customerId);
+  if (!Number.isInteger(customerId) || customerId <= 0) {
+    return res.status(400).json({ message: "Invalid customer ID." });
+  }
+
+  const customer = await prisma.customer.findFirst({
+    where: { id: customerId, businessId: req.businessId },
+  });
+  if (!customer) {
+    return res.status(404).json({ message: "Customer not found." });
+  }
+
+  const sales = await prisma.sale.findMany({
+    where: {
+      businessId: req.businessId,
+      OR: [
+        { customerId },
+        ...(customer.mobile ? [{ customerMobile: customer.mobile }] : []),
+      ],
+    },
+    include: {
+      items: true,
+      user: { select: { fullName: true, email: true } },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  const { invoiceResponse } = require("../../utils/serializers");
+  return res.json({
+    customer: customerResponse(customer),
+    sales: sales.map(invoiceResponse),
+  });
+}
+
 async function createCustomer(req, res) {
   const { name, mobile, email, password } = req.body;
 
-  if (!name || !mobile) {
-    return res.status(400).json({ message: "Name and mobile are required." });
+  const nameVal = validateText(name, { minLength: 2, maxLength: 60, fieldName: "Customer name" });
+  if (!nameVal.valid) {
+    return res.status(400).json({ message: nameVal.error });
+  }
+
+  const phoneVal = validatePhone(mobile, { required: true, fieldName: "Mobile number" });
+  if (!phoneVal.valid) {
+    return res.status(400).json({ message: phoneVal.error });
+  }
+
+  if (email) {
+    const emailVal = validateEmail(email, { required: false });
+    if (!emailVal.valid) {
+      return res.status(400).json({ message: emailVal.error });
+    }
   }
 
   try {
     const customer = await prisma.customer.create({
       data: {
         businessId: req.businessId,
-        name,
-        mobile,
-        email: email || null,
+        name: String(name).trim(),
+        mobile: String(mobile).trim(),
+        email: email ? String(email).trim().toLowerCase() : null,
         passwordHash: password ? hashPassword(password) : null,
       },
     });
@@ -55,11 +118,26 @@ async function updateCustomer(req, res) {
 
   const { name, mobile, email, password } = req.body;
 
+  if (name !== undefined) {
+    const nameVal = validateText(name, { minLength: 2, maxLength: 60, fieldName: "Customer name" });
+    if (!nameVal.valid) return res.status(400).json({ message: nameVal.error });
+  }
+
+  if (mobile !== undefined) {
+    const phoneVal = validatePhone(mobile, { required: true, fieldName: "Mobile number" });
+    if (!phoneVal.valid) return res.status(400).json({ message: phoneVal.error });
+  }
+
+  if (email) {
+    const emailVal = validateEmail(email, { required: false });
+    if (!emailVal.valid) return res.status(400).json({ message: emailVal.error });
+  }
+
   try {
     const data = {};
-    if (name) data.name = name;
-    if (mobile) data.mobile = mobile;
-    if (email !== undefined) data.email = email || null;
+    if (name) data.name = String(name).trim();
+    if (mobile) data.mobile = String(mobile).trim();
+    if (email !== undefined) data.email = email ? String(email).trim().toLowerCase() : null;
     if (password) data.passwordHash = hashPassword(password);
 
     const customer = await prisma.customer.update({
@@ -104,4 +182,4 @@ async function deleteCustomer(req, res) {
   }
 }
 
-module.exports = { getCustomers, createCustomer, updateCustomer, deleteCustomer };
+module.exports = { getCustomers, getCustomerHistory, createCustomer, updateCustomer, deleteCustomer };

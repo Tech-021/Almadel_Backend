@@ -5,6 +5,7 @@ const {
   createCheckout,
   createPortal,
   verifySession,
+  syncSubscription,
   handleWebhook,
 } = require("./billing.controller");
 
@@ -18,5 +19,7 @@ billingRouter.get("/status", requireAuth, getBillingStatus);
 billingRouter.post("/create-checkout-session", requireAuth, createCheckout);
 billingRouter.post("/create-portal-session", requireAuth, createPortal);
 billingRouter.post("/verify-session", requireAuth, verifySession);
+billingRouter.post("/sync", requireAuth, syncSubscription);
 
 module.exports = { billingRouter };
+

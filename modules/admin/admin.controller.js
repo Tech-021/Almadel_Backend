@@ -1,10 +1,12 @@
-﻿const bcrypt = require("bcryptjs");
+const bcrypt = require("bcryptjs");
 
 const { prisma } = require("../../db");
 const { userResponse } = require("../../utils/serializers");
 const { emitBusinessEvent } = require("../realtime/socket");
+const { sendCredentialsEmail } = require("../auth/email.service");
 
 const PASSWORD_HASH_ROUNDS = Number(process.env.PASSWORD_HASH_ROUNDS ?? 10);
+
 
 function normalizeEmail(value) {
   return String(value ?? "").trim().toLowerCase();
@@ -19,8 +21,17 @@ function isValidEmail(value) {
 async function listStaff(req, res) {
   const businessId = req.businessId;
 
+  // Staff page also has no pagination; 10k members freezes the UI. Cap the list for display.
+  const DEFAULT_LIMIT = Number(process.env.STAFF_LIST_DEFAULT_LIMIT || 200);
+  const MAX_LIMIT = Number(process.env.STAFF_LIST_MAX_LIMIT || 10000);
+  const requested = req.query.limit;
+  const limit =
+    requested === undefined || requested === ""
+      ? DEFAULT_LIMIT
+      : Math.min(Math.max(Number(requested) || DEFAULT_LIMIT, 1), MAX_LIMIT);
+
   const members = await prisma.businessMember.findMany({
-    where: { businessId, role: "staff" },
+    where: { businessId, role: { in: ["staff", "accountant"] } },
     include: {
       user: {
         select: {
@@ -32,9 +43,13 @@ async function listStaff(req, res) {
       },
     },
     orderBy: { createdAt: "asc" },
+    take: limit,
   });
 
-  const staffUsers = members.map((m) => m.user);
+  const staffUsers = members.map((m) => ({
+    ...m.user,
+    role: m.role || m.user.role,
+  }));
   const staffIds = staffUsers.map((user) => user.id);
 
   const [saleTotals, productCounts, stockLogCounts] = await Promise.all([
@@ -91,6 +106,7 @@ async function createStaff(req, res) {
     const email = normalizeEmail(req.body.email);
     const password = String(req.body.password ?? "");
     const fullName = String(req.body.fullName ?? "").trim();
+    const role = req.body.role === "accountant" ? "accountant" : "staff";
     const businessId = req.businessId;
 
     if (!fullName || !isValidEmail(email)) {
@@ -107,6 +123,13 @@ async function createStaff(req, res) {
 
     const passwordHash = await bcrypt.hash(password, PASSWORD_HASH_ROUNDS);
 
+    const business = await prisma.business.findUnique({
+      where: { id: businessId },
+      select: { name: true },
+    });
+    const businessName = business?.name || "Your Store";
+    const loginUrl = `${process.env.FRONTEND_URL || "http://localhost:3000"}/login`;
+
     let user = await prisma.user.findUnique({ where: { email } });
 
     if (user) {
@@ -114,38 +137,75 @@ async function createStaff(req, res) {
         where: { businessId_userId: { businessId, userId: user.id } },
       });
       if (existingMember) {
-        return res.status(409).json({ message: "Staff member is already added to this business." });
+        return res.status(409).json({ message: "Member is already added to this business." });
       }
 
       await prisma.businessMember.create({
-        data: { businessId, userId: user.id, role: "staff" },
+        data: { businessId, userId: user.id, role },
       });
 
-      const response = userResponse(user);
+      if (password) {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { passwordHash, authVersion: { increment: 1 } },
+        });
+      }
+
+      const response = userResponse({ ...user, role });
       emitBusinessEvent(businessId, "staff.created", response);
+
+      // Send credentials email
+      try {
+        await sendCredentialsEmail({
+          email,
+          fullName: fullName || user.fullName,
+          role,
+          password,
+          businessName,
+          loginUrl,
+        });
+      } catch (mailError) {
+        console.error("Failed to send credentials email:", mailError.message);
+      }
+
       return res.status(201).json(response);
     }
 
     const newUser = await prisma.$transaction(async (tx) => {
       const created = await tx.user.create({
-        data: { email, fullName, passwordHash, role: "staff" },
+        data: { email, fullName, passwordHash, role },
       });
       await tx.businessMember.create({
-        data: { businessId, userId: created.id, role: "staff" },
+        data: { businessId, userId: created.id, role },
       });
       return created;
     });
 
     const response = userResponse(newUser);
     emitBusinessEvent(businessId, "staff.created", response);
+
+    // Send credentials email
+    try {
+      await sendCredentialsEmail({
+        email,
+        fullName,
+        role,
+        password,
+        businessName,
+        loginUrl,
+      });
+    } catch (mailError) {
+      console.error("Failed to send credentials email:", mailError.message);
+    }
+
     return res.status(201).json(response);
   } catch (error) {
     if (error.code === "P2002") {
-      return res.status(409).json({ message: "Staff member already exists." });
+      return res.status(409).json({ message: "Account with this email already exists." });
     }
 
-    console.error("Create staff error:", error);
-    return res.status(400).json({ message: "Could not create staff account." });
+    console.error("Create team member error:", error);
+    return res.status(400).json({ message: "Could not create team member account." });
   }
 }
 
@@ -160,16 +220,18 @@ async function updateStaff(req, res) {
 
     const member = await prisma.businessMember.findUnique({
       where: { businessId_userId: { businessId, userId: id } },
+      include: { user: true },
     });
 
     if (!member) {
-      return res.status(404).json({ message: "Staff account not found in this business." });
+      return res.status(404).json({ message: "Member account not found in this business." });
     }
 
     const data = {};
     const email = normalizeEmail(req.body.email);
     const fullName = String(req.body.fullName ?? "").trim();
     const password = String(req.body.password ?? "");
+    const role = req.body.role;
 
     if (email && !isValidEmail(email)) {
       return res.status(400).json({ message: "Enter a valid email address." });
@@ -181,6 +243,14 @@ async function updateStaff(req, res) {
 
     if (fullName) {
       data.fullName = fullName;
+    }
+
+    if (role && ["staff", "accountant"].includes(role)) {
+      data.role = role;
+      await prisma.businessMember.update({
+        where: { businessId_userId: { businessId, userId: id } },
+        data: { role },
+      });
     }
 
     if (password) {
@@ -200,20 +270,41 @@ async function updateStaff(req, res) {
 
     const user = await prisma.user.update({ data, where: { id } });
 
-    const response = userResponse(user);
+    // If password was updated, send new credentials email
+    if (password) {
+      try {
+        const business = await prisma.business.findUnique({
+          where: { id: businessId },
+          select: { name: true },
+        });
+        await sendCredentialsEmail({
+          email: user.email,
+          fullName: user.fullName,
+          role: role || member.role,
+          password,
+          businessName: business?.name || "Your Store",
+          loginUrl: `${process.env.FRONTEND_URL || "http://localhost:3000"}/login`,
+        });
+      } catch (mailError) {
+        console.error("Failed to send updated credentials email:", mailError.message);
+      }
+    }
+
+    const response = userResponse({ ...user, role: role || member.role });
     emitBusinessEvent(businessId, "staff.updated", response);
     return res.json(response);
+
   } catch (error) {
     if (error.code === "P2002") {
       return res.status(409).json({ message: "Email is already registered." });
     }
 
     if (error.code === "P2025") {
-      return res.status(404).json({ message: "Staff account not found." });
+      return res.status(404).json({ message: "Team member account not found." });
     }
 
     console.error("Update staff error:", error);
-    return res.status(400).json({ message: "Could not update staff account." });
+    return res.status(400).json({ message: "Could not update team member account." });
   }
 }
 

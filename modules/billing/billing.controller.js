@@ -3,6 +3,8 @@ const {
   createCheckoutSession,
   createPortalSession,
   handleWebhookEvent,
+  syncBusinessSubscription,
+  verifyCheckoutSession,
 } = require("./stripe.service");
 
 // GET /billing/status?businessId=:id
@@ -27,7 +29,7 @@ async function getBillingStatus(req, res) {
       }
     }
 
-    const business = await bizModel.findUnique({
+    let business = await bizModel.findUnique({
       where: { id: businessId },
       select: {
         id: true,
@@ -46,6 +48,23 @@ async function getBillingStatus(req, res) {
       return res.status(404).json({ message: "Business not found." });
     }
 
+    // Auto-sync with Stripe if not yet active or missing stripeSubscriptionId
+    if (business.subscriptionStatus !== "active" || !business.stripeSubscriptionId) {
+      try {
+        const synced = await syncBusinessSubscription(businessId);
+        if (synced) {
+          business = {
+            ...business,
+            subscriptionStatus: synced.subscriptionStatus,
+            stripeCustomerId: synced.stripeCustomerId,
+            stripeSubscriptionId: synced.stripeSubscriptionId,
+          };
+        }
+      } catch (e) {
+        // continue
+      }
+    }
+
     // Compute 30-day trial remaining days
     const trialEnd = business.trialEndsAt
       ? new Date(business.trialEndsAt)
@@ -55,11 +74,11 @@ async function getBillingStatus(req, res) {
     const diffMs = trialEnd.getTime() - now.getTime();
     const daysLeft = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
     const isTrialActive = daysLeft > 0;
-    const isSubscribed = business.subscriptionStatus === "active";
+    const isSubscribed = business.subscriptionStatus === "active" || Boolean(business.stripeSubscriptionId);
 
     return res.json({
       success: true,
-      status: business.subscriptionStatus || (isTrialActive ? "trialing" : "expired"),
+      status: isSubscribed ? "active" : (business.subscriptionStatus || (isTrialActive ? "trialing" : "expired")),
       daysLeft,
       trialEndsAt: trialEnd,
       isTrialActive,
@@ -72,6 +91,27 @@ async function getBillingStatus(req, res) {
     return res.status(500).json({ message: "Failed to load billing status." });
   }
 }
+
+// POST /billing/sync
+async function syncSubscription(req, res) {
+  try {
+    const businessId = Number(req.body.businessId);
+    if (!businessId) {
+      return res.status(400).json({ message: "businessId is required." });
+    }
+
+    const updated = await syncBusinessSubscription(businessId);
+    return res.json({
+      success: true,
+      business: updated,
+      isSubscribed: updated?.subscriptionStatus === "active" || Boolean(updated?.stripeSubscriptionId),
+    });
+  } catch (error) {
+    console.error("Sync subscription error:", error);
+    return res.status(500).json({ message: "Failed to sync subscription status." });
+  }
+}
+
 
 // POST /billing/create-checkout-session
 async function createCheckout(req, res) {
@@ -180,5 +220,7 @@ module.exports = {
   createCheckout,
   createPortal,
   verifySession,
+  syncSubscription,
   handleWebhook,
 };
+
