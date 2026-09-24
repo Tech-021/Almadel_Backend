@@ -1,3 +1,5 @@
+const fs = require("fs");
+const path = require("path");
 const nodemailer = require("nodemailer");
 
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
@@ -9,6 +11,23 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+function isStressMailSink() {
+  return process.env.NODE_ENV === "stress" && process.env.STRESS_TEST === "true";
+}
+
+function recordStressMail(kind, durationMs) {
+  try {
+    const dir = path.join(__dirname, "..", "..", "stress", "runtime");
+    fs.mkdirSync(dir, { recursive: true });
+    fs.appendFileSync(
+      path.join(dir, "mail-timings.jsonl"),
+      `${JSON.stringify({ kind, ms: durationMs, at: new Date().toISOString() })}\n`,
+    );
+  } catch (error) {
+    console.error("Stress mail timing was not recorded:", error.message);
+  }
 }
 
 let cachedTransporter = null;
@@ -60,6 +79,7 @@ async function sendCredentialsEmail({
   businessName,
   loginUrl,
 }) {
+  const started = Date.now();
   const transporter = getSmtpTransporter();
   const roleTitle = role === "accountant" ? "Accountant" : "Staff Member";
   const storeName = businessName?.trim() || "Your Store";
@@ -191,6 +211,12 @@ async function sendCredentialsEmail({
     </html>
   `;
 
+  if (isStressMailSink()) {
+    const durationMs = Date.now() - started;
+    recordStressMail("credentials", durationMs);
+    return { success: true, provider: "stress-mock", durationMs };
+  }
+
   if (transporter) {
     const info = await transporter.sendMail({
       from,
@@ -265,6 +291,11 @@ async function sendPasswordResetEmail({ email, fullName, resetUrl }) {
       <p style="font-size:12px;color:#94a3b8;">If you did not request this change, you can safely ignore this email.</p>
     </div>
   `;
+
+  if (isStressMailSink()) {
+    recordStressMail("password-reset", 0);
+    return { success: true, provider: "stress-mock", durationMs: 0 };
+  }
 
   if (transporter) {
     const info = await transporter.sendMail({
