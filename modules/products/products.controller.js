@@ -206,6 +206,13 @@ async function importProducts(req, res) {
       return res.status(400).json({ message: "No products provided." });
     }
 
+    const cleanNum = (val, fallback = 0) => {
+      if (val === undefined || val === null || val === "") return fallback;
+      const cleaned = String(val).replace(/,/g, "").trim();
+      const n = Number(cleaned);
+      return isNaN(n) ? fallback : Math.max(0, n);
+    };
+
     const result = {
       created: 0,
       failed: [],
@@ -214,26 +221,24 @@ async function importProducts(req, res) {
 
     for (const [index, item] of products.entries()) {
       try {
-        const barcode = String(item.barcode ?? "").trim();
-        const category = String(item.category ?? "").trim();
-        const costPrice = toNonNegativeNumber(item.costPrice ?? 0, "Cost price");
-        const imageUrl = String(item.imageUrl ?? "").trim();
-        const lowStockThreshold = Math.floor(
-          toNonNegativeNumber(item.lowStockThreshold ?? 5, "Low stock threshold"),
-        );
+        let barcode = String(item.barcode ?? "").trim();
         const name = String(item.name ?? "").trim();
-        const qrCode = String(item.qrCode ?? "").trim();
-        const sellingPrice = toNonNegativeNumber(
-          item.sellingPrice ?? item.price,
-          "Selling price",
-        );
+        const category = String(item.category ?? "").trim();
+        const costPrice = cleanNum(item.costPrice, 0);
+        const sellingPrice = cleanNum(item.sellingPrice ?? item.price, 0);
+        const stock = Math.floor(cleanNum(item.stock, 0));
+        const lowStockThreshold = Math.floor(cleanNum(item.lowStockThreshold, 5));
         const sku = String(item.sku ?? "").trim();
-        const stock = Math.floor(
-          toNonNegativeNumber(item.stock ?? 0, "Current stock"),
-        );
+        const qrCode = String(item.qrCode ?? "").trim();
+        const imageUrl = String(item.imageUrl ?? "").trim();
 
-        if (!barcode || !name) {
-          throw new Error("Barcode and product name are required.");
+        if (!name || name.length < 1) {
+          throw new Error("Product name is required.");
+        }
+
+        // Auto-generate barcode if omitted
+        if (!barcode) {
+          barcode = `BC-${Date.now().toString().slice(-6)}-${index + 1}`;
         }
 
         const existing = await prisma.product.findFirst({
@@ -243,15 +248,15 @@ async function importProducts(req, res) {
         if (existing) {
           await prisma.product.update({
             data: {
-              category: category || null,
-              costPrice,
-              imageUrl: imageUrl || null,
+              category: category || existing.category || null,
+              costPrice: costPrice !== undefined ? costPrice : existing.costPrice,
+              imageUrl: imageUrl || existing.imageUrl || null,
               lowStockThreshold,
               name,
-              price: sellingPrice,
-              qrCode: qrCode || null,
-              sellingPrice,
-              sku: sku || null,
+              price: sellingPrice > 0 ? sellingPrice : existing.price,
+              qrCode: qrCode || existing.qrCode || null,
+              sellingPrice: sellingPrice > 0 ? sellingPrice : existing.sellingPrice,
+              sku: sku || existing.sku || null,
               stock,
             },
             where: { id: existing.id },
@@ -280,9 +285,14 @@ async function importProducts(req, res) {
       } catch (error) {
         result.failed.push({
           index: index + 1,
+          name: item.name || `Row ${index + 1}`,
           message: error.message ?? "Invalid product row.",
         });
       }
+    }
+
+    if (result.created > 0 || result.updated > 0) {
+      emitBusinessEvent(req.businessId, "product.updated", { bulk: true });
     }
 
     return res.json(result);
@@ -290,6 +300,59 @@ async function importProducts(req, res) {
     return res.status(400).json({
       message: error.message ?? "Could not import products.",
     });
+  }
+}
+
+async function exportProductsCsv(req, res) {
+  try {
+    const products = await prisma.product.findMany({
+      orderBy: { name: "asc" },
+      where: productAccessWhere(req),
+    });
+
+    const escapeCsv = (str) => {
+      if (str === null || str === undefined) return '""';
+      const s = String(str).replace(/"/g, '""');
+      return `"${s}"`;
+    };
+
+    const headers = [
+      "Barcode",
+      "Name",
+      "Category",
+      "Cost Price",
+      "Selling Price",
+      "Stock",
+      "Low Stock Threshold",
+      "SKU",
+      "QR Code",
+    ];
+
+    const rows = [headers.join(",")];
+
+    for (const p of products) {
+      rows.push(
+        [
+          escapeCsv(p.barcode),
+          escapeCsv(p.name),
+          escapeCsv(p.category || ""),
+          p.costPrice ?? 0,
+          p.sellingPrice || p.price || 0,
+          p.stock ?? 0,
+          p.lowStockThreshold ?? 5,
+          escapeCsv(p.sku || ""),
+          escapeCsv(p.qrCode || ""),
+        ].join(",")
+      );
+    }
+
+    const csvContent = "\uFEFF" + rows.join("\r\n"); // UTF-8 BOM for Excel support
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", 'attachment; filename="products.csv"');
+    return res.status(200).send(csvContent);
+  } catch (error) {
+    console.error("Export products error:", error);
+    return res.status(500).json({ message: "Could not export products." });
   }
 }
 
@@ -340,6 +403,7 @@ async function deleteProduct(req, res) {
 module.exports = {
   createProduct,
   deleteProduct,
+  exportProductsCsv,
   findProductByBarcode,
   importProducts,
   listProducts,
