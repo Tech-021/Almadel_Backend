@@ -54,6 +54,7 @@ model Business {
   hasSupplierUdhaar   Boolean          @default(false)
   supplierPayable     Float            @default(0)
   manageStock         Boolean          @default(true)
+  allowDiscounts      Boolean          @default(true)
   currentStockValue   Float            @default(0)
   taxRegistered       String?          @default("no")
   ntn                 String?

@@ -252,6 +252,7 @@ async function updateBusiness(req, res) {
       area,
       province,
       logoUrl,
+      allowDiscounts,
     } = req.body;
 
     const updated = await bizModel.update({
@@ -268,6 +269,7 @@ async function updateBusiness(req, res) {
         area: area !== undefined ? area.trim() : undefined,
         province: province !== undefined ? province.trim() : undefined,
         logoUrl: logoUrl !== undefined ? (logoUrl ? String(logoUrl).trim() : null) : undefined,
+        allowDiscounts: allowDiscounts !== undefined ? Boolean(allowDiscounts) : undefined,
       },
     });
 

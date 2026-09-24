@@ -144,6 +144,16 @@ async function createSale(tx, userOrReq, rawItems, rawDetails) {
     customerId = customer.id;
   }
   const totalItems = saleItems.reduce((sum, item) => sum + item.quantity, 0);
+  if (details.discountType !== "none" && details.discountValue > 0) {
+    const biz = await tx.business.findUnique({
+      where: { id: businessId },
+      select: { allowDiscounts: true },
+    });
+    if (biz && biz.allowDiscounts === false) {
+      throw new Error("Discounts are disabled for this store by the owner.");
+    }
+  }
+
   const totals = calculateTotals(
     subtotal,
     details.discountType,
