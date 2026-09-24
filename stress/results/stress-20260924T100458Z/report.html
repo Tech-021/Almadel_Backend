@@ -1,0 +1,93 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>stress-20260924T100458Z</title>
+<style>body{font-family:Georgia,serif;max-width:980px;margin:32px auto;color:#1f2933;line-height:1.45}table{border-collapse:collapse;width:100%;margin:12px 0}td,th{border:1px solid #d9e2ec;padding:6px 8px;text-align:left}th{background:#f0f4f8}</style>
+</head><body><h1>Almadel stress report stress-20260924T100458Z</h1><br><br>
+<h2>Executive Summary</h2><br><br>
+<ul><li>The stages that completed stayed inside the pass thresholds, and inventory checks matched expected quantities.</li>
+<li>Highest concurrency exercised in a completed stage: 5.</li>
+<li>Highest concurrency that still graded PASS: 5.</li>
+<li>API load and database volume are separate measurements. This report only includes suites that were executed in the run.</li>
+</ul>
+<h2>Environment</h2><br><br>
+<ul><li>Date: 2026-09-24T10:04:58.435Z</li>
+<li>Profile: smoke</li>
+<li>Base URL: http://127.0.0.1:4010</li>
+<li>Git: 4bbff74</li>
+<li>Node: v22.23.1</li>
+<li>Host: ubuntu-8gb-hel1-1 (linux 7.0.0-27-generic)</li>
+<li>CPUs: 4</li>
+<li>Memory free / total MB: 3841 / 7746</li>
+<li>PostgreSQL: PostgreSQL 18.6 (Ubuntu 18.6-0ubuntu0.26.04.1) on x86_64-pc-linux-gnu</li>
+<li>Database connections (active/idle/total): 1 / 4 / 5</li>
+<li>Cache hit ratio: 1</li>
+<li>Deadlocks counter: 0</li>
+</ul>
+<ul><li>PM2: almadel-api online restarts 362245 cpu 0 mem 72mb; almadel-backend online restarts 11 cpu 0 mem 164mb</li>
+</ul>
+<h2>Dataset</h2><br><br>
+<ul><li>stress businesses: 10002</li>
+<li>stress memberships: 20002</li>
+<li>stress products: 10000</li>
+<li>stress stock logs: 10000</li>
+</ul>
+<h2>Business API Results</h2><br><br>
+Not run.<br><br>
+<h2>Team-Member API Results</h2><br><br>
+Not run.<br><br>
+<h2>Product API Results</h2><br><br>
+| Stage | Concurrency | Requests | Success | Errors | Req/s | Avg | P95 | P99 | Grade |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| GET /products | 1 | 1 | 1 | 0 | 6.33 | 144 | 144 | 144 | PASS |
+| GET /products | 5 | 5 | 5 | 0 | 8.13 | 389 | 601 | 601 | PASS |
+| GET /products/search?q=Loadtest | 1 | 1 | 1 | 0 | 37.82 | 26 | 26 | 26 | PASS |
+| GET /products/search?q=Loadtest | 5 | 5 | 5 | 0 | 78.86 | 49 | 63 | 63 | PASS |
+| GET /products/barcode/STRESS-P-000001 | 1 | 1 | 1 | 0 | 99.8 | 10 | 10 | 10 | PASS |
+| GET /products/barcode/STRESS-P-000001 | 5 | 5 | 5 | 0 | 314.12 | 14 | 15 | 15 | PASS |<br><br>
+<h2>Stock API Results</h2><br><br>
+Not run.<br><br>
+<h2>Inventory Correctness</h2><br><br>
+No inventory correctness checks were recorded in this run.<br><br>
+<h2>Large Dataset Performance</h2><br><br>
+| Stage | Concurrency | Requests | Success | Errors | Req/s | Avg | P95 | P99 | Grade |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| GET /business/my-businesses | 1 | 1 | 1 | 0 | 3.04 | 304 | 304 | 304 | PASS |
+| GET /business/my-businesses | 5 | 5 | 5 | 0 | 2.72 | 1662 | 1813 | 1813 | WARNING |
+| GET /dashboard | 1 | 1 | 1 | 0 | 6.21 | 147 | 147 | 147 | PASS |
+| GET /dashboard | 5 | 5 | 5 | 0 | 7.62 | 509 | 645 | 645 | PASS |
+| GET /admin/staff | 1 | 1 | 1 | 0 | 4.49 | 212 | 212 | 212 | PASS |
+| GET /admin/staff | 5 | 5 | 5 | 0 | 7.94 | 581 | 618 | 618 | PASS |
+| GET /products | 1 | 1 | 1 | 0 | 6.33 | 144 | 144 | 144 | PASS |
+| GET /products | 5 | 5 | 5 | 0 | 8.13 | 389 | 601 | 601 | PASS |
+| GET /products/search?q=Loadtest | 1 | 1 | 1 | 0 | 37.82 | 26 | 26 | 26 | PASS |
+| GET /products/search?q=Loadtest | 5 | 5 | 5 | 0 | 78.86 | 49 | 63 | 63 | PASS |
+| GET /sales | 1 | 1 | 1 | 0 | 39.21 | 25 | 25 | 25 | PASS |
+| GET /sales | 5 | 5 | 5 | 0 | 201.99 | 23 | 24 | 24 | PASS |
+| GET /products/barcode/STRESS-P-000001 | 1 | 1 | 1 | 0 | 99.8 | 10 | 10 | 10 | PASS |
+| GET /products/barcode/STRESS-P-000001 | 5 | 5 | 5 | 0 | 314.12 | 14 | 15 | 15 | PASS |
+| GET /business/10001 | 1 | 1 | 1 | 0 | 157.87 | 6 | 6 | 6 | PASS |
+| GET /business/10001 | 5 | 5 | 5 | 0 | 252.42 | 17 | 19 | 19 | PASS |<br><br>
+<ul><li>GET /products returns every product for the business in one response. The route has no page or limit parameter.</li>
+<li>GET /admin/staff returns every staff and accountant member and aggregates sales, products, and stock logs for those users. The route has no page parameter.</li>
+<li>GET /products/search stops at 50 rows.</li>
+<li>There is no separate stock-list route. Stock is a column on products. Stock changes go through POST /stock/add, POST /stock/receive-one, and sale checkout.</li>
+<li>GET /dashboard loads the business product list as part of the admin dashboard.</li>
+</ul>
+<h2>Mixed Workload</h2><br><br>
+Not run.<br><br>
+<h2>Error Analysis</h2><br><br>
+No failed requests were recorded.<br><br>
+<h2>Bottlenecks</h2><br><br>
+<ul><li>Email timings were not recorded by the API process. Team-create latency includes whatever mail path that server used. Start the API with NODE_ENV=stress and STRESS_TEST=true so credential mail uses the in-process sink.</li>
+</ul>
+<h2>Stop Conditions</h2><br><br>
+No ramp was stopped early.<br><br>
+<h2>Thresholds</h2><br><br>
+<ul><li>PASS: error rate under 1% and p95 under 1 second, with no integrity failure.</li>
+</ul>
+<ul><li>WARNING: error rate from 1% to 5%, or p95 from 1 to 3 seconds.</li>
+</ul>
+<ul><li>FAIL: error rate above 5%, p95 above 3 seconds, or a data-integrity failure.</li>
+</ul>
+<h2>Recommendations</h2><br><br>
+These are follow-ups from the measurements above. They were not applied.<br><br>
+<ul><li>Email timings were not recorded by the API process. Team-create latency includes whatever mail path that server used. Start the API with NODE_ENV=stress and STRESS_TEST=true so credential mail uses the in-process sink.</li>
+</ul><h2>Stage tables</h2><h3>reads</h3><table><tr><th>Stage</th><th>Concurrency</th><th>Requests</th><th>Success</th><th>Errors</th><th>Req/s</th><th>Avg</th><th>P95</th><th>P99</th><th>Grade</th></tr><tr><td>GET /business/my-businesses</td><td>1</td><td>1</td><td>1</td><td>0</td><td>3.04</td><td>304</td><td>304</td><td>304</td><td>PASS</td></tr><tr><td>GET /business/my-businesses</td><td>5</td><td>5</td><td>5</td><td>0</td><td>2.72</td><td>1662</td><td>1813</td><td>1813</td><td>WARNING</td></tr><tr><td>GET /dashboard</td><td>1</td><td>1</td><td>1</td><td>0</td><td>6.21</td><td>147</td><td>147</td><td>147</td><td>PASS</td></tr><tr><td>GET /dashboard</td><td>5</td><td>5</td><td>5</td><td>0</td><td>7.62</td><td>509</td><td>645</td><td>645</td><td>PASS</td></tr><tr><td>GET /admin/staff</td><td>1</td><td>1</td><td>1</td><td>0</td><td>4.49</td><td>212</td><td>212</td><td>212</td><td>PASS</td></tr><tr><td>GET /admin/staff</td><td>5</td><td>5</td><td>5</td><td>0</td><td>7.94</td><td>581</td><td>618</td><td>618</td><td>PASS</td></tr><tr><td>GET /products</td><td>1</td><td>1</td><td>1</td><td>0</td><td>6.33</td><td>144</td><td>144</td><td>144</td><td>PASS</td></tr><tr><td>GET /products</td><td>5</td><td>5</td><td>5</td><td>0</td><td>8.13</td><td>389</td><td>601</td><td>601</td><td>PASS</td></tr><tr><td>GET /products/search?q=Loadtest</td><td>1</td><td>1</td><td>1</td><td>0</td><td>37.82</td><td>26</td><td>26</td><td>26</td><td>PASS</td></tr><tr><td>GET /products/search?q=Loadtest</td><td>5</td><td>5</td><td>5</td><td>0</td><td>78.86</td><td>49</td><td>63</td><td>63</td><td>PASS</td></tr><tr><td>GET /sales</td><td>1</td><td>1</td><td>1</td><td>0</td><td>39.21</td><td>25</td><td>25</td><td>25</td><td>PASS</td></tr><tr><td>GET /sales</td><td>5</td><td>5</td><td>5</td><td>0</td><td>201.99</td><td>23</td><td>24</td><td>24</td><td>PASS</td></tr><tr><td>GET /products/barcode/STRESS-P-000001</td><td>1</td><td>1</td><td>1</td><td>0</td><td>99.8</td><td>10</td><td>10</td><td>10</td><td>PASS</td></tr><tr><td>GET /products/barcode/STRESS-P-000001</td><td>5</td><td>5</td><td>5</td><td>0</td><td>314.12</td><td>14</td><td>15</td><td>15</td><td>PASS</td></tr><tr><td>GET /business/10001</td><td>1</td><td>1</td><td>1</td><td>0</td><td>157.87</td><td>6</td><td>6</td><td>6</td><td>PASS</td></tr><tr><td>GET /business/10001</td><td>5</td><td>5</td><td>5</td><td>0</td><td>252.42</td><td>17</td><td>19</td><td>19</td><td>PASS</td></tr></table></body></html>

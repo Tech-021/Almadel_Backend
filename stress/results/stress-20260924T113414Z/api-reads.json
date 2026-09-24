@@ -1,0 +1,972 @@
+{
+  "stages": [
+    {
+      "requests": 1,
+      "successful": 1,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 219.74,
+      "bytes": 1001,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 4.356201999995392,
+        "averageMs": 4,
+        "medianMs": 4,
+        "p90Ms": 4,
+        "p95Ms": 4,
+        "p99Ms": 4,
+        "maxMs": 4.356201999995392
+      },
+      "statusCodes": {
+        "200": 1
+      },
+      "errorGroups": {},
+      "test": "business-list",
+      "endpoint": "GET /business/my-businesses",
+      "concurrency": 1,
+      "elapsedMs": 4.550838999974076,
+      "rowsReturned": 1,
+      "paginated": false,
+      "responseLimit": null,
+      "businessId": 10002
+    },
+    {
+      "requests": 10,
+      "successful": 10,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 833.08,
+      "bytes": 10010,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 7.336124000023119,
+        "averageMs": 10,
+        "medianMs": 9,
+        "p90Ms": 11,
+        "p95Ms": 11,
+        "p99Ms": 11,
+        "maxMs": 11.278316000010818
+      },
+      "statusCodes": {
+        "200": 10
+      },
+      "errorGroups": {},
+      "test": "business-list",
+      "endpoint": "GET /business/my-businesses",
+      "concurrency": 10,
+      "elapsedMs": 12.003662000002805,
+      "rowsReturned": 1,
+      "paginated": false,
+      "responseLimit": null,
+      "businessId": 10002
+    },
+    {
+      "requests": 50,
+      "successful": 50,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 804.54,
+      "bytes": 50050,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 42.611272999987705,
+        "averageMs": 52,
+        "medianMs": 52,
+        "p90Ms": 59,
+        "p95Ms": 60,
+        "p99Ms": 60,
+        "maxMs": 60.05124000000069
+      },
+      "statusCodes": {
+        "200": 50
+      },
+      "errorGroups": {},
+      "test": "business-list",
+      "endpoint": "GET /business/my-businesses",
+      "concurrency": 50,
+      "elapsedMs": 62.147177000006195,
+      "rowsReturned": 1,
+      "paginated": false,
+      "responseLimit": null,
+      "businessId": 10002
+    },
+    {
+      "requests": 100,
+      "successful": 100,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 827.21,
+      "bytes": 100100,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 74.50323299999582,
+        "averageMs": 96,
+        "medianMs": 95,
+        "p90Ms": 108,
+        "p95Ms": 112,
+        "p99Ms": 114,
+        "maxMs": 114.0959809999913
+      },
+      "statusCodes": {
+        "200": 100
+      },
+      "errorGroups": {},
+      "test": "business-list",
+      "endpoint": "GET /business/my-businesses",
+      "concurrency": 100,
+      "elapsedMs": 120.88821099998313,
+      "rowsReturned": 1,
+      "paginated": false,
+      "responseLimit": null,
+      "businessId": 10002
+    },
+    {
+      "requests": 1,
+      "successful": 1,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 36.72,
+      "bytes": 509964,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 25.677467999979854,
+        "averageMs": 26,
+        "medianMs": 26,
+        "p90Ms": 26,
+        "p95Ms": 26,
+        "p99Ms": 26,
+        "maxMs": 25.677467999979854
+      },
+      "statusCodes": {
+        "200": 1
+      },
+      "errorGroups": {},
+      "test": "dashboard",
+      "endpoint": "GET /dashboard",
+      "concurrency": 1,
+      "elapsedMs": 27.234859999996843,
+      "rowsReturned": 1279,
+      "paginated": false,
+      "responseLimit": null,
+      "businessId": 10002
+    },
+    {
+      "requests": 10,
+      "successful": 10,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 52.78,
+      "bytes": 5099640,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 44.74183399998583,
+        "averageMs": 111,
+        "medianMs": 98,
+        "p90Ms": 172,
+        "p95Ms": 187,
+        "p99Ms": 187,
+        "maxMs": 186.59648300000117
+      },
+      "statusCodes": {
+        "200": 10
+      },
+      "errorGroups": {},
+      "test": "dashboard",
+      "endpoint": "GET /dashboard",
+      "concurrency": 10,
+      "elapsedMs": 189.45406400001957,
+      "rowsReturned": 1279,
+      "paginated": false,
+      "responseLimit": null,
+      "businessId": 10002
+    },
+    {
+      "requests": 50,
+      "successful": 50,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 47.77,
+      "bytes": 25498200,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 85.4204590000154,
+        "averageMs": 560,
+        "medianMs": 561,
+        "p90Ms": 952,
+        "p95Ms": 1002,
+        "p99Ms": 1042,
+        "maxMs": 1041.9411770000006
+      },
+      "statusCodes": {
+        "200": 50
+      },
+      "errorGroups": {},
+      "test": "dashboard",
+      "endpoint": "GET /dashboard",
+      "concurrency": 50,
+      "elapsedMs": 1046.6882249999908,
+      "rowsReturned": 1279,
+      "paginated": false,
+      "responseLimit": null,
+      "businessId": 10002
+    },
+    {
+      "requests": 100,
+      "successful": 100,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 46.53,
+      "bytes": 50996400,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 134.93782500000088,
+        "averageMs": 1189,
+        "medianMs": 1193,
+        "p90Ms": 1962,
+        "p95Ms": 2060,
+        "p99Ms": 2137,
+        "maxMs": 2141.946253000002
+      },
+      "statusCodes": {
+        "200": 100
+      },
+      "errorGroups": {},
+      "test": "dashboard",
+      "endpoint": "GET /dashboard",
+      "concurrency": 100,
+      "elapsedMs": 2149.1511770000216,
+      "rowsReturned": 1279,
+      "paginated": false,
+      "responseLimit": null,
+      "businessId": 10002
+    },
+    {
+      "requests": 1,
+      "successful": 1,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 37.67,
+      "bytes": 225067,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 24.55556599999545,
+        "averageMs": 25,
+        "medianMs": 25,
+        "p90Ms": 25,
+        "p95Ms": 25,
+        "p99Ms": 25,
+        "maxMs": 24.55556599999545
+      },
+      "statusCodes": {
+        "200": 1
+      },
+      "errorGroups": {},
+      "test": "team-list",
+      "endpoint": "GET /admin/staff",
+      "concurrency": 1,
+      "elapsedMs": 26.549109999992652,
+      "rowsReturned": 1083,
+      "paginated": false,
+      "responseLimit": null,
+      "businessId": 10002
+    },
+    {
+      "requests": 10,
+      "successful": 10,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 71.88,
+      "bytes": 2250670,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 67.09288900002139,
+        "averageMs": 109,
+        "medianMs": 106,
+        "p90Ms": 136,
+        "p95Ms": 137,
+        "p99Ms": 137,
+        "maxMs": 137.42244300001767
+      },
+      "statusCodes": {
+        "200": 10
+      },
+      "errorGroups": {},
+      "test": "team-list",
+      "endpoint": "GET /admin/staff",
+      "concurrency": 10,
+      "elapsedMs": 139.11589200000162,
+      "rowsReturned": 1083,
+      "paginated": false,
+      "responseLimit": null,
+      "businessId": 10002
+    },
+    {
+      "requests": 50,
+      "successful": 50,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 64.77,
+      "bytes": 11253350,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 631.6662279999873,
+        "averageMs": 713,
+        "medianMs": 718,
+        "p90Ms": 760,
+        "p95Ms": 765,
+        "p99Ms": 769,
+        "maxMs": 769.1471420000016
+      },
+      "statusCodes": {
+        "200": 50
+      },
+      "errorGroups": {},
+      "test": "team-list",
+      "endpoint": "GET /admin/staff",
+      "concurrency": 50,
+      "elapsedMs": 771.950519999984,
+      "rowsReturned": 1083,
+      "paginated": false,
+      "responseLimit": null,
+      "businessId": 10002
+    },
+    {
+      "requests": 100,
+      "successful": 100,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 58.48,
+      "bytes": 22506700,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 1085.3869909999776,
+        "averageMs": 1562,
+        "medianMs": 1593,
+        "p90Ms": 1677,
+        "p95Ms": 1684,
+        "p99Ms": 1697,
+        "maxMs": 1697.8180519999878
+      },
+      "statusCodes": {
+        "200": 100
+      },
+      "errorGroups": {},
+      "test": "team-list",
+      "endpoint": "GET /admin/staff",
+      "concurrency": 100,
+      "elapsedMs": 1709.9227329999849,
+      "rowsReturned": 1083,
+      "paginated": false,
+      "responseLimit": null,
+      "businessId": 10002
+    },
+    {
+      "requests": 1,
+      "successful": 1,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 37.12,
+      "bytes": 478237,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 25.47693000000436,
+        "averageMs": 25,
+        "medianMs": 25,
+        "p90Ms": 25,
+        "p95Ms": 25,
+        "p99Ms": 25,
+        "maxMs": 25.47693000000436
+      },
+      "statusCodes": {
+        "200": 1
+      },
+      "errorGroups": {},
+      "test": "product-list",
+      "endpoint": "GET /products",
+      "concurrency": 1,
+      "elapsedMs": 26.941327000007732,
+      "rowsReturned": 1279,
+      "paginated": false,
+      "responseLimit": null,
+      "businessId": 10002
+    },
+    {
+      "requests": 10,
+      "successful": 10,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 61.12,
+      "bytes": 4782370,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 34.33200399999623,
+        "averageMs": 94,
+        "medianMs": 86,
+        "p90Ms": 145,
+        "p95Ms": 161,
+        "p99Ms": 161,
+        "maxMs": 161.47227699999348
+      },
+      "statusCodes": {
+        "200": 10
+      },
+      "errorGroups": {},
+      "test": "product-list",
+      "endpoint": "GET /products",
+      "concurrency": 10,
+      "elapsedMs": 163.6247399999993,
+      "rowsReturned": 1279,
+      "paginated": false,
+      "responseLimit": null,
+      "businessId": 10002
+    },
+    {
+      "requests": 50,
+      "successful": 50,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 54.6,
+      "bytes": 23911850,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 71.6156750000082,
+        "averageMs": 486,
+        "medianMs": 484,
+        "p90Ms": 815,
+        "p95Ms": 865,
+        "p99Ms": 912,
+        "maxMs": 911.5386609999987
+      },
+      "statusCodes": {
+        "200": 50
+      },
+      "errorGroups": {},
+      "test": "product-list",
+      "endpoint": "GET /products",
+      "concurrency": 50,
+      "elapsedMs": 915.667266000004,
+      "rowsReturned": 1279,
+      "paginated": false,
+      "responseLimit": null,
+      "businessId": 10002
+    },
+    {
+      "requests": 100,
+      "successful": 100,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 54.33,
+      "bytes": 47823700,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 118.74949400001788,
+        "averageMs": 980,
+        "medianMs": 962,
+        "p90Ms": 1678,
+        "p95Ms": 1750,
+        "p99Ms": 1815,
+        "maxMs": 1832.7037979999732
+      },
+      "statusCodes": {
+        "200": 100
+      },
+      "errorGroups": {},
+      "test": "product-list",
+      "endpoint": "GET /products",
+      "concurrency": 100,
+      "elapsedMs": 1840.4486819999875,
+      "rowsReturned": 1279,
+      "paginated": false,
+      "responseLimit": null,
+      "businessId": 10002
+    },
+    {
+      "requests": 1,
+      "successful": 1,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 129.24,
+      "bytes": 18995,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 7.636788999981945,
+        "averageMs": 8,
+        "medianMs": 8,
+        "p90Ms": 8,
+        "p95Ms": 8,
+        "p99Ms": 8,
+        "maxMs": 7.636788999981945
+      },
+      "statusCodes": {
+        "200": 1
+      },
+      "errorGroups": {},
+      "test": "product-search",
+      "endpoint": "GET /products/search?q=Loadtest",
+      "concurrency": 1,
+      "elapsedMs": 7.737720000004629,
+      "rowsReturned": 50,
+      "paginated": false,
+      "responseLimit": 50,
+      "businessId": 10002
+    },
+    {
+      "requests": 10,
+      "successful": 10,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 351.59,
+      "bytes": 189956,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 17.512644999980694,
+        "averageMs": 23,
+        "medianMs": 23,
+        "p90Ms": 27,
+        "p95Ms": 28,
+        "p99Ms": 28,
+        "maxMs": 27.72784900001716
+      },
+      "statusCodes": {
+        "200": 10
+      },
+      "errorGroups": {},
+      "test": "product-search",
+      "endpoint": "GET /products/search?q=Loadtest",
+      "concurrency": 10,
+      "elapsedMs": 28.441824000008637,
+      "rowsReturned": 50,
+      "paginated": false,
+      "responseLimit": 50,
+      "businessId": 10002
+    },
+    {
+      "requests": 50,
+      "successful": 50,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 475.82,
+      "bytes": 949800,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 59.77787600000738,
+        "averageMs": 81,
+        "medianMs": 82,
+        "p90Ms": 98,
+        "p95Ms": 100,
+        "p99Ms": 102,
+        "maxMs": 101.94071599998279
+      },
+      "statusCodes": {
+        "200": 50
+      },
+      "errorGroups": {},
+      "test": "product-search",
+      "endpoint": "GET /products/search?q=Loadtest",
+      "concurrency": 50,
+      "elapsedMs": 105.08236099997885,
+      "rowsReturned": 50,
+      "paginated": false,
+      "responseLimit": 50,
+      "businessId": 10002
+    },
+    {
+      "requests": 100,
+      "successful": 100,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 455.14,
+      "bytes": 1899626,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 89.3961249999993,
+        "averageMs": 154,
+        "medianMs": 153,
+        "p90Ms": 207,
+        "p95Ms": 211,
+        "p99Ms": 214,
+        "maxMs": 214.35942900000373
+      },
+      "statusCodes": {
+        "200": 100
+      },
+      "errorGroups": {},
+      "test": "product-search",
+      "endpoint": "GET /products/search?q=Loadtest",
+      "concurrency": 100,
+      "elapsedMs": 219.7120869999926,
+      "rowsReturned": 50,
+      "paginated": false,
+      "responseLimit": 50,
+      "businessId": 10002
+    },
+    {
+      "requests": 1,
+      "successful": 1,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 186.72,
+      "bytes": 11393,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 5.2444740000064485,
+        "averageMs": 5,
+        "medianMs": 5,
+        "p90Ms": 5,
+        "p95Ms": 5,
+        "p99Ms": 5,
+        "maxMs": 5.2444740000064485
+      },
+      "statusCodes": {
+        "200": 1
+      },
+      "errorGroups": {},
+      "test": "sales-list",
+      "endpoint": "GET /sales",
+      "concurrency": 1,
+      "elapsedMs": 5.355483999999706,
+      "rowsReturned": null,
+      "paginated": false,
+      "responseLimit": null,
+      "businessId": 10002
+    },
+    {
+      "requests": 10,
+      "successful": 10,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 362.33,
+      "bytes": 113930,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 16.794422000006307,
+        "averageMs": 23,
+        "medianMs": 24,
+        "p90Ms": 27,
+        "p95Ms": 27,
+        "p99Ms": 27,
+        "maxMs": 27.15735599998152
+      },
+      "statusCodes": {
+        "200": 10
+      },
+      "errorGroups": {},
+      "test": "sales-list",
+      "endpoint": "GET /sales",
+      "concurrency": 10,
+      "elapsedMs": 27.59930799997528,
+      "rowsReturned": null,
+      "paginated": false,
+      "responseLimit": null,
+      "businessId": 10002
+    },
+    {
+      "requests": 50,
+      "successful": 50,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 438.36,
+      "bytes": 569650,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 64.26075700001093,
+        "averageMs": 96,
+        "medianMs": 96,
+        "p90Ms": 111,
+        "p95Ms": 111,
+        "p99Ms": 112,
+        "maxMs": 112.0628849999921
+      },
+      "statusCodes": {
+        "200": 50
+      },
+      "errorGroups": {},
+      "test": "sales-list",
+      "endpoint": "GET /sales",
+      "concurrency": 50,
+      "elapsedMs": 114.06180799999856,
+      "rowsReturned": null,
+      "paginated": false,
+      "responseLimit": null,
+      "businessId": 10002
+    },
+    {
+      "requests": 100,
+      "successful": 100,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 442.43,
+      "bytes": 1139300,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 127.36973600002239,
+        "averageMs": 185,
+        "medianMs": 185,
+        "p90Ms": 212,
+        "p95Ms": 218,
+        "p99Ms": 220,
+        "maxMs": 220.57721499999752
+      },
+      "statusCodes": {
+        "200": 100
+      },
+      "errorGroups": {},
+      "test": "sales-list",
+      "endpoint": "GET /sales",
+      "concurrency": 100,
+      "elapsedMs": 226.02643600001466,
+      "rowsReturned": null,
+      "paginated": false,
+      "responseLimit": null,
+      "businessId": 10002
+    },
+    {
+      "requests": 1,
+      "successful": 1,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 256.08,
+      "bytes": 373,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 3.8714400000171736,
+        "averageMs": 4,
+        "medianMs": 4,
+        "p90Ms": 4,
+        "p95Ms": 4,
+        "p99Ms": 4,
+        "maxMs": 3.8714400000171736
+      },
+      "statusCodes": {
+        "200": 1
+      },
+      "errorGroups": {},
+      "test": "product-barcode",
+      "endpoint": "GET /products/barcode/LOADTEST-1863-000001",
+      "concurrency": 1,
+      "elapsedMs": 3.9049620000005234,
+      "rowsReturned": null,
+      "paginated": false,
+      "responseLimit": null,
+      "businessId": 10002
+    },
+    {
+      "requests": 10,
+      "successful": 10,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 558.14,
+      "bytes": 3730,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 13.138650000008056,
+        "averageMs": 16,
+        "medianMs": 16,
+        "p90Ms": 17,
+        "p95Ms": 17,
+        "p99Ms": 17,
+        "maxMs": 17.466087000007974
+      },
+      "statusCodes": {
+        "200": 10
+      },
+      "errorGroups": {},
+      "test": "product-barcode",
+      "endpoint": "GET /products/barcode/LOADTEST-1863-000001",
+      "concurrency": 10,
+      "elapsedMs": 17.916655999986688,
+      "rowsReturned": null,
+      "paginated": false,
+      "responseLimit": null,
+      "businessId": 10002
+    },
+    {
+      "requests": 50,
+      "successful": 50,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 764.23,
+      "bytes": 18650,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 50.14335600001505,
+        "averageMs": 57,
+        "medianMs": 56,
+        "p90Ms": 62,
+        "p95Ms": 63,
+        "p99Ms": 63,
+        "maxMs": 63.35272699999041
+      },
+      "statusCodes": {
+        "200": 50
+      },
+      "errorGroups": {},
+      "test": "product-barcode",
+      "endpoint": "GET /products/barcode/LOADTEST-1863-000001",
+      "concurrency": 50,
+      "elapsedMs": 65.42549100000178,
+      "rowsReturned": null,
+      "paginated": false,
+      "responseLimit": null,
+      "businessId": 10002
+    },
+    {
+      "requests": 100,
+      "successful": 100,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 714.41,
+      "bytes": 37300,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 93.54880499999854,
+        "averageMs": 120,
+        "medianMs": 119,
+        "p90Ms": 132,
+        "p95Ms": 132,
+        "p99Ms": 135,
+        "maxMs": 135.1011630000139
+      },
+      "statusCodes": {
+        "200": 100
+      },
+      "errorGroups": {},
+      "test": "product-barcode",
+      "endpoint": "GET /products/barcode/LOADTEST-1863-000001",
+      "concurrency": 100,
+      "elapsedMs": 139.9754200000025,
+      "rowsReturned": null,
+      "paginated": false,
+      "responseLimit": null,
+      "businessId": 10002
+    },
+    {
+      "requests": 1,
+      "successful": 1,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 238.75,
+      "bytes": 997,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 4.123363999999128,
+        "averageMs": 4,
+        "medianMs": 4,
+        "p90Ms": 4,
+        "p95Ms": 4,
+        "p99Ms": 4,
+        "maxMs": 4.123363999999128
+      },
+      "statusCodes": {
+        "200": 1
+      },
+      "errorGroups": {},
+      "test": "business-detail",
+      "endpoint": "GET /business/10002",
+      "concurrency": 1,
+      "elapsedMs": 4.188526000012644,
+      "rowsReturned": null,
+      "paginated": false,
+      "responseLimit": null,
+      "businessId": 10002
+    },
+    {
+      "requests": 10,
+      "successful": 10,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 745.3,
+      "bytes": 9970,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 6.433492999989539,
+        "averageMs": 11,
+        "medianMs": 11,
+        "p90Ms": 13,
+        "p95Ms": 13,
+        "p99Ms": 13,
+        "maxMs": 12.978375999984564
+      },
+      "statusCodes": {
+        "200": 10
+      },
+      "errorGroups": {},
+      "test": "business-detail",
+      "endpoint": "GET /business/10002",
+      "concurrency": 10,
+      "elapsedMs": 13.417424000013852,
+      "rowsReturned": null,
+      "paginated": false,
+      "responseLimit": null,
+      "businessId": 10002
+    },
+    {
+      "requests": 50,
+      "successful": 50,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 761.46,
+      "bytes": 49850,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 43.80385800002841,
+        "averageMs": 54,
+        "medianMs": 54,
+        "p90Ms": 63,
+        "p95Ms": 63,
+        "p99Ms": 64,
+        "maxMs": 64.03499200000078
+      },
+      "statusCodes": {
+        "200": 50
+      },
+      "errorGroups": {},
+      "test": "business-detail",
+      "endpoint": "GET /business/10002",
+      "concurrency": 50,
+      "elapsedMs": 65.66342699999223,
+      "rowsReturned": null,
+      "paginated": false,
+      "responseLimit": null,
+      "businessId": 10002
+    },
+    {
+      "requests": 100,
+      "successful": 100,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 756.37,
+      "bytes": 99700,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 87.45663299999433,
+        "averageMs": 109,
+        "medianMs": 109,
+        "p90Ms": 120,
+        "p95Ms": 121,
+        "p99Ms": 122,
+        "maxMs": 122.9286720000091
+      },
+      "statusCodes": {
+        "200": 100
+      },
+      "errorGroups": {},
+      "test": "business-detail",
+      "endpoint": "GET /business/10002",
+      "concurrency": 100,
+      "elapsedMs": 132.21085099998163,
+      "rowsReturned": null,
+      "paginated": false,
+      "responseLimit": null,
+      "businessId": 10002
+    }
+  ],
+  "aborted": null,
+  "notes": [
+    "GET /products returns every product for the business in one response. The route has no page or limit parameter.",
+    "GET /admin/staff returns every staff and accountant member and aggregates sales, products, and stock logs for those users. The route has no page parameter.",
+    "GET /products/search stops at 50 rows.",
+    "There is no separate stock-list route. Stock is a column on products. Stock changes go through POST /stock/add, POST /stock/receive-one, and sale checkout.",
+    "GET /dashboard loads the business product list as part of the admin dashboard."
+  ]
+}

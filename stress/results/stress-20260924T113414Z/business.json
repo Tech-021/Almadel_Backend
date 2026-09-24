@@ -1,0 +1,130 @@
+{
+  "stages": [
+    {
+      "requests": 100,
+      "successful": 100,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 10,
+      "bytes": 95200,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 204.01798599999893,
+        "averageMs": 998,
+        "medianMs": 988,
+        "p90Ms": 1217,
+        "p95Ms": 1249,
+        "p99Ms": 1704,
+        "maxMs": 1704.167156
+      },
+      "statusCodes": {
+        "201": 100
+      },
+      "errorGroups": {},
+      "test": "business-create",
+      "scenario": "API load. Each request signs up a new owner and calls POST /business/setup. No staff or products are attached.",
+      "stage": "100",
+      "target": 100,
+      "concurrency": 10,
+      "elapsedMs": 9996.130278999999,
+      "parts": {
+        "signupAvgMs": 452,
+        "setupAvgMs": 546
+      },
+      "grade": "WARNING",
+      "stoppedEarly": false
+    },
+    {
+      "requests": 400,
+      "successful": 400,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 10.54,
+      "bytes": 380800,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 140.40052999999898,
+        "averageMs": 2371,
+        "medianMs": 2386,
+        "p90Ms": 2720,
+        "p95Ms": 2948,
+        "p99Ms": 4057,
+        "maxMs": 4341.190181
+      },
+      "statusCodes": {
+        "201": 400
+      },
+      "errorGroups": {},
+      "test": "business-create",
+      "scenario": "API load. Each request signs up a new owner and calls POST /business/setup. No staff or products are attached.",
+      "stage": "500",
+      "target": 500,
+      "concurrency": 25,
+      "elapsedMs": 37960.449118,
+      "parts": {
+        "signupAvgMs": 992,
+        "setupAvgMs": 1379
+      },
+      "grade": "WARNING",
+      "stoppedEarly": false
+    },
+    {
+      "requests": 500,
+      "successful": 494,
+      "failed": 6,
+      "errorRate": 0.012,
+      "requestsPerSecond": 10.67,
+      "bytes": 471014,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 364.5758930000011,
+        "averageMs": 4682,
+        "medianMs": 4691,
+        "p90Ms": 5229,
+        "p95Ms": 6369,
+        "p99Ms": 8347,
+        "maxMs": 8844.367300999998
+      },
+      "statusCodes": {
+        "201": 494,
+        "500": 6
+      },
+      "errorGroups": {
+        "server": {
+          "count": 6,
+          "example": "Failed to setup business."
+        }
+      },
+      "test": "business-create",
+      "scenario": "API load. Each request signs up a new owner and calls POST /business/setup. No staff or products are attached.",
+      "stage": "1000",
+      "target": 1000,
+      "concurrency": 50,
+      "elapsedMs": 46880.276514000005,
+      "parts": {
+        "signupAvgMs": 1959,
+        "setupAvgMs": 2723
+      },
+      "grade": "FAIL",
+      "stoppedEarly": false
+    }
+  ],
+  "aborted": {
+    "test": "business-create",
+    "stage": "1000",
+    "concurrency": 50,
+    "requestsPerSecond": 10.67,
+    "errorRate": 0.012,
+    "p95Ms": 6369,
+    "p99Ms": 8347,
+    "reason": "p95 6369ms exceeded 5000ms",
+    "dominantErrors": {
+      "server": {
+        "count": 6,
+        "example": "Failed to setup business."
+      }
+    },
+    "at": "2026-09-24T11:35:50.113Z"
+  },
+  "created": 994
+}

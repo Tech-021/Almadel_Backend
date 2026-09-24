@@ -1,0 +1,414 @@
+{
+  "stages": [
+    {
+      "requests": 100,
+      "successful": 100,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 548.77,
+      "bytes": 37150,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 8.183059000002686,
+        "averageMs": 17,
+        "medianMs": 17,
+        "p90Ms": 22,
+        "p95Ms": 23,
+        "p99Ms": 27,
+        "maxMs": 30.656753999996
+      },
+      "statusCodes": {
+        "201": 100
+      },
+      "errorGroups": {},
+      "test": "product-create",
+      "scenario": "API load against one stress business via POST /products.",
+      "stage": "100",
+      "target": 100,
+      "concurrency": 10,
+      "elapsedMs": 182.22665500000585,
+      "grade": "PASS",
+      "stoppedEarly": false
+    },
+    {
+      "requests": 900,
+      "successful": 900,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 645.19,
+      "bytes": 334350,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 24.50503000000026,
+        "averageMs": 38,
+        "medianMs": 37,
+        "p90Ms": 45,
+        "p95Ms": 51,
+        "p99Ms": 72,
+        "maxMs": 80.31250099997851
+      },
+      "statusCodes": {
+        "201": 900
+      },
+      "errorGroups": {},
+      "test": "product-create",
+      "scenario": "API load against one stress business via POST /products.",
+      "stage": "1000",
+      "target": 1000,
+      "concurrency": 25,
+      "elapsedMs": 1394.9472639999876,
+      "grade": "PASS",
+      "stoppedEarly": false
+    },
+    {
+      "requests": 1,
+      "successful": 1,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 43.21,
+      "bytes": 438411,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 21.79237199999625,
+        "averageMs": 22,
+        "medianMs": 22,
+        "p90Ms": 22,
+        "p95Ms": 22,
+        "p99Ms": 22,
+        "maxMs": 21.79237199999625
+      },
+      "statusCodes": {
+        "200": 1
+      },
+      "errorGroups": {},
+      "test": "product-list",
+      "endpoint": "GET /products",
+      "concurrency": 1,
+      "elapsedMs": 23.14060199999949,
+      "rowsReturned": 1176,
+      "paginated": false,
+      "grade": "PASS"
+    },
+    {
+      "requests": 10,
+      "successful": 10,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 59.11,
+      "bytes": 4384110,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 32.57036799998605,
+        "averageMs": 103,
+        "medianMs": 97,
+        "p90Ms": 157,
+        "p95Ms": 167,
+        "p99Ms": 167,
+        "maxMs": 166.9242320000194
+      },
+      "statusCodes": {
+        "200": 10
+      },
+      "errorGroups": {},
+      "test": "product-list",
+      "endpoint": "GET /products",
+      "concurrency": 10,
+      "elapsedMs": 169.16265899999416,
+      "rowsReturned": 1176,
+      "paginated": false,
+      "grade": "PASS"
+    },
+    {
+      "requests": 50,
+      "successful": 50,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 57.01,
+      "bytes": 21920550,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 67.73691199999303,
+        "averageMs": 463,
+        "medianMs": 452,
+        "p90Ms": 773,
+        "p95Ms": 835,
+        "p99Ms": 871,
+        "maxMs": 871.3398009999946
+      },
+      "statusCodes": {
+        "200": 50
+      },
+      "errorGroups": {},
+      "test": "product-list",
+      "endpoint": "GET /products",
+      "concurrency": 50,
+      "elapsedMs": 877.0654599999834,
+      "rowsReturned": 1176,
+      "paginated": false,
+      "grade": "PASS"
+    },
+    {
+      "requests": 100,
+      "successful": 100,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 62.09,
+      "bytes": 43841100,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 109.56073299999116,
+        "averageMs": 848,
+        "medianMs": 825,
+        "p90Ms": 1456,
+        "p95Ms": 1528,
+        "p99Ms": 1590,
+        "maxMs": 1604.3583050000016
+      },
+      "statusCodes": {
+        "200": 100
+      },
+      "errorGroups": {},
+      "test": "product-list",
+      "endpoint": "GET /products",
+      "concurrency": 100,
+      "elapsedMs": 1610.4646829999983,
+      "rowsReturned": 1176,
+      "paginated": false,
+      "grade": "WARNING"
+    },
+    {
+      "requests": 1,
+      "successful": 1,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 127.17,
+      "bytes": 18878,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 7.720135999988997,
+        "averageMs": 8,
+        "medianMs": 8,
+        "p90Ms": 8,
+        "p95Ms": 8,
+        "p99Ms": 8,
+        "maxMs": 7.720135999988997
+      },
+      "statusCodes": {
+        "200": 1
+      },
+      "errorGroups": {},
+      "test": "product-search",
+      "endpoint": "GET /products/search?q=Loadtest",
+      "concurrency": 1,
+      "elapsedMs": 7.863555999996606,
+      "rowsReturned": 50,
+      "paginated": true,
+      "grade": "PASS"
+    },
+    {
+      "requests": 10,
+      "successful": 10,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 359.57,
+      "bytes": 188784,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 14.333077999996021,
+        "averageMs": 22,
+        "medianMs": 22,
+        "p90Ms": 26,
+        "p95Ms": 27,
+        "p99Ms": 27,
+        "maxMs": 27.40039200001047
+      },
+      "statusCodes": {
+        "200": 10
+      },
+      "errorGroups": {},
+      "test": "product-search",
+      "endpoint": "GET /products/search?q=Loadtest",
+      "concurrency": 10,
+      "elapsedMs": 27.811366000009002,
+      "rowsReturned": 50,
+      "paginated": true,
+      "grade": "PASS"
+    },
+    {
+      "requests": 50,
+      "successful": 50,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 413.69,
+      "bytes": 943950,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 55.61462699997355,
+        "averageMs": 90,
+        "medianMs": 92,
+        "p90Ms": 111,
+        "p95Ms": 117,
+        "p99Ms": 118,
+        "maxMs": 118.44091199999093
+      },
+      "statusCodes": {
+        "200": 50
+      },
+      "errorGroups": {},
+      "test": "product-search",
+      "endpoint": "GET /products/search?q=Loadtest",
+      "concurrency": 50,
+      "elapsedMs": 120.86335299999337,
+      "rowsReturned": 50,
+      "paginated": true,
+      "grade": "PASS"
+    },
+    {
+      "requests": 100,
+      "successful": 100,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 455.18,
+      "bytes": 1887916,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 93.21937400000752,
+        "averageMs": 157,
+        "medianMs": 155,
+        "p90Ms": 206,
+        "p95Ms": 210,
+        "p99Ms": 213,
+        "maxMs": 214.15879099999438
+      },
+      "statusCodes": {
+        "200": 100
+      },
+      "errorGroups": {},
+      "test": "product-search",
+      "endpoint": "GET /products/search?q=Loadtest",
+      "concurrency": 100,
+      "elapsedMs": 219.69434400001774,
+      "rowsReturned": 50,
+      "paginated": true,
+      "grade": "PASS"
+    },
+    {
+      "requests": 1,
+      "successful": 1,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 224.59,
+      "bytes": 385,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 4.4093120000034105,
+        "averageMs": 4,
+        "medianMs": 4,
+        "p90Ms": 4,
+        "p95Ms": 4,
+        "p99Ms": 4,
+        "maxMs": 4.4093120000034105
+      },
+      "statusCodes": {
+        "200": 1
+      },
+      "errorGroups": {},
+      "test": "product-barcode",
+      "endpoint": "GET /products/barcode/LOADTEST-STOCK-1863-000001",
+      "concurrency": 1,
+      "elapsedMs": 4.4524729999830015,
+      "rowsReturned": 1,
+      "paginated": false,
+      "grade": "PASS"
+    },
+    {
+      "requests": 10,
+      "successful": 10,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 614.53,
+      "bytes": 3850,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 11.000762000010582,
+        "averageMs": 14,
+        "medianMs": 13,
+        "p90Ms": 16,
+        "p95Ms": 16,
+        "p99Ms": 16,
+        "maxMs": 15.726611999998568
+      },
+      "statusCodes": {
+        "200": 10
+      },
+      "errorGroups": {},
+      "test": "product-barcode",
+      "endpoint": "GET /products/barcode/LOADTEST-STOCK-1863-000001",
+      "concurrency": 10,
+      "elapsedMs": 16.272549999994226,
+      "rowsReturned": 1,
+      "paginated": false,
+      "grade": "PASS"
+    },
+    {
+      "requests": 50,
+      "successful": 50,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 626.73,
+      "bytes": 19250,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 58.68223299999954,
+        "averageMs": 68,
+        "medianMs": 68,
+        "p90Ms": 73,
+        "p95Ms": 74,
+        "p99Ms": 74,
+        "maxMs": 74.48826499999268
+      },
+      "statusCodes": {
+        "200": 50
+      },
+      "errorGroups": {},
+      "test": "product-barcode",
+      "endpoint": "GET /products/barcode/LOADTEST-STOCK-1863-000001",
+      "concurrency": 50,
+      "elapsedMs": 79.77935500000603,
+      "rowsReturned": 1,
+      "paginated": false,
+      "grade": "PASS"
+    },
+    {
+      "requests": 100,
+      "successful": 100,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 758.48,
+      "bytes": 38500,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 82.83775599999353,
+        "averageMs": 113,
+        "medianMs": 114,
+        "p90Ms": 124,
+        "p95Ms": 125,
+        "p99Ms": 125,
+        "maxMs": 125.77205700002378
+      },
+      "statusCodes": {
+        "200": 100
+      },
+      "errorGroups": {},
+      "test": "product-barcode",
+      "endpoint": "GET /products/barcode/LOADTEST-STOCK-1863-000001",
+      "concurrency": 100,
+      "elapsedMs": 131.84184600002482,
+      "rowsReturned": 1,
+      "paginated": false,
+      "grade": "PASS"
+    }
+  ],
+  "aborted": null,
+  "created": 1000
+}

@@ -1,0 +1,1105 @@
+{
+  "id": "stress-db-20260924T111241Z",
+  "kind": "database",
+  "startedAt": "2026-09-24T11:12:41.704Z",
+  "profile": "smoke",
+  "baseUrl": "n/a (direct database)",
+  "suites": {
+    "database": {
+      "scenario": "DATABASE VOLUME + ACID",
+      "kind": "database",
+      "businessId": 10001,
+      "volume": {
+        "worstCaseBusinessId": 10001,
+        "staffMembers": 5000,
+        "accountants": 5000,
+        "products": 10000,
+        "stockLogs": 10000,
+        "stressBusinesses": 10001,
+        "stressTeamUsers": 10000
+      },
+      "acid": [
+        {
+          "principle": "Atomicity",
+          "test": "Increment stock + create stock log, then force rollback",
+          "expected": "Neither stock nor stock_log row survives",
+          "actual": "stock 1000->1000, logs 1->1",
+          "result": "PASS"
+        },
+        {
+          "principle": "Consistency",
+          "test": "Duplicate user email insert",
+          "expected": "Rejected by unique constraint",
+          "actual": "rejected",
+          "result": "PASS"
+        },
+        {
+          "principle": "Consistency",
+          "test": "Duplicate product barcode in same business",
+          "expected": "Rejected by unique(businessId, barcode)",
+          "actual": "rejected",
+          "result": "PASS"
+        },
+        {
+          "principle": "Consistency",
+          "test": "Conditional stock decrement refuses oversell",
+          "expected": "First decrement succeeds, second affects 0 rows, stock stays 0",
+          "actual": "first=1, second=0, stock=0",
+          "result": "PASS"
+        },
+        {
+          "principle": "Isolation",
+          "test": "10 concurrent conditional decrements on one row",
+          "expected": "stock = 1000 - successful updates (990)",
+          "actual": "successful=10, stock=990",
+          "elapsedMs": 33,
+          "result": "PASS",
+          "integrity": {
+            "test": "10 concurrent DB decrements",
+            "initial": 1000,
+            "successful": 10,
+            "failed": 0,
+            "expected": 990,
+            "actual": 990,
+            "result": "PASS"
+          }
+        },
+        {
+          "principle": "Isolation",
+          "test": "50 concurrent conditional decrements on one row",
+          "expected": "stock = 1000 - successful updates (950)",
+          "actual": "successful=50, stock=950",
+          "elapsedMs": 36,
+          "result": "PASS",
+          "integrity": {
+            "test": "50 concurrent DB decrements",
+            "initial": 1000,
+            "successful": 50,
+            "failed": 0,
+            "expected": 950,
+            "actual": 950,
+            "result": "PASS"
+          }
+        },
+        {
+          "principle": "Durability",
+          "test": "Insert product then re-read via SQL",
+          "expected": "Committed row is readable after write",
+          "actual": "id=10181 stock=42 barcode=STRESS-ACID-DUR-1790248362191",
+          "result": "PASS"
+        }
+      ],
+      "integrity": [
+        {
+          "test": "10 concurrent DB decrements",
+          "initial": 1000,
+          "successful": 10,
+          "failed": 0,
+          "expected": 990,
+          "actual": 990,
+          "result": "PASS"
+        },
+        {
+          "test": "50 concurrent DB decrements",
+          "initial": 1000,
+          "successful": 50,
+          "failed": 0,
+          "expected": 950,
+          "actual": 950,
+          "result": "PASS"
+        }
+      ],
+      "queryBenchmarks": [
+        {
+          "test": "count products in worst-case business",
+          "count": 5,
+          "averageMs": 1,
+          "medianMs": 1.279629,
+          "p95Ms": 2.148924999999963,
+          "maxMs": 2.148924999999963,
+          "rows": 10000,
+          "grade": "PASS"
+        },
+        {
+          "test": "list 10k products ordered by name",
+          "count": 5,
+          "averageMs": 31,
+          "medianMs": 24.78234299999997,
+          "p95Ms": 60.066453000000024,
+          "maxMs": 60.066453000000024,
+          "rows": 10000,
+          "grade": "PASS"
+        },
+        {
+          "test": "search products by name contains Stress",
+          "count": 5,
+          "averageMs": 2,
+          "medianMs": 1.546100000000024,
+          "p95Ms": 4.114165999999955,
+          "maxMs": 4.114165999999955,
+          "rows": 50,
+          "grade": "PASS"
+        },
+        {
+          "test": "barcode lookup",
+          "count": 5,
+          "averageMs": 2,
+          "medianMs": 0.780601000000047,
+          "p95Ms": 4.927535000000034,
+          "maxMs": 4.927535000000034,
+          "rows": 1,
+          "grade": "PASS"
+        },
+        {
+          "test": "list team members with user join",
+          "count": 5,
+          "averageMs": 96,
+          "medianMs": 92.37885099999994,
+          "p95Ms": 119.79229600000008,
+          "maxMs": 119.79229600000008,
+          "rows": 10000,
+          "grade": "PASS"
+        },
+        {
+          "test": "owner business memberships (10k businesses)",
+          "count": 5,
+          "averageMs": 208,
+          "medianMs": 203.94061499999998,
+          "p95Ms": 230.37007800000015,
+          "maxMs": 230.37007800000015,
+          "rows": 10001,
+          "grade": "PASS"
+        },
+        {
+          "test": "low stock products",
+          "count": 5,
+          "averageMs": 4,
+          "medianMs": 1.8968199999999342,
+          "p95Ms": 9.514521000000059,
+          "maxMs": 9.514521000000059,
+          "rows": 0,
+          "grade": "PASS"
+        },
+        {
+          "test": "stock log history sample",
+          "count": 5,
+          "averageMs": 7,
+          "medianMs": 7.3764970000001995,
+          "p95Ms": 8.006230999999843,
+          "maxMs": 8.006230999999843,
+          "rows": 1000,
+          "grade": "PASS"
+        },
+        {
+          "test": "aggregate stock sum",
+          "count": 5,
+          "averageMs": 4,
+          "medianMs": 2.6716379999998026,
+          "p95Ms": 7.713530999999875,
+          "maxMs": 7.713530999999875,
+          "rows": 10000,
+          "grade": "PASS"
+        }
+      ],
+      "stats": {
+        "tables": [
+          {
+            "table_name": "products",
+            "total_bytes": 6168576,
+            "table_bytes": 3645440,
+            "index_bytes": 2482176,
+            "live_rows": 10175,
+            "seq_scans": 47,
+            "index_scans": 32651
+          },
+          {
+            "table_name": "User",
+            "total_bytes": 3072000,
+            "table_bytes": 1933312,
+            "index_bytes": 1097728,
+            "live_rows": 10140,
+            "seq_scans": 21,
+            "index_scans": 73505
+          },
+          {
+            "table_name": "business_members",
+            "total_bytes": 2564096,
+            "table_bytes": 1277952,
+            "index_bytes": 1245184,
+            "live_rows": 20137,
+            "seq_scans": 68,
+            "index_scans": 62576
+          },
+          {
+            "table_name": "businesses",
+            "total_bytes": 2334720,
+            "table_bytes": 1966080,
+            "index_bytes": 327680,
+            "live_rows": 10054,
+            "seq_scans": 11,
+            "index_scans": 50913
+          },
+          {
+            "table_name": "stock_logs",
+            "total_bytes": 1572864,
+            "table_bytes": 1187840,
+            "index_bytes": 344064,
+            "live_rows": 10310,
+            "seq_scans": 17,
+            "index_scans": 224
+          },
+          {
+            "table_name": "activity_logs",
+            "total_bytes": 196608,
+            "table_bytes": 81920,
+            "index_bytes": 81920,
+            "live_rows": 53,
+            "seq_scans": 6,
+            "index_scans": 0
+          },
+          {
+            "table_name": "ledger_transactions",
+            "total_bytes": 65536,
+            "table_bytes": 8192,
+            "index_bytes": 49152,
+            "live_rows": 5,
+            "seq_scans": 7,
+            "index_scans": 0
+          },
+          {
+            "table_name": "sales",
+            "total_bytes": 65536,
+            "table_bytes": 8192,
+            "index_bytes": 49152,
+            "live_rows": 5,
+            "seq_scans": 6,
+            "index_scans": 291
+          },
+          {
+            "table_name": "accounts",
+            "total_bytes": 65536,
+            "table_bytes": 8192,
+            "index_bytes": 49152,
+            "live_rows": 1,
+            "seq_scans": 4,
+            "index_scans": 24
+          },
+          {
+            "table_name": "payments",
+            "total_bytes": 49152,
+            "table_bytes": 8192,
+            "index_bytes": 32768,
+            "live_rows": 5,
+            "seq_scans": 8,
+            "index_scans": 5
+          },
+          {
+            "table_name": "customers",
+            "total_bytes": 32768,
+            "table_bytes": 0,
+            "index_bytes": 24576,
+            "live_rows": 0,
+            "seq_scans": 4,
+            "index_scans": 0
+          },
+          {
+            "table_name": "PasswordResetToken",
+            "total_bytes": 32768,
+            "table_bytes": 0,
+            "index_bytes": 24576,
+            "live_rows": 0,
+            "seq_scans": 4,
+            "index_scans": 0
+          },
+          {
+            "table_name": "daily_closings",
+            "total_bytes": 32768,
+            "table_bytes": 0,
+            "index_bytes": 24576,
+            "live_rows": 0,
+            "seq_scans": 5,
+            "index_scans": 0
+          },
+          {
+            "table_name": "sale_items",
+            "total_bytes": 32768,
+            "table_bytes": 8192,
+            "index_bytes": 16384,
+            "live_rows": 5,
+            "seq_scans": 16,
+            "index_scans": 0
+          },
+          {
+            "table_name": "_prisma_migrations",
+            "total_bytes": 32768,
+            "table_bytes": 8192,
+            "index_bytes": 16384,
+            "live_rows": 14,
+            "seq_scans": 4,
+            "index_scans": 28
+          },
+          {
+            "table_name": "suppliers",
+            "total_bytes": 24576,
+            "table_bytes": 0,
+            "index_bytes": 16384,
+            "live_rows": 0,
+            "seq_scans": 3,
+            "index_scans": 0
+          },
+          {
+            "table_name": "expenses",
+            "total_bytes": 24576,
+            "table_bytes": 0,
+            "index_bytes": 16384,
+            "live_rows": 0,
+            "seq_scans": 5,
+            "index_scans": 0
+          }
+        ],
+        "indexes": [
+          {
+            "schemaname": "public",
+            "table_name": "User",
+            "index_name": "User_pkey",
+            "scans": 63406,
+            "tuples_read": 124020,
+            "tuples_fetched": 124019
+          },
+          {
+            "schemaname": "public",
+            "table_name": "businesses",
+            "index_name": "businesses_pkey",
+            "scans": 50908,
+            "tuples_read": 110908,
+            "tuples_fetched": 110908
+          },
+          {
+            "schemaname": "public",
+            "table_name": "business_members",
+            "index_name": "business_members_businessId_userId_key",
+            "scans": 32451,
+            "tuples_read": 23310,
+            "tuples_fetched": 23310
+          },
+          {
+            "schemaname": "public",
+            "table_name": "business_members",
+            "index_name": "business_members_pkey",
+            "scans": 30000,
+            "tuples_read": 0,
+            "tuples_fetched": 0
+          },
+          {
+            "schemaname": "public",
+            "table_name": "products",
+            "index_name": "products_pkey",
+            "scans": 20648,
+            "tuples_read": 20671,
+            "tuples_fetched": 10667
+          },
+          {
+            "schemaname": "public",
+            "table_name": "User",
+            "index_name": "User_email_key",
+            "scans": 10099,
+            "tuples_read": 15,
+            "tuples_fetched": 14
+          },
+          {
+            "schemaname": "public",
+            "table_name": "products",
+            "index_name": "products_businessId_barcode_key",
+            "scans": 10008,
+            "tuples_read": 20005,
+            "tuples_fetched": 5
+          },
+          {
+            "schemaname": "public",
+            "table_name": "products",
+            "index_name": "products_businessId_idx",
+            "scans": 1972,
+            "tuples_read": 258897,
+            "tuples_fetched": 208461
+          },
+          {
+            "schemaname": "public",
+            "table_name": "sales",
+            "index_name": "sales_businessId_idx",
+            "scans": 276,
+            "tuples_read": 1200,
+            "tuples_fetched": 0
+          },
+          {
+            "schemaname": "public",
+            "table_name": "stock_logs",
+            "index_name": "stock_logs_businessId_idx",
+            "scans": 224,
+            "tuples_read": 54672,
+            "tuples_fetched": 44678
+          },
+          {
+            "schemaname": "public",
+            "table_name": "business_members",
+            "index_name": "business_members_userId_idx",
+            "scans": 125,
+            "tuples_read": 90125,
+            "tuples_fetched": 90123
+          },
+          {
+            "schemaname": "public",
+            "table_name": "_prisma_migrations",
+            "index_name": "_prisma_migrations_pkey",
+            "scans": 28,
+            "tuples_read": 28,
+            "tuples_fetched": 28
+          },
+          {
+            "schemaname": "public",
+            "table_name": "products",
+            "index_name": "products_name_idx",
+            "scans": 23,
+            "tuples_read": 172076,
+            "tuples_fetched": 172060
+          },
+          {
+            "schemaname": "public",
+            "table_name": "accounts",
+            "index_name": "accounts_pkey",
+            "scans": 15,
+            "tuples_read": 15,
+            "tuples_fetched": 15
+          },
+          {
+            "schemaname": "public",
+            "table_name": "sales",
+            "index_name": "sales_pkey",
+            "scans": 15,
+            "tuples_read": 15,
+            "tuples_fetched": 15
+          },
+          {
+            "schemaname": "public",
+            "table_name": "accounts",
+            "index_name": "accounts_businessId_name_key",
+            "scans": 9,
+            "tuples_read": 8,
+            "tuples_fetched": 8
+          },
+          {
+            "schemaname": "public",
+            "table_name": "payments",
+            "index_name": "payments_pkey",
+            "scans": 5,
+            "tuples_read": 5,
+            "tuples_fetched": 5
+          },
+          {
+            "schemaname": "public",
+            "table_name": "businesses",
+            "index_name": "businesses_ownerId_idx",
+            "scans": 5,
+            "tuples_read": 40002,
+            "tuples_fetched": 0
+          },
+          {
+            "schemaname": "public",
+            "table_name": "suppliers",
+            "index_name": "suppliers_pkey",
+            "scans": 0,
+            "tuples_read": 0,
+            "tuples_fetched": 0
+          },
+          {
+            "schemaname": "public",
+            "table_name": "daily_closings",
+            "index_name": "daily_closings_pkey",
+            "scans": 0,
+            "tuples_read": 0,
+            "tuples_fetched": 0
+          },
+          {
+            "schemaname": "public",
+            "table_name": "accounts",
+            "index_name": "accounts_businessId_type_idx",
+            "scans": 0,
+            "tuples_read": 0,
+            "tuples_fetched": 0
+          },
+          {
+            "schemaname": "public",
+            "table_name": "ledger_transactions",
+            "index_name": "ledger_transactions_businessId_occurredAt_idx",
+            "scans": 0,
+            "tuples_read": 0,
+            "tuples_fetched": 0
+          },
+          {
+            "schemaname": "public",
+            "table_name": "ledger_transactions",
+            "index_name": "ledger_transactions_accountId_occurredAt_idx",
+            "scans": 0,
+            "tuples_read": 0,
+            "tuples_fetched": 0
+          },
+          {
+            "schemaname": "public",
+            "table_name": "expenses",
+            "index_name": "expenses_businessId_occurredAt_idx",
+            "scans": 0,
+            "tuples_read": 0,
+            "tuples_fetched": 0
+          },
+          {
+            "schemaname": "public",
+            "table_name": "suppliers",
+            "index_name": "suppliers_businessId_idx",
+            "scans": 0,
+            "tuples_read": 0,
+            "tuples_fetched": 0
+          },
+          {
+            "schemaname": "public",
+            "table_name": "payments",
+            "index_name": "payments_businessId_occurredAt_idx",
+            "scans": 0,
+            "tuples_read": 0,
+            "tuples_fetched": 0
+          },
+          {
+            "schemaname": "public",
+            "table_name": "daily_closings",
+            "index_name": "daily_closings_businessId_businessDate_key",
+            "scans": 0,
+            "tuples_read": 0,
+            "tuples_fetched": 0
+          },
+          {
+            "schemaname": "public",
+            "table_name": "daily_closings",
+            "index_name": "daily_closings_businessId_status_idx",
+            "scans": 0,
+            "tuples_read": 0,
+            "tuples_fetched": 0
+          },
+          {
+            "schemaname": "public",
+            "table_name": "PasswordResetToken",
+            "index_name": "PasswordResetToken_pkey",
+            "scans": 0,
+            "tuples_read": 0,
+            "tuples_fetched": 0
+          },
+          {
+            "schemaname": "public",
+            "table_name": "PasswordResetToken",
+            "index_name": "PasswordResetToken_tokenHash_key",
+            "scans": 0,
+            "tuples_read": 0,
+            "tuples_fetched": 0
+          }
+        ]
+      },
+      "concurrentReads": [
+        {
+          "requests": 5,
+          "successful": 5,
+          "failed": 0,
+          "errorRate": 0,
+          "requestsPerSecond": 667.13,
+          "bytes": 0,
+          "timeoutCount": 0,
+          "latency": {
+            "minMs": 1.3229599999999664,
+            "averageMs": 1,
+            "medianMs": 1,
+            "p90Ms": 2,
+            "p95Ms": 2,
+            "p99Ms": 2,
+            "maxMs": 2.0237999999999374
+          },
+          "statusCodes": {
+            "200": 5
+          },
+          "errorGroups": {},
+          "test": "db-concurrent-product-page",
+          "concurrency": 1,
+          "elapsedMs": 7.494819000000007,
+          "grade": "PASS"
+        },
+        {
+          "requests": 25,
+          "successful": 25,
+          "failed": 0,
+          "errorRate": 0,
+          "requestsPerSecond": 866.45,
+          "bytes": 0,
+          "timeoutCount": 0,
+          "latency": {
+            "minMs": 1.8227309999997487,
+            "averageMs": 5,
+            "medianMs": 5,
+            "p90Ms": 9,
+            "p95Ms": 11,
+            "p99Ms": 11,
+            "maxMs": 10.95679599999994
+          },
+          "statusCodes": {
+            "200": 25
+          },
+          "errorGroups": {},
+          "test": "db-concurrent-product-page",
+          "concurrency": 5,
+          "elapsedMs": 28.85346699999991,
+          "grade": "PASS"
+        }
+      ],
+      "databaseBefore": {
+        "version": "PostgreSQL 18.6 (Ubuntu 18.6-0ubuntu0.26.04.1) on x86_64-pc-linux-gnu",
+        "activity": {
+          "active": 2,
+          "idle": 4,
+          "waiting": 4,
+          "total": 6
+        },
+        "database": {
+          "commits": 9512,
+          "rollbacks": 2,
+          "deadlocks": 0,
+          "blocks_hit": 1605882,
+          "blocks_read": 45,
+          "backends": 6,
+          "cacheHitRatio": 1
+        },
+        "largestTables": [
+          {
+            "table_name": "products",
+            "total_bytes": 6168576,
+            "estimated_rows": 10000
+          },
+          {
+            "table_name": "User",
+            "total_bytes": 3072000,
+            "estimated_rows": 10001
+          },
+          {
+            "table_name": "business_members",
+            "total_bytes": 2564096,
+            "estimated_rows": 20001
+          },
+          {
+            "table_name": "businesses",
+            "total_bytes": 2334720,
+            "estimated_rows": 10001
+          },
+          {
+            "table_name": "stock_logs",
+            "total_bytes": 1572864,
+            "estimated_rows": 10000
+          },
+          {
+            "table_name": "activity_logs",
+            "total_bytes": 196608,
+            "estimated_rows": 53
+          },
+          {
+            "table_name": "ledger_transactions",
+            "total_bytes": 65536,
+            "estimated_rows": -1
+          },
+          {
+            "table_name": "sales",
+            "total_bytes": 65536,
+            "estimated_rows": -1
+          },
+          {
+            "table_name": "accounts",
+            "total_bytes": 65536,
+            "estimated_rows": -1
+          },
+          {
+            "table_name": "payments",
+            "total_bytes": 49152,
+            "estimated_rows": -1
+          },
+          {
+            "table_name": "customers",
+            "total_bytes": 32768,
+            "estimated_rows": -1
+          },
+          {
+            "table_name": "PasswordResetToken",
+            "total_bytes": 32768,
+            "estimated_rows": -1
+          }
+        ]
+      },
+      "databaseAfter": {
+        "version": "PostgreSQL 18.6 (Ubuntu 18.6-0ubuntu0.26.04.1) on x86_64-pc-linux-gnu",
+        "activity": {
+          "active": 3,
+          "idle": 7,
+          "waiting": 7,
+          "total": 10
+        },
+        "database": {
+          "commits": 9617,
+          "rollbacks": 5,
+          "deadlocks": 0,
+          "blocks_hit": 1621693,
+          "blocks_read": 45,
+          "backends": 10,
+          "cacheHitRatio": 1
+        },
+        "largestTables": [
+          {
+            "table_name": "products",
+            "total_bytes": 6168576,
+            "estimated_rows": 10000
+          },
+          {
+            "table_name": "User",
+            "total_bytes": 3072000,
+            "estimated_rows": 10001
+          },
+          {
+            "table_name": "business_members",
+            "total_bytes": 2564096,
+            "estimated_rows": 20001
+          },
+          {
+            "table_name": "businesses",
+            "total_bytes": 2334720,
+            "estimated_rows": 10001
+          },
+          {
+            "table_name": "stock_logs",
+            "total_bytes": 1572864,
+            "estimated_rows": 10000
+          },
+          {
+            "table_name": "activity_logs",
+            "total_bytes": 196608,
+            "estimated_rows": 53
+          },
+          {
+            "table_name": "ledger_transactions",
+            "total_bytes": 65536,
+            "estimated_rows": -1
+          },
+          {
+            "table_name": "sales",
+            "total_bytes": 65536,
+            "estimated_rows": -1
+          },
+          {
+            "table_name": "accounts",
+            "total_bytes": 65536,
+            "estimated_rows": -1
+          },
+          {
+            "table_name": "payments",
+            "total_bytes": 49152,
+            "estimated_rows": -1
+          },
+          {
+            "table_name": "customers",
+            "total_bytes": 32768,
+            "estimated_rows": -1
+          },
+          {
+            "table_name": "PasswordResetToken",
+            "total_bytes": 32768,
+            "estimated_rows": -1
+          }
+        ]
+      },
+      "stages": [
+        {
+          "requests": 5,
+          "successful": 5,
+          "failed": 0,
+          "errorRate": 0,
+          "requestsPerSecond": 667.13,
+          "bytes": 0,
+          "timeoutCount": 0,
+          "latency": {
+            "minMs": 1.3229599999999664,
+            "averageMs": 1,
+            "medianMs": 1,
+            "p90Ms": 2,
+            "p95Ms": 2,
+            "p99Ms": 2,
+            "maxMs": 2.0237999999999374
+          },
+          "statusCodes": {
+            "200": 5
+          },
+          "errorGroups": {},
+          "test": "db-concurrent-product-page",
+          "concurrency": 1,
+          "elapsedMs": 7.494819000000007,
+          "grade": "PASS"
+        },
+        {
+          "requests": 25,
+          "successful": 25,
+          "failed": 0,
+          "errorRate": 0,
+          "requestsPerSecond": 866.45,
+          "bytes": 0,
+          "timeoutCount": 0,
+          "latency": {
+            "minMs": 1.8227309999997487,
+            "averageMs": 5,
+            "medianMs": 5,
+            "p90Ms": 9,
+            "p95Ms": 11,
+            "p99Ms": 11,
+            "maxMs": 10.95679599999994
+          },
+          "statusCodes": {
+            "200": 25
+          },
+          "errorGroups": {},
+          "test": "db-concurrent-product-page",
+          "concurrency": 5,
+          "elapsedMs": 28.85346699999991,
+          "grade": "PASS"
+        }
+      ],
+      "aborted": null,
+      "summary": {
+        "acidTotal": 7,
+        "acidPass": 7,
+        "acidFail": 0,
+        "queryWarnings": 0
+      }
+    }
+  },
+  "integrity": [
+    {
+      "test": "10 concurrent DB decrements",
+      "initial": 1000,
+      "successful": 10,
+      "failed": 0,
+      "expected": 990,
+      "actual": 990,
+      "result": "PASS"
+    },
+    {
+      "test": "50 concurrent DB decrements",
+      "initial": 1000,
+      "successful": 50,
+      "failed": 0,
+      "expected": 950,
+      "actual": 950,
+      "result": "PASS"
+    }
+  ],
+  "stops": [],
+  "scenarioNotes": [
+    "This report measures ACID behavior and query performance against the seeded stress database.",
+    "It does not send HTTP API load. Use npm run stress:all for API testing."
+  ],
+  "git": "4bbff74",
+  "app": {
+    "host": "ubuntu-8gb-hel1-1",
+    "platform": "linux 7.0.0-27-generic",
+    "cpuCount": 4,
+    "loadAvg": [
+      0.22,
+      0.3,
+      0.29
+    ],
+    "totalMemoryMb": 7746,
+    "freeMemoryMb": 3834,
+    "node": "v22.23.1",
+    "pm2": [
+      {
+        "name": "almadel-api",
+        "status": "online",
+        "restarts": 362245,
+        "cpu": 0.2,
+        "memoryMb": 72
+      },
+      {
+        "name": "almadel-backend",
+        "status": "online",
+        "restarts": 11,
+        "cpu": 0.1,
+        "memoryMb": 163
+      }
+    ]
+  },
+  "database": {
+    "version": "PostgreSQL 18.6 (Ubuntu 18.6-0ubuntu0.26.04.1) on x86_64-pc-linux-gnu",
+    "activity": {
+      "active": 3,
+      "idle": 1,
+      "waiting": 1,
+      "total": 4
+    },
+    "database": {
+      "commits": 9510,
+      "rollbacks": 2,
+      "deadlocks": 0,
+      "blocks_hit": 1605820,
+      "blocks_read": 45,
+      "backends": 4,
+      "cacheHitRatio": 1
+    },
+    "largestTables": [
+      {
+        "table_name": "products",
+        "total_bytes": 6168576,
+        "estimated_rows": 10000
+      },
+      {
+        "table_name": "User",
+        "total_bytes": 3072000,
+        "estimated_rows": 10001
+      },
+      {
+        "table_name": "business_members",
+        "total_bytes": 2564096,
+        "estimated_rows": 20001
+      },
+      {
+        "table_name": "businesses",
+        "total_bytes": 2334720,
+        "estimated_rows": 10001
+      },
+      {
+        "table_name": "stock_logs",
+        "total_bytes": 1572864,
+        "estimated_rows": 10000
+      },
+      {
+        "table_name": "activity_logs",
+        "total_bytes": 196608,
+        "estimated_rows": 53
+      },
+      {
+        "table_name": "ledger_transactions",
+        "total_bytes": 65536,
+        "estimated_rows": -1
+      },
+      {
+        "table_name": "sales",
+        "total_bytes": 65536,
+        "estimated_rows": -1
+      },
+      {
+        "table_name": "accounts",
+        "total_bytes": 65536,
+        "estimated_rows": -1
+      },
+      {
+        "table_name": "payments",
+        "total_bytes": 49152,
+        "estimated_rows": -1
+      },
+      {
+        "table_name": "customers",
+        "total_bytes": 32768,
+        "estimated_rows": -1
+      },
+      {
+        "table_name": "PasswordResetToken",
+        "total_bytes": 32768,
+        "estimated_rows": -1
+      }
+    ]
+  },
+  "dataset": {
+    "worst-case business id": 10001,
+    "staff": 5000,
+    "accountants": 5000,
+    "products": 10000,
+    "stockLogs": 10000,
+    "stress businesses": 10001,
+    "stress team users": 10000
+  },
+  "databaseAfter": {
+    "version": "PostgreSQL 18.6 (Ubuntu 18.6-0ubuntu0.26.04.1) on x86_64-pc-linux-gnu",
+    "activity": {
+      "active": 3,
+      "idle": 7,
+      "waiting": 7,
+      "total": 10
+    },
+    "database": {
+      "commits": 9617,
+      "rollbacks": 5,
+      "deadlocks": 0,
+      "blocks_hit": 1621693,
+      "blocks_read": 45,
+      "backends": 10,
+      "cacheHitRatio": 1
+    },
+    "largestTables": [
+      {
+        "table_name": "products",
+        "total_bytes": 6168576,
+        "estimated_rows": 10000
+      },
+      {
+        "table_name": "User",
+        "total_bytes": 3072000,
+        "estimated_rows": 10001
+      },
+      {
+        "table_name": "business_members",
+        "total_bytes": 2564096,
+        "estimated_rows": 20001
+      },
+      {
+        "table_name": "businesses",
+        "total_bytes": 2334720,
+        "estimated_rows": 10001
+      },
+      {
+        "table_name": "stock_logs",
+        "total_bytes": 1572864,
+        "estimated_rows": 10000
+      },
+      {
+        "table_name": "activity_logs",
+        "total_bytes": 196608,
+        "estimated_rows": 53
+      },
+      {
+        "table_name": "ledger_transactions",
+        "total_bytes": 65536,
+        "estimated_rows": -1
+      },
+      {
+        "table_name": "sales",
+        "total_bytes": 65536,
+        "estimated_rows": -1
+      },
+      {
+        "table_name": "accounts",
+        "total_bytes": 65536,
+        "estimated_rows": -1
+      },
+      {
+        "table_name": "payments",
+        "total_bytes": 49152,
+        "estimated_rows": -1
+      },
+      {
+        "table_name": "customers",
+        "total_bytes": 32768,
+        "estimated_rows": -1
+      },
+      {
+        "table_name": "PasswordResetToken",
+        "total_bytes": 32768,
+        "estimated_rows": -1
+      }
+    ]
+  },
+  "finishedAt": "2026-09-24T11:12:44.022Z"
+}

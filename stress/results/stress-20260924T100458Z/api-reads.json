@@ -1,0 +1,492 @@
+{
+  "stages": [
+    {
+      "requests": 1,
+      "successful": 1,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 3.04,
+      "bytes": 9129846,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 303.62650400000007,
+        "averageMs": 304,
+        "medianMs": 304,
+        "p90Ms": 304,
+        "p95Ms": 304,
+        "p99Ms": 304,
+        "maxMs": 303.62650400000007
+      },
+      "statusCodes": {
+        "200": 1
+      },
+      "errorGroups": {},
+      "test": "business-list",
+      "endpoint": "GET /business/my-businesses",
+      "concurrency": 1,
+      "elapsedMs": 328.7832209999999,
+      "rowsReturned": 10001,
+      "paginated": false,
+      "responseLimit": null,
+      "businessId": 10001
+    },
+    {
+      "requests": 5,
+      "successful": 5,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 2.72,
+      "bytes": 45649230,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 1376.133967,
+        "averageMs": 1662,
+        "medianMs": 1713,
+        "p90Ms": 1813,
+        "p95Ms": 1813,
+        "p99Ms": 1813,
+        "maxMs": 1813.387419
+      },
+      "statusCodes": {
+        "200": 5
+      },
+      "errorGroups": {},
+      "test": "business-list",
+      "endpoint": "GET /business/my-businesses",
+      "concurrency": 5,
+      "elapsedMs": 1838.654053,
+      "rowsReturned": 10001,
+      "paginated": false,
+      "responseLimit": null,
+      "businessId": 10001
+    },
+    {
+      "requests": 1,
+      "successful": 1,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 6.21,
+      "bytes": 3544048,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 147.10177999999996,
+        "averageMs": 147,
+        "medianMs": 147,
+        "p90Ms": 147,
+        "p95Ms": 147,
+        "p99Ms": 147,
+        "maxMs": 147.10177999999996
+      },
+      "statusCodes": {
+        "200": 1
+      },
+      "errorGroups": {},
+      "test": "dashboard",
+      "endpoint": "GET /dashboard",
+      "concurrency": 1,
+      "elapsedMs": 161.083615,
+      "rowsReturned": 10000,
+      "paginated": false,
+      "responseLimit": null,
+      "businessId": 10001
+    },
+    {
+      "requests": 5,
+      "successful": 5,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 7.62,
+      "bytes": 17720240,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 410.1900660000001,
+        "averageMs": 509,
+        "medianMs": 452,
+        "p90Ms": 645,
+        "p95Ms": 645,
+        "p99Ms": 645,
+        "maxMs": 644.6162800000002
+      },
+      "statusCodes": {
+        "200": 5
+      },
+      "errorGroups": {},
+      "test": "dashboard",
+      "endpoint": "GET /dashboard",
+      "concurrency": 5,
+      "elapsedMs": 655.7793100000004,
+      "rowsReturned": 10000,
+      "paginated": false,
+      "responseLimit": null,
+      "businessId": 10001
+    },
+    {
+      "requests": 1,
+      "successful": 1,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 4.49,
+      "bytes": 2003913,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 211.5035399999997,
+        "averageMs": 212,
+        "medianMs": 212,
+        "p90Ms": 212,
+        "p95Ms": 212,
+        "p99Ms": 212,
+        "maxMs": 211.5035399999997
+      },
+      "statusCodes": {
+        "200": 1
+      },
+      "errorGroups": {},
+      "test": "team-list",
+      "endpoint": "GET /admin/staff",
+      "concurrency": 1,
+      "elapsedMs": 222.75057799999922,
+      "rowsReturned": 10000,
+      "paginated": false,
+      "responseLimit": null,
+      "businessId": 10001
+    },
+    {
+      "requests": 5,
+      "successful": 5,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 7.94,
+      "bytes": 10019565,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 534.8971379999994,
+        "averageMs": 581,
+        "medianMs": 590,
+        "p90Ms": 618,
+        "p95Ms": 618,
+        "p99Ms": 618,
+        "maxMs": 617.8042369999994
+      },
+      "statusCodes": {
+        "200": 5
+      },
+      "errorGroups": {},
+      "test": "team-list",
+      "endpoint": "GET /admin/staff",
+      "concurrency": 5,
+      "elapsedMs": 629.3885499999997,
+      "rowsReturned": 10000,
+      "paginated": false,
+      "responseLimit": null,
+      "businessId": 10001
+    },
+    {
+      "requests": 1,
+      "successful": 1,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 6.33,
+      "bytes": 3543895,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 143.92055299999993,
+        "averageMs": 144,
+        "medianMs": 144,
+        "p90Ms": 144,
+        "p95Ms": 144,
+        "p99Ms": 144,
+        "maxMs": 143.92055299999993
+      },
+      "statusCodes": {
+        "200": 1
+      },
+      "errorGroups": {},
+      "test": "product-list",
+      "endpoint": "GET /products",
+      "concurrency": 1,
+      "elapsedMs": 158.06739899999957,
+      "rowsReturned": 10000,
+      "paginated": false,
+      "responseLimit": null,
+      "businessId": 10001
+    },
+    {
+      "requests": 5,
+      "successful": 5,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 8.13,
+      "bytes": 17719475,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 231.20719399999962,
+        "averageMs": 389,
+        "medianMs": 365,
+        "p90Ms": 601,
+        "p95Ms": 601,
+        "p99Ms": 601,
+        "maxMs": 601.3990610000001
+      },
+      "statusCodes": {
+        "200": 5
+      },
+      "errorGroups": {},
+      "test": "product-list",
+      "endpoint": "GET /products",
+      "concurrency": 5,
+      "elapsedMs": 614.7421039999999,
+      "rowsReturned": 10000,
+      "paginated": false,
+      "responseLimit": null,
+      "businessId": 10001
+    },
+    {
+      "requests": 1,
+      "successful": 1,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 37.82,
+      "bytes": 31,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 26.246108000000277,
+        "averageMs": 26,
+        "medianMs": 26,
+        "p90Ms": 26,
+        "p95Ms": 26,
+        "p99Ms": 26,
+        "maxMs": 26.246108000000277
+      },
+      "statusCodes": {
+        "200": 1
+      },
+      "errorGroups": {},
+      "test": "product-search",
+      "endpoint": "GET /products/search?q=Loadtest",
+      "concurrency": 1,
+      "elapsedMs": 26.44121399999949,
+      "rowsReturned": 0,
+      "paginated": false,
+      "responseLimit": 50,
+      "businessId": 10001
+    },
+    {
+      "requests": 5,
+      "successful": 5,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 78.86,
+      "bytes": 155,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 39.76767699999982,
+        "averageMs": 49,
+        "medianMs": 42,
+        "p90Ms": 63,
+        "p95Ms": 63,
+        "p99Ms": 63,
+        "maxMs": 62.615718999999444
+      },
+      "statusCodes": {
+        "200": 5
+      },
+      "errorGroups": {},
+      "test": "product-search",
+      "endpoint": "GET /products/search?q=Loadtest",
+      "concurrency": 5,
+      "elapsedMs": 63.405063999999584,
+      "rowsReturned": 0,
+      "paginated": false,
+      "responseLimit": 50,
+      "businessId": 10001
+    },
+    {
+      "requests": 1,
+      "successful": 1,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 39.21,
+      "bytes": 42,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 25.43748500000038,
+        "averageMs": 25,
+        "medianMs": 25,
+        "p90Ms": 25,
+        "p95Ms": 25,
+        "p99Ms": 25,
+        "maxMs": 25.43748500000038
+      },
+      "statusCodes": {
+        "200": 1
+      },
+      "errorGroups": {},
+      "test": "sales-list",
+      "endpoint": "GET /sales",
+      "concurrency": 1,
+      "elapsedMs": 25.50473299999976,
+      "rowsReturned": null,
+      "paginated": false,
+      "responseLimit": null,
+      "businessId": 10001
+    },
+    {
+      "requests": 5,
+      "successful": 5,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 201.99,
+      "bytes": 210,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 21.314065000000483,
+        "averageMs": 23,
+        "medianMs": 23,
+        "p90Ms": 24,
+        "p95Ms": 24,
+        "p99Ms": 24,
+        "maxMs": 24.115577000000485
+      },
+      "statusCodes": {
+        "200": 5
+      },
+      "errorGroups": {},
+      "test": "sales-list",
+      "endpoint": "GET /sales",
+      "concurrency": 5,
+      "elapsedMs": 24.753848999999718,
+      "rowsReturned": null,
+      "paginated": false,
+      "responseLimit": null,
+      "businessId": 10001
+    },
+    {
+      "requests": 1,
+      "successful": 1,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 99.8,
+      "bytes": 350,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 9.961387000000286,
+        "averageMs": 10,
+        "medianMs": 10,
+        "p90Ms": 10,
+        "p95Ms": 10,
+        "p99Ms": 10,
+        "maxMs": 9.961387000000286
+      },
+      "statusCodes": {
+        "200": 1
+      },
+      "errorGroups": {},
+      "test": "product-barcode",
+      "endpoint": "GET /products/barcode/STRESS-P-000001",
+      "concurrency": 1,
+      "elapsedMs": 10.020049999999173,
+      "rowsReturned": null,
+      "paginated": false,
+      "responseLimit": null,
+      "businessId": 10001
+    },
+    {
+      "requests": 5,
+      "successful": 5,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 314.12,
+      "bytes": 1750,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 11.779230000000098,
+        "averageMs": 14,
+        "medianMs": 14,
+        "p90Ms": 15,
+        "p95Ms": 15,
+        "p99Ms": 15,
+        "maxMs": 15.145376000000397
+      },
+      "statusCodes": {
+        "200": 5
+      },
+      "errorGroups": {},
+      "test": "product-barcode",
+      "endpoint": "GET /products/barcode/STRESS-P-000001",
+      "concurrency": 5,
+      "elapsedMs": 15.917637999999897,
+      "rowsReturned": null,
+      "paginated": false,
+      "responseLimit": null,
+      "businessId": 10001
+    },
+    {
+      "requests": 1,
+      "successful": 1,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 157.87,
+      "bytes": 948,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 6.187275000000227,
+        "averageMs": 6,
+        "medianMs": 6,
+        "p90Ms": 6,
+        "p95Ms": 6,
+        "p99Ms": 6,
+        "maxMs": 6.187275000000227
+      },
+      "statusCodes": {
+        "200": 1
+      },
+      "errorGroups": {},
+      "test": "business-detail",
+      "endpoint": "GET /business/10001",
+      "concurrency": 1,
+      "elapsedMs": 6.334522000000106,
+      "rowsReturned": null,
+      "paginated": false,
+      "responseLimit": null,
+      "businessId": 10001
+    },
+    {
+      "requests": 5,
+      "successful": 5,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 252.42,
+      "bytes": 4740,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 16.15780100000029,
+        "averageMs": 17,
+        "medianMs": 17,
+        "p90Ms": 19,
+        "p95Ms": 19,
+        "p99Ms": 19,
+        "maxMs": 19.039192999999614
+      },
+      "statusCodes": {
+        "200": 5
+      },
+      "errorGroups": {},
+      "test": "business-detail",
+      "endpoint": "GET /business/10001",
+      "concurrency": 5,
+      "elapsedMs": 19.808070000000043,
+      "rowsReturned": null,
+      "paginated": false,
+      "responseLimit": null,
+      "businessId": 10001
+    }
+  ],
+  "aborted": null,
+  "notes": [
+    "GET /products returns every product for the business in one response. The route has no page or limit parameter.",
+    "GET /admin/staff returns every staff and accountant member and aggregates sales, products, and stock logs for those users. The route has no page parameter.",
+    "GET /products/search stops at 50 rows.",
+    "There is no separate stock-list route. Stock is a column on products. Stock changes go through POST /stock/add, POST /stock/receive-one, and sale checkout.",
+    "GET /dashboard loads the business product list as part of the admin dashboard."
+  ]
+}

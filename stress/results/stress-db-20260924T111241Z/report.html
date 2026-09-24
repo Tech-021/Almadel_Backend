@@ -1,0 +1,145 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>stress-db-20260924T111241Z</title>
+<style>body{font-family:Georgia,serif;max-width:980px;margin:32px auto;line-height:1.45}table{border-collapse:collapse;width:100%}td,th{border:1px solid #d9e2ec;padding:6px 8px}th{background:#f0f4f8}</style>
+</head><body><pre style="white-space:pre-wrap;font-family:inherit"># Almadel database stress report stress-db-20260924T111241Z
+
+## Executive Summary
+
+- Scenario: DATABASE VOLUME + ACID
+
+- ACID checks: 7/7 PASS
+
+- Query benchmark warnings/fails: 0
+
+- This report uses direct database access against almadel_stress. It is not an API concurrency report.
+
+## Environment
+
+- Date: 2026-09-24T11:12:41.704Z
+- Profile: smoke
+- Git: 4bbff74
+- Node: v22.23.1
+- Host: ubuntu-8gb-hel1-1
+- PostgreSQL: PostgreSQL 18.6 (Ubuntu 18.6-0ubuntu0.26.04.1) on x86_64-pc-linux-gnu
+- Connections active/idle/total: 3 / 1 / 4
+- Cache hit ratio: 1
+- Deadlocks: 0
+
+## Dataset
+
+- worst-case business id: 10001
+- staff: 5000
+- accountants: 5000
+- products: 10000
+- stockLogs: 10000
+- stress businesses: 10001
+- stress team users: 10000
+
+## ACID Results
+
+| Principle | Test | Expected | Actual | Result |
+
+| --- | --- | --- | --- | --- |
+
+| Atomicity | Increment stock + create stock log, then force rollback | Neither stock nor stock_log row survives | stock 1000-&gt;1000, logs 1-&gt;1 | PASS |
+
+| Consistency | Duplicate user email insert | Rejected by unique constraint | rejected | PASS |
+
+| Consistency | Duplicate product barcode in same business | Rejected by unique(businessId, barcode) | rejected | PASS |
+
+| Consistency | Conditional stock decrement refuses oversell | First decrement succeeds, second affects 0 rows, stock stays 0 | first=1, second=0, stock=0 | PASS |
+
+| Isolation | 10 concurrent conditional decrements on one row | stock = 1000 - successful updates (990) | successful=10, stock=990 | PASS |
+
+| Isolation | 50 concurrent conditional decrements on one row | stock = 1000 - successful updates (950) | successful=50, stock=950 | PASS |
+
+| Durability | Insert product then re-read via SQL | Committed row is readable after write | id=10181 stock=42 barcode=STRESS-ACID-DUR-1790248362191 | PASS |
+
+## Inventory Correctness
+
+| Test | Initial | Successful | Failed | Expected | Actual | Result |
+
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+
+| 10 concurrent DB decrements | 1000 | 10 | 0 | 990 | 990 | PASS |
+
+| 50 concurrent DB decrements | 1000 | 50 | 0 | 950 | 950 | PASS |
+
+## Query Benchmarks (10k tenant)
+
+| Query | Avg | Median | P95 | Max | Rows | Grade |
+
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+
+| count products in worst-case business | 1 | 1.279629 | 2.148924999999963 | 2.148924999999963 | 10000 | PASS |
+
+| list 10k products ordered by name | 31 | 24.78234299999997 | 60.066453000000024 | 60.066453000000024 | 10000 | PASS |
+
+| search products by name contains Stress | 2 | 1.546100000000024 | 4.114165999999955 | 4.114165999999955 | 50 | PASS |
+
+| barcode lookup | 2 | 0.780601000000047 | 4.927535000000034 | 4.927535000000034 | 1 | PASS |
+
+| list team members with user join | 96 | 92.37885099999994 | 119.79229600000008 | 119.79229600000008 | 10000 | PASS |
+
+| owner business memberships (10k businesses) | 208 | 203.94061499999998 | 230.37007800000015 | 230.37007800000015 | 10001 | PASS |
+
+| low stock products | 4 | 1.8968199999999342 | 9.514521000000059 | 9.514521000000059 | 0 | PASS |
+
+| stock log history sample | 7 | 7.3764970000001995 | 8.006230999999843 | 8.006230999999843 | 1000 | PASS |
+
+| aggregate stock sum | 4 | 2.6716379999998026 | 7.713530999999875 | 7.713530999999875 | 10000 | PASS |
+
+## Concurrent DB Reads
+
+| Stage | Concurrency | Requests | Success | Errors | Req/s | Avg | P95 | P99 | Grade |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| db-concurrent-product-page | 1 | 5 | 5 | 0 | 667.13 | 1 | 2 | 2 | PASS |
+| db-concurrent-product-page | 5 | 25 | 25 | 0 | 866.45 | 5 | 11 | 11 | PASS |
+
+## Table and Index Stats
+
+| Table | Total bytes | Table bytes | Index bytes | Live rows | Seq scans | Index scans |
+
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+
+| products | 6168576 | 3645440 | 2482176 | 10175 | 47 | 32651 |
+
+| User | 3072000 | 1933312 | 1097728 | 10140 | 21 | 73505 |
+
+| business_members | 2564096 | 1277952 | 1245184 | 20137 | 68 | 62576 |
+
+| businesses | 2334720 | 1966080 | 327680 | 10054 | 11 | 50913 |
+
+| stock_logs | 1572864 | 1187840 | 344064 | 10310 | 17 | 224 |
+
+| activity_logs | 196608 | 81920 | 81920 | 53 | 6 | 0 |
+
+| ledger_transactions | 65536 | 8192 | 49152 | 5 | 7 | 0 |
+
+| sales | 65536 | 8192 | 49152 | 5 | 6 | 291 |
+
+| accounts | 65536 | 8192 | 49152 | 1 | 4 | 24 |
+
+| payments | 49152 | 8192 | 32768 | 5 | 8 | 5 |
+
+| customers | 32768 | 0 | 24576 | 0 | 4 | 0 |
+
+| PasswordResetToken | 32768 | 0 | 24576 | 0 | 4 | 0 |
+
+| daily_closings | 32768 | 0 | 24576 | 0 | 5 | 0 |
+
+| sale_items | 32768 | 8192 | 16384 | 5 | 16 | 0 |
+
+| _prisma_migrations | 32768 | 8192 | 16384 | 14 | 4 | 28 |
+
+## Notes
+
+- Atomicity: a multi-statement transaction that throws must leave no partial stock or stock_log change.
+
+- Consistency: unique email/barcode constraints and conditional stock updates must reject invalid states.
+
+- Isolation: concurrent decrements on one row must leave stock equal to initial minus successful updates.
+
+- Durability: a committed insert must be readable afterward.
+
+- Query times are Prisma/SQL timings against the seeded volume. API path overhead is measured separately.
+</pre></body></html>

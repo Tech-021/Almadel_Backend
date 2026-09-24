@@ -1,0 +1,196 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>stress-20260924T113414Z</title>
+<style>body{font-family:Georgia,serif;max-width:980px;margin:32px auto;color:#1f2933;line-height:1.45}table{border-collapse:collapse;width:100%;margin:12px 0}td,th{border:1px solid #d9e2ec;padding:6px 8px;text-align:left}th{background:#f0f4f8}</style>
+</head><body><h1>Almadel API stress report stress-20260924T113414Z</h1><br><br>
+<h2>Executive Summary</h2><br><br>
+<ul><li>Overall for this API run: one or more stages crossed fail thresholds, or an inventory check did not match. See the stop conditions and stage tables below.</li>
+<li>This is an **API request scalability** report. It measures real HTTP traffic against the stress API. It is not the database growth-curve report.</li>
+<li>Profile used: **standard**. Base URL: http://127.0.0.1:4010.</li>
+<li>Highest concurrency exercised in a completed stage: **100**.</li>
+<li>Highest concurrency that still graded PASS: **100**.</li>
+<li>11 stage(s) graded WARNING (slower or noisier, but not a hard fail).</li>
+<li>Ramp stopped 1 time(s). First stop: **business-create** at concurrency **50** because p95 6369ms exceeded 5000ms. That stop point is useful evidence of where request scalability begins to degrade for that operation.</li>
+<li>Inventory correctness checks matched expected stock under the concurrent update cases that ran.</li>
+<li>How to read the grades: PASS means error rate under 1% and p95 under 1s. WARNING means error rate 1–5% or p95 1–3s. FAIL means error rate above 5%, p95 above 3s, or a data-integrity failure. The ramp also stops early if error rate exceeds the configured max or p95 exceeds 5s.</li>
+</ul>
+<h2>What this report tested</h2><br><br>
+<ul><li>This run sent real HTTP requests to the Almadel stress API.</li>
+<li>Business creation used owner sign-up plus `POST /business/setup`.</li>
+<li>Team creation used `POST /admin/staff` for staff and accountant roles on one business.</li>
+<li>Product and stock suites used the live product and inventory endpoints.</li>
+<li>Mixed traffic combined reads and writes to approximate normal usage.</li>
+<li>Concurrency was ramped in stages. If a stage became unhealthy, later stages for that suite were skipped.</li>
+</ul>
+<h2>Environment</h2><br><br>
+<ul><li>Date: 2026-09-24T11:34:14.795Z</li>
+<li>Profile: standard</li>
+<li>Base URL: http://127.0.0.1:4010</li>
+<li>Git: 4bbff74</li>
+<li>Node: v22.23.1</li>
+<li>Host: ubuntu-8gb-hel1-1 (linux 7.0.0-27-generic)</li>
+<li>CPUs: 4</li>
+<li>Memory free / total MB: 3664 / 7746</li>
+<li>PostgreSQL: PostgreSQL 18.6 (Ubuntu 18.6-0ubuntu0.26.04.1) on x86_64-pc-linux-gnu</li>
+<li>Database connections (active/idle/total): 3 / 2 / 5</li>
+<li>Cache hit ratio: 1</li>
+<li>Deadlocks counter: 0</li>
+</ul>
+<ul><li>PM2: almadel-api online restarts 362245 cpu 0.2 mem 72mb; almadel-backend online restarts 11 cpu 0.2 mem 163mb</li>
+</ul>
+<h2>Dataset</h2><br><br>
+<ul><li>stress businesses: 11190</li>
+<li>stress memberships: 22486</li>
+<li>stress products: 11636</li>
+<li>stress stock logs: 12030</li>
+</ul>
+<h2>Business API Results</h2><br><br>
+| Stage | Concurrency | Requests | Success | Errors | Req/s | Avg | P95 | P99 | Grade |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| 100 | 10 | 100 | 100 | 0 | 10 | 998 | 1249 | 1704 | WARNING |
+| 500 | 25 | 400 | 400 | 0 | 10.54 | 2371 | 2948 | 4057 | WARNING |
+| 1000 | 50 | 500 | 494 | 6 | 10.67 | 4682 | 6369 | 8347 | FAIL |<br><br>
+Average time inside the business flow is split below. Signup includes password hashing. Setup is the business transaction.<br><br>
+<ul><li>Stage 100: signup 452 ms, setup 546 ms</li>
+<li>Stage 500: signup 992 ms, setup 1379 ms</li>
+<li>Stage 1000: signup 1959 ms, setup 2723 ms</li>
+</ul>
+<h2>Team-Member API Results</h2><br><br>
+| Stage | Concurrency | Requests | Success | Errors | Req/s | Avg | P95 | P99 | Grade |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| 100 | 10 | 100 | 100 | 0 | 10.72 | 933 | 1024 | 1119 | WARNING |
+| 1000 | 25 | 900 | 900 | 0 | 10.74 | 2325 | 2572 | 2760 | WARNING |
+| GET /admin/staff | 1 | 1 | 1 | 0 | 31.99 | 30 | 30 | 30 | PASS |
+| GET /admin/staff | 10 | 10 | 10 | 0 | 52.46 | 151 | 188 | 188 | PASS |
+| GET /admin/staff | 50 | 50 | 50 | 0 | 61.23 | 739 | 809 | 812 | PASS |
+| GET /admin/staff | 100 | 100 | 100 | 0 | 59.66 | 1486 | 1660 | 1665 | WARNING |<br><br>
+<h3>Stage 100 by role</h3><br><br>
+| Stage | Concurrency | Requests | Success | Errors | Req/s | Avg | P95 | P99 | Grade |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| staff | 10 | 50 | 50 | 0 | 0 | 934 | 1021 | 1049 |  |
+| accountant | 10 | 50 | 50 | 0 | 0 | 931 | 1106 | 1189 |  |<br><br>
+<h3>Stage 1000 by role</h3><br><br>
+| Stage | Concurrency | Requests | Success | Errors | Req/s | Avg | P95 | P99 | Grade |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| staff | 25 | 450 | 450 | 0 | 0 | 2326 | 2576 | 2801 |  |
+| accountant | 25 | 450 | 450 | 0 | 0 | 2323 | 2568 | 2719 |  |<br><br>
+<h2>Product API Results</h2><br><br>
+| Stage | Concurrency | Requests | Success | Errors | Req/s | Avg | P95 | P99 | Grade |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| 100 | 10 | 100 | 100 | 0 | 548.77 | 17 | 23 | 27 | PASS |
+| 1000 | 25 | 900 | 900 | 0 | 645.19 | 38 | 51 | 72 | PASS |
+| GET /products | 1 | 1 | 1 | 0 | 43.21 | 22 | 22 | 22 | PASS |
+| GET /products | 10 | 10 | 10 | 0 | 59.11 | 103 | 167 | 167 | PASS |
+| GET /products | 50 | 50 | 50 | 0 | 57.01 | 463 | 835 | 871 | PASS |
+| GET /products | 100 | 100 | 100 | 0 | 62.09 | 848 | 1528 | 1590 | WARNING |
+| GET /products/search?q=Loadtest | 1 | 1 | 1 | 0 | 127.17 | 8 | 8 | 8 | PASS |
+| GET /products/search?q=Loadtest | 10 | 10 | 10 | 0 | 359.57 | 22 | 27 | 27 | PASS |
+| GET /products/search?q=Loadtest | 50 | 50 | 50 | 0 | 413.69 | 90 | 117 | 118 | PASS |
+| GET /products/search?q=Loadtest | 100 | 100 | 100 | 0 | 455.18 | 157 | 210 | 213 | PASS |
+| GET /products/barcode/LOADTEST-STOCK-1863-000001 | 1 | 1 | 1 | 0 | 224.59 | 4 | 4 | 4 | PASS |
+| GET /products/barcode/LOADTEST-STOCK-1863-000001 | 10 | 10 | 10 | 0 | 614.53 | 14 | 16 | 16 | PASS |
+| GET /products/barcode/LOADTEST-STOCK-1863-000001 | 50 | 50 | 50 | 0 | 626.73 | 68 | 74 | 74 | PASS |
+| GET /products/barcode/LOADTEST-STOCK-1863-000001 | 100 | 100 | 100 | 0 | 758.48 | 113 | 125 | 125 | PASS |
+| GET /products | 1 | 1 | 1 | 0 | 37.12 | 25 | 25 | 25 | PASS |
+| GET /products | 10 | 10 | 10 | 0 | 61.12 | 94 | 161 | 161 | PASS |
+| GET /products | 50 | 50 | 50 | 0 | 54.6 | 486 | 865 | 912 | PASS |
+| GET /products | 100 | 100 | 100 | 0 | 54.33 | 980 | 1750 | 1815 | WARNING |
+| GET /products/search?q=Loadtest | 1 | 1 | 1 | 0 | 129.24 | 8 | 8 | 8 | PASS |
+| GET /products/search?q=Loadtest | 10 | 10 | 10 | 0 | 351.59 | 23 | 28 | 28 | PASS |
+| GET /products/search?q=Loadtest | 50 | 50 | 50 | 0 | 475.82 | 81 | 100 | 102 | PASS |
+| GET /products/search?q=Loadtest | 100 | 100 | 100 | 0 | 455.14 | 154 | 211 | 214 | PASS |
+| GET /products/barcode/LOADTEST-1863-000001 | 1 | 1 | 1 | 0 | 256.08 | 4 | 4 | 4 | PASS |
+| GET /products/barcode/LOADTEST-1863-000001 | 10 | 10 | 10 | 0 | 558.14 | 16 | 17 | 17 | PASS |
+| GET /products/barcode/LOADTEST-1863-000001 | 50 | 50 | 50 | 0 | 764.23 | 57 | 63 | 63 | PASS |
+| GET /products/barcode/LOADTEST-1863-000001 | 100 | 100 | 100 | 0 | 714.41 | 120 | 132 | 135 | PASS |<br><br>
+<h2>Stock API Results</h2><br><br>
+| Stage | Concurrency | Requests | Success | Errors | Req/s | Avg | P95 | P99 | Grade |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| POST /stock/add | 100 | 1000 | 1000 | 0 | 393.44 | 246 | 295 | 315 | PASS |
+| POST /sales/checkout | 10 | 10 | 10 | 0 | 76.34 | 96 | 131 | 131 | PASS |
+| POST /sales/checkout | 50 | 50 | 50 | 0 | 128.25 | 228 | 378 | 392 | PASS |
+| POST /sales/checkout | 100 | 100 | 100 | 0 | 138.3 | 418 | 696 | 719 | PASS |<br><br>
+<h2>Inventory Correctness</h2><br><br>
+| Test | Initial | Successful | Failed | Expected | Actual | Result |<br><br>
+| --- | ---: | ---: | ---: | ---: | ---: | --- |<br><br>
+| 100 products x 10 concurrent increments | per-product opening stock |  |  | opening stock + successful increments for that product | matched | PASS |<br><br>
+| 10 concurrent sale decrements | 1000 | 10 | 0 | 990 | 990 | PASS |<br><br>
+| 50 concurrent sale decrements | 1000 | 50 | 0 | 950 | 950 | PASS |<br><br>
+| 100 concurrent sale decrements | 1000 | 100 | 0 | 900 | 900 | PASS |<br><br>
+<h2>Large Dataset Performance</h2><br><br>
+| Stage | Concurrency | Requests | Success | Errors | Req/s | Avg | P95 | P99 | Grade |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| GET /business/my-businesses | 1 | 1 | 1 | 0 | 219.74 | 4 | 4 | 4 | PASS |
+| GET /business/my-businesses | 10 | 10 | 10 | 0 | 833.08 | 10 | 11 | 11 | PASS |
+| GET /business/my-businesses | 50 | 50 | 50 | 0 | 804.54 | 52 | 60 | 60 | PASS |
+| GET /business/my-businesses | 100 | 100 | 100 | 0 | 827.21 | 96 | 112 | 114 | PASS |
+| GET /dashboard | 1 | 1 | 1 | 0 | 36.72 | 26 | 26 | 26 | PASS |
+| GET /dashboard | 10 | 10 | 10 | 0 | 52.78 | 111 | 187 | 187 | PASS |
+| GET /dashboard | 50 | 50 | 50 | 0 | 47.77 | 560 | 1002 | 1042 | WARNING |
+| GET /dashboard | 100 | 100 | 100 | 0 | 46.53 | 1189 | 2060 | 2137 | WARNING |
+| GET /admin/staff | 1 | 1 | 1 | 0 | 37.67 | 25 | 25 | 25 | PASS |
+| GET /admin/staff | 10 | 10 | 10 | 0 | 71.88 | 109 | 137 | 137 | PASS |
+| GET /admin/staff | 50 | 50 | 50 | 0 | 64.77 | 713 | 765 | 769 | PASS |
+| GET /admin/staff | 100 | 100 | 100 | 0 | 58.48 | 1562 | 1684 | 1697 | WARNING |
+| GET /products | 1 | 1 | 1 | 0 | 37.12 | 25 | 25 | 25 | PASS |
+| GET /products | 10 | 10 | 10 | 0 | 61.12 | 94 | 161 | 161 | PASS |
+| GET /products | 50 | 50 | 50 | 0 | 54.6 | 486 | 865 | 912 | PASS |
+| GET /products | 100 | 100 | 100 | 0 | 54.33 | 980 | 1750 | 1815 | WARNING |
+| GET /products/search?q=Loadtest | 1 | 1 | 1 | 0 | 129.24 | 8 | 8 | 8 | PASS |
+| GET /products/search?q=Loadtest | 10 | 10 | 10 | 0 | 351.59 | 23 | 28 | 28 | PASS |
+| GET /products/search?q=Loadtest | 50 | 50 | 50 | 0 | 475.82 | 81 | 100 | 102 | PASS |
+| GET /products/search?q=Loadtest | 100 | 100 | 100 | 0 | 455.14 | 154 | 211 | 214 | PASS |
+| GET /sales | 1 | 1 | 1 | 0 | 186.72 | 5 | 5 | 5 | PASS |
+| GET /sales | 10 | 10 | 10 | 0 | 362.33 | 23 | 27 | 27 | PASS |
+| GET /sales | 50 | 50 | 50 | 0 | 438.36 | 96 | 111 | 112 | PASS |
+| GET /sales | 100 | 100 | 100 | 0 | 442.43 | 185 | 218 | 220 | PASS |
+| GET /products/barcode/LOADTEST-1863-000001 | 1 | 1 | 1 | 0 | 256.08 | 4 | 4 | 4 | PASS |
+| GET /products/barcode/LOADTEST-1863-000001 | 10 | 10 | 10 | 0 | 558.14 | 16 | 17 | 17 | PASS |
+| GET /products/barcode/LOADTEST-1863-000001 | 50 | 50 | 50 | 0 | 764.23 | 57 | 63 | 63 | PASS |
+| GET /products/barcode/LOADTEST-1863-000001 | 100 | 100 | 100 | 0 | 714.41 | 120 | 132 | 135 | PASS |
+| GET /business/10002 | 1 | 1 | 1 | 0 | 238.75 | 4 | 4 | 4 | PASS |
+| GET /business/10002 | 10 | 10 | 10 | 0 | 745.3 | 11 | 13 | 13 | PASS |
+| GET /business/10002 | 50 | 50 | 50 | 0 | 761.46 | 54 | 63 | 64 | PASS |
+| GET /business/10002 | 100 | 100 | 100 | 0 | 756.37 | 109 | 121 | 122 | PASS |<br><br>
+<ul><li>GET /products returns every product for the business in one response. The route has no page or limit parameter.</li>
+<li>GET /admin/staff returns every staff and accountant member and aggregates sales, products, and stock logs for those users. The route has no page parameter.</li>
+<li>GET /products/search stops at 50 rows.</li>
+<li>There is no separate stock-list route. Stock is a column on products. Stock changes go through POST /stock/add, POST /stock/receive-one, and sale checkout.</li>
+<li>GET /dashboard loads the business product list as part of the admin dashboard.</li>
+</ul>
+<h2>Mixed Workload</h2><br><br>
+| Stage | Concurrency | Requests | Success | Errors | Req/s | Avg | P95 | P99 | Grade |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| mixed | 10 | 1906 | 1906 | 0 | 63.36 | 149 | 471 | 557 | PASS |
+| mixed | 25 | 1799 | 1799 | 0 | 59.09 | 414 | 686 | 976 | PASS |
+| mixed | 50 | 1742 | 1742 | 0 | 56.74 | 862 | 1365 | 1509 | WARNING |
+| mixed | 100 | 1744 | 1744 | 0 | 55.98 | 1745 | 3021 | 3147 | FAIL |<br><br>
+<h2>Error Analysis</h2><br><br>
+| Class | Count | Example |<br><br>
+| --- | ---: | --- |<br><br>
+| server | 6 | Failed to setup business. |<br><br>
+<h2>Bottlenecks</h2><br><br>
+<ul><li>Observed: local bcrypt sample averaged 92 ms at 10 rounds. The last team-create stage averaged 1486 ms per request. Local bcrypt sample in the test process. It is not the server measurement. Compare it with endpoint latency.</li>
+<li>Observed: the API process recorded 1213 stress-sink credential emails with average 0 ms spent building the message. Real SMTP was not used for those calls.</li>
+<li>Observed: GET /admin/staff p95 was 1660 ms at concurrency 100, rows returned 1083. Possible cause: the handler loads the full collection for the business in one response. Suggested investigation: add pagination and review the staff aggregate queries.</li>
+<li>Observed: GET /products p95 was 1528 ms at concurrency 100, rows returned 1176. Possible cause: the handler loads the full collection for the business in one response. Suggested investigation: add pagination and review the staff aggregate queries.</li>
+<li>Observed: GET /admin/staff p95 was 1684 ms at concurrency 100, rows returned 1083. Possible cause: the handler loads the full collection for the business in one response. Suggested investigation: add pagination and review the staff aggregate queries.</li>
+<li>Observed: GET /products p95 was 1750 ms at concurrency 100, rows returned 1279. Possible cause: the handler loads the full collection for the business in one response. Suggested investigation: add pagination and review the staff aggregate queries.</li>
+</ul>
+<h2>Stop Conditions</h2><br><br>
+<ul><li>2026-09-24T11:35:50.113Z business-create stage 1000 concurrency 50 error 1.20% p95 6369 ms. p95 6369ms exceeded 5000ms</li>
+</ul>
+<h2>Thresholds</h2><br><br>
+<ul><li>PASS: error rate under 1% and p95 under 1 second, with no integrity failure.</li>
+</ul>
+<ul><li>WARNING: error rate from 1% to 5%, or p95 from 1 to 3 seconds.</li>
+</ul>
+<ul><li>FAIL: error rate above 5%, p95 above 3 seconds, or a data-integrity failure.</li>
+</ul>
+<h2>Recommendations</h2><br><br>
+These are follow-ups from the measurements above. They were not applied.<br><br>
+<ul><li>Observed: local bcrypt sample averaged 92 ms at 10 rounds. The last team-create stage averaged 1486 ms per request. Local bcrypt sample in the test process. It is not the server measurement. Compare it with endpoint latency.</li>
+<li>Observed: the API process recorded 1213 stress-sink credential emails with average 0 ms spent building the message. Real SMTP was not used for those calls.</li>
+<li>Observed: GET /admin/staff p95 was 1660 ms at concurrency 100, rows returned 1083. Possible cause: the handler loads the full collection for the business in one response. Suggested investigation: add pagination and review the staff aggregate queries.</li>
+<li>Observed: GET /products p95 was 1528 ms at concurrency 100, rows returned 1176. Possible cause: the handler loads the full collection for the business in one response. Suggested investigation: add pagination and review the staff aggregate queries.</li>
+<li>Observed: GET /admin/staff p95 was 1684 ms at concurrency 100, rows returned 1083. Possible cause: the handler loads the full collection for the business in one response. Suggested investigation: add pagination and review the staff aggregate queries.</li>
+<li>Observed: GET /products p95 was 1750 ms at concurrency 100, rows returned 1279. Possible cause: the handler loads the full collection for the business in one response. Suggested investigation: add pagination and review the staff aggregate queries.</li>
+</ul><h2>Stage tables</h2><h3>business</h3><table><tr><th>Stage</th><th>Concurrency</th><th>Requests</th><th>Success</th><th>Errors</th><th>Req/s</th><th>Avg</th><th>P95</th><th>P99</th><th>Grade</th></tr><tr><td>100</td><td>10</td><td>100</td><td>100</td><td>0</td><td>10</td><td>998</td><td>1249</td><td>1704</td><td>WARNING</td></tr><tr><td>500</td><td>25</td><td>400</td><td>400</td><td>0</td><td>10.54</td><td>2371</td><td>2948</td><td>4057</td><td>WARNING</td></tr><tr><td>1000</td><td>50</td><td>500</td><td>494</td><td>6</td><td>10.67</td><td>4682</td><td>6369</td><td>8347</td><td>FAIL</td></tr></table><h3>team</h3><table><tr><th>Stage</th><th>Concurrency</th><th>Requests</th><th>Success</th><th>Errors</th><th>Req/s</th><th>Avg</th><th>P95</th><th>P99</th><th>Grade</th></tr><tr><td>100</td><td>10</td><td>100</td><td>100</td><td>0</td><td>10.72</td><td>933</td><td>1024</td><td>1119</td><td>WARNING</td></tr><tr><td>1000</td><td>25</td><td>900</td><td>900</td><td>0</td><td>10.74</td><td>2325</td><td>2572</td><td>2760</td><td>WARNING</td></tr><tr><td>GET /admin/staff</td><td>1</td><td>1</td><td>1</td><td>0</td><td>31.99</td><td>30</td><td>30</td><td>30</td><td>PASS</td></tr><tr><td>GET /admin/staff</td><td>10</td><td>10</td><td>10</td><td>0</td><td>52.46</td><td>151</td><td>188</td><td>188</td><td>PASS</td></tr><tr><td>GET /admin/staff</td><td>50</td><td>50</td><td>50</td><td>0</td><td>61.23</td><td>739</td><td>809</td><td>812</td><td>PASS</td></tr><tr><td>GET /admin/staff</td><td>100</td><td>100</td><td>100</td><td>0</td><td>59.66</td><td>1486</td><td>1660</td><td>1665</td><td>WARNING</td></tr></table><h3>products</h3><table><tr><th>Stage</th><th>Concurrency</th><th>Requests</th><th>Success</th><th>Errors</th><th>Req/s</th><th>Avg</th><th>P95</th><th>P99</th><th>Grade</th></tr><tr><td>100</td><td>10</td><td>100</td><td>100</td><td>0</td><td>548.77</td><td>17</td><td>23</td><td>27</td><td>PASS</td></tr><tr><td>1000</td><td>25</td><td>900</td><td>900</td><td>0</td><td>645.19</td><td>38</td><td>51</td><td>72</td><td>PASS</td></tr><tr><td>GET /products</td><td>1</td><td>1</td><td>1</td><td>0</td><td>43.21</td><td>22</td><td>22</td><td>22</td><td>PASS</td></tr><tr><td>GET /products</td><td>10</td><td>10</td><td>10</td><td>0</td><td>59.11</td><td>103</td><td>167</td><td>167</td><td>PASS</td></tr><tr><td>GET /products</td><td>50</td><td>50</td><td>50</td><td>0</td><td>57.01</td><td>463</td><td>835</td><td>871</td><td>PASS</td></tr><tr><td>GET /products</td><td>100</td><td>100</td><td>100</td><td>0</td><td>62.09</td><td>848</td><td>1528</td><td>1590</td><td>WARNING</td></tr><tr><td>GET /products/search?q=Loadtest</td><td>1</td><td>1</td><td>1</td><td>0</td><td>127.17</td><td>8</td><td>8</td><td>8</td><td>PASS</td></tr><tr><td>GET /products/search?q=Loadtest</td><td>10</td><td>10</td><td>10</td><td>0</td><td>359.57</td><td>22</td><td>27</td><td>27</td><td>PASS</td></tr><tr><td>GET /products/search?q=Loadtest</td><td>50</td><td>50</td><td>50</td><td>0</td><td>413.69</td><td>90</td><td>117</td><td>118</td><td>PASS</td></tr><tr><td>GET /products/search?q=Loadtest</td><td>100</td><td>100</td><td>100</td><td>0</td><td>455.18</td><td>157</td><td>210</td><td>213</td><td>PASS</td></tr><tr><td>GET /products/barcode/LOADTEST-STOCK-1863-000001</td><td>1</td><td>1</td><td>1</td><td>0</td><td>224.59</td><td>4</td><td>4</td><td>4</td><td>PASS</td></tr><tr><td>GET /products/barcode/LOADTEST-STOCK-1863-000001</td><td>10</td><td>10</td><td>10</td><td>0</td><td>614.53</td><td>14</td><td>16</td><td>16</td><td>PASS</td></tr><tr><td>GET /products/barcode/LOADTEST-STOCK-1863-000001</td><td>50</td><td>50</td><td>50</td><td>0</td><td>626.73</td><td>68</td><td>74</td><td>74</td><td>PASS</td></tr><tr><td>GET /products/barcode/LOADTEST-STOCK-1863-000001</td><td>100</td><td>100</td><td>100</td><td>0</td><td>758.48</td><td>113</td><td>125</td><td>125</td><td>PASS</td></tr></table><h3>stock</h3><table><tr><th>Stage</th><th>Concurrency</th><th>Requests</th><th>Success</th><th>Errors</th><th>Req/s</th><th>Avg</th><th>P95</th><th>P99</th><th>Grade</th></tr><tr><td>POST /stock/add</td><td>100</td><td>1000</td><td>1000</td><td>0</td><td>393.44</td><td>246</td><td>295</td><td>315</td><td>PASS</td></tr><tr><td>POST /sales/checkout</td><td>10</td><td>10</td><td>10</td><td>0</td><td>76.34</td><td>96</td><td>131</td><td>131</td><td>PASS</td></tr><tr><td>POST /sales/checkout</td><td>50</td><td>50</td><td>50</td><td>0</td><td>128.25</td><td>228</td><td>378</td><td>392</td><td>PASS</td></tr><tr><td>POST /sales/checkout</td><td>100</td><td>100</td><td>100</td><td>0</td><td>138.3</td><td>418</td><td>696</td><td>719</td><td>PASS</td></tr></table><h3>reads</h3><table><tr><th>Stage</th><th>Concurrency</th><th>Requests</th><th>Success</th><th>Errors</th><th>Req/s</th><th>Avg</th><th>P95</th><th>P99</th><th>Grade</th></tr><tr><td>GET /business/my-businesses</td><td>1</td><td>1</td><td>1</td><td>0</td><td>219.74</td><td>4</td><td>4</td><td>4</td><td>PASS</td></tr><tr><td>GET /business/my-businesses</td><td>10</td><td>10</td><td>10</td><td>0</td><td>833.08</td><td>10</td><td>11</td><td>11</td><td>PASS</td></tr><tr><td>GET /business/my-businesses</td><td>50</td><td>50</td><td>50</td><td>0</td><td>804.54</td><td>52</td><td>60</td><td>60</td><td>PASS</td></tr><tr><td>GET /business/my-businesses</td><td>100</td><td>100</td><td>100</td><td>0</td><td>827.21</td><td>96</td><td>112</td><td>114</td><td>PASS</td></tr><tr><td>GET /dashboard</td><td>1</td><td>1</td><td>1</td><td>0</td><td>36.72</td><td>26</td><td>26</td><td>26</td><td>PASS</td></tr><tr><td>GET /dashboard</td><td>10</td><td>10</td><td>10</td><td>0</td><td>52.78</td><td>111</td><td>187</td><td>187</td><td>PASS</td></tr><tr><td>GET /dashboard</td><td>50</td><td>50</td><td>50</td><td>0</td><td>47.77</td><td>560</td><td>1002</td><td>1042</td><td>WARNING</td></tr><tr><td>GET /dashboard</td><td>100</td><td>100</td><td>100</td><td>0</td><td>46.53</td><td>1189</td><td>2060</td><td>2137</td><td>WARNING</td></tr><tr><td>GET /admin/staff</td><td>1</td><td>1</td><td>1</td><td>0</td><td>37.67</td><td>25</td><td>25</td><td>25</td><td>PASS</td></tr><tr><td>GET /admin/staff</td><td>10</td><td>10</td><td>10</td><td>0</td><td>71.88</td><td>109</td><td>137</td><td>137</td><td>PASS</td></tr><tr><td>GET /admin/staff</td><td>50</td><td>50</td><td>50</td><td>0</td><td>64.77</td><td>713</td><td>765</td><td>769</td><td>PASS</td></tr><tr><td>GET /admin/staff</td><td>100</td><td>100</td><td>100</td><td>0</td><td>58.48</td><td>1562</td><td>1684</td><td>1697</td><td>WARNING</td></tr><tr><td>GET /products</td><td>1</td><td>1</td><td>1</td><td>0</td><td>37.12</td><td>25</td><td>25</td><td>25</td><td>PASS</td></tr><tr><td>GET /products</td><td>10</td><td>10</td><td>10</td><td>0</td><td>61.12</td><td>94</td><td>161</td><td>161</td><td>PASS</td></tr><tr><td>GET /products</td><td>50</td><td>50</td><td>50</td><td>0</td><td>54.6</td><td>486</td><td>865</td><td>912</td><td>PASS</td></tr><tr><td>GET /products</td><td>100</td><td>100</td><td>100</td><td>0</td><td>54.33</td><td>980</td><td>1750</td><td>1815</td><td>WARNING</td></tr><tr><td>GET /products/search?q=Loadtest</td><td>1</td><td>1</td><td>1</td><td>0</td><td>129.24</td><td>8</td><td>8</td><td>8</td><td>PASS</td></tr><tr><td>GET /products/search?q=Loadtest</td><td>10</td><td>10</td><td>10</td><td>0</td><td>351.59</td><td>23</td><td>28</td><td>28</td><td>PASS</td></tr><tr><td>GET /products/search?q=Loadtest</td><td>50</td><td>50</td><td>50</td><td>0</td><td>475.82</td><td>81</td><td>100</td><td>102</td><td>PASS</td></tr><tr><td>GET /products/search?q=Loadtest</td><td>100</td><td>100</td><td>100</td><td>0</td><td>455.14</td><td>154</td><td>211</td><td>214</td><td>PASS</td></tr><tr><td>GET /sales</td><td>1</td><td>1</td><td>1</td><td>0</td><td>186.72</td><td>5</td><td>5</td><td>5</td><td>PASS</td></tr><tr><td>GET /sales</td><td>10</td><td>10</td><td>10</td><td>0</td><td>362.33</td><td>23</td><td>27</td><td>27</td><td>PASS</td></tr><tr><td>GET /sales</td><td>50</td><td>50</td><td>50</td><td>0</td><td>438.36</td><td>96</td><td>111</td><td>112</td><td>PASS</td></tr><tr><td>GET /sales</td><td>100</td><td>100</td><td>100</td><td>0</td><td>442.43</td><td>185</td><td>218</td><td>220</td><td>PASS</td></tr><tr><td>GET /products/barcode/LOADTEST-1863-000001</td><td>1</td><td>1</td><td>1</td><td>0</td><td>256.08</td><td>4</td><td>4</td><td>4</td><td>PASS</td></tr><tr><td>GET /products/barcode/LOADTEST-1863-000001</td><td>10</td><td>10</td><td>10</td><td>0</td><td>558.14</td><td>16</td><td>17</td><td>17</td><td>PASS</td></tr><tr><td>GET /products/barcode/LOADTEST-1863-000001</td><td>50</td><td>50</td><td>50</td><td>0</td><td>764.23</td><td>57</td><td>63</td><td>63</td><td>PASS</td></tr><tr><td>GET /products/barcode/LOADTEST-1863-000001</td><td>100</td><td>100</td><td>100</td><td>0</td><td>714.41</td><td>120</td><td>132</td><td>135</td><td>PASS</td></tr><tr><td>GET /business/10002</td><td>1</td><td>1</td><td>1</td><td>0</td><td>238.75</td><td>4</td><td>4</td><td>4</td><td>PASS</td></tr><tr><td>GET /business/10002</td><td>10</td><td>10</td><td>10</td><td>0</td><td>745.3</td><td>11</td><td>13</td><td>13</td><td>PASS</td></tr><tr><td>GET /business/10002</td><td>50</td><td>50</td><td>50</td><td>0</td><td>761.46</td><td>54</td><td>63</td><td>64</td><td>PASS</td></tr><tr><td>GET /business/10002</td><td>100</td><td>100</td><td>100</td><td>0</td><td>756.37</td><td>109</td><td>121</td><td>122</td><td>PASS</td></tr></table><h3>mixed</h3><table><tr><th>Stage</th><th>Concurrency</th><th>Requests</th><th>Success</th><th>Errors</th><th>Req/s</th><th>Avg</th><th>P95</th><th>P99</th><th>Grade</th></tr><tr><td>mixed</td><td>10</td><td>1906</td><td>1906</td><td>0</td><td>63.36</td><td>149</td><td>471</td><td>557</td><td>PASS</td></tr><tr><td>mixed</td><td>25</td><td>1799</td><td>1799</td><td>0</td><td>59.09</td><td>414</td><td>686</td><td>976</td><td>PASS</td></tr><tr><td>mixed</td><td>50</td><td>1742</td><td>1742</td><td>0</td><td>56.74</td><td>862</td><td>1365</td><td>1509</td><td>WARNING</td></tr><tr><td>mixed</td><td>100</td><td>1744</td><td>1744</td><td>0</td><td>55.98</td><td>1745</td><td>3021</td><td>3147</td><td>FAIL</td></tr></table></body></html>

@@ -1,0 +1,151 @@
+[
+  {
+    "test": "business-create",
+    "stage": "10",
+    "errorGroups": {}
+  },
+  {
+    "test": "team-create",
+    "stage": "20",
+    "errorGroups": {}
+  },
+  {
+    "test": "team-list",
+    "stage": "GET /admin/staff",
+    "errorGroups": {}
+  },
+  {
+    "test": "team-list",
+    "stage": "GET /admin/staff",
+    "errorGroups": {}
+  },
+  {
+    "test": "product-create",
+    "stage": "50",
+    "errorGroups": {}
+  },
+  {
+    "test": "product-list",
+    "stage": "GET /products",
+    "errorGroups": {}
+  },
+  {
+    "test": "product-list",
+    "stage": "GET /products",
+    "errorGroups": {}
+  },
+  {
+    "test": "product-search",
+    "stage": "GET /products/search?q=Loadtest",
+    "errorGroups": {}
+  },
+  {
+    "test": "product-search",
+    "stage": "GET /products/search?q=Loadtest",
+    "errorGroups": {}
+  },
+  {
+    "test": "product-barcode",
+    "stage": "GET /products/barcode/LOADTEST-1863-000001",
+    "errorGroups": {}
+  },
+  {
+    "test": "product-barcode",
+    "stage": "GET /products/barcode/LOADTEST-1863-000001",
+    "errorGroups": {}
+  },
+  {
+    "test": "stock-increment",
+    "stage": "POST /stock/add",
+    "errorGroups": {}
+  },
+  {
+    "test": "stock-contention-decrement",
+    "stage": "POST /sales/checkout",
+    "errorGroups": {}
+  },
+  {
+    "test": "business-list",
+    "stage": "GET /business/my-businesses",
+    "errorGroups": {}
+  },
+  {
+    "test": "business-list",
+    "stage": "GET /business/my-businesses",
+    "errorGroups": {}
+  },
+  {
+    "test": "dashboard",
+    "stage": "GET /dashboard",
+    "errorGroups": {}
+  },
+  {
+    "test": "dashboard",
+    "stage": "GET /dashboard",
+    "errorGroups": {}
+  },
+  {
+    "test": "team-list",
+    "stage": "GET /admin/staff",
+    "errorGroups": {}
+  },
+  {
+    "test": "team-list",
+    "stage": "GET /admin/staff",
+    "errorGroups": {}
+  },
+  {
+    "test": "product-list",
+    "stage": "GET /products",
+    "errorGroups": {}
+  },
+  {
+    "test": "product-list",
+    "stage": "GET /products",
+    "errorGroups": {}
+  },
+  {
+    "test": "product-search",
+    "stage": "GET /products/search?q=Loadtest",
+    "errorGroups": {}
+  },
+  {
+    "test": "product-search",
+    "stage": "GET /products/search?q=Loadtest",
+    "errorGroups": {}
+  },
+  {
+    "test": "sales-list",
+    "stage": "GET /sales",
+    "errorGroups": {}
+  },
+  {
+    "test": "sales-list",
+    "stage": "GET /sales",
+    "errorGroups": {}
+  },
+  {
+    "test": "product-barcode",
+    "stage": "GET /products/barcode/LOADTEST-1863-000001",
+    "errorGroups": {}
+  },
+  {
+    "test": "product-barcode",
+    "stage": "GET /products/barcode/LOADTEST-1863-000001",
+    "errorGroups": {}
+  },
+  {
+    "test": "business-detail",
+    "stage": "GET /business/10002",
+    "errorGroups": {}
+  },
+  {
+    "test": "business-detail",
+    "stage": "GET /business/10002",
+    "errorGroups": {}
+  },
+  {
+    "test": "mixed",
+    "errorGroups": {}
+  }
+]

@@ -1,0 +1,19 @@
+{
+  "id": "stress-20260924T100252Z",
+  "startedAt": "2026-09-24T10:02:52.873Z",
+  "profile": "smoke",
+  "baseUrl": "http://127.0.0.1:4000",
+  "suites": {},
+  "integrity": [],
+  "stops": [],
+  "scenarioNotes": [
+    "API suites create records through HTTP and stop ramping when error rate or p95 crosses the configured limit.",
+    "Database volume seeds are separate commands and are not launched by stress:all."
+  ],
+  "fatal": "Probe sign-up failed: 404 Route not found: POST /auth/sign-up",
+  "finishedAt": "2026-09-24T10:02:52.943Z",
+  "mail": {
+    "count": 0,
+    "averageMs": 0
+  }
+}

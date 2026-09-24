@@ -1,0 +1,563 @@
+{
+  "id": "gap-20260924T135037Z-list-growth",
+  "title": "Unbounded list endpoint growth",
+  "purpose": "Prove whether full-collection list endpoints remain usable on the large tenant under concurrent reads, and capture response sizes.",
+  "whatWasTested": "Concurrent reads of products, staff, my-businesses, dashboard, and paginated sales against the large stress tenant.",
+  "explain": "Endpoints without pagination return more bytes as the tenant grows. This suite makes that risk visible with latency and byte measurements your lead can compare.",
+  "bottomLineExtra": "Sales listing is paginated; products and staff lists currently are not.",
+  "suite": {
+    "kind": "gap-list-growth",
+    "scenario": "Unbounded list endpoint growth under concurrent read load on the large tenant",
+    "stages": [
+      {
+        "requests": 1,
+        "successful": 1,
+        "failed": 0,
+        "errorRate": 0,
+        "requestsPerSecond": 6.8,
+        "bytes": 3595001,
+        "timeoutCount": 0,
+        "latency": {
+          "minMs": 134.56819600000017,
+          "averageMs": 135,
+          "medianMs": 135,
+          "p90Ms": 135,
+          "p95Ms": 135,
+          "p99Ms": 135,
+          "maxMs": 134.56819600000017
+        },
+        "statusCodes": {
+          "200": 1
+        },
+        "errorGroups": {},
+        "test": "GET /products",
+        "concurrency": 1,
+        "elapsedMs": 147.0516620000053,
+        "rowsReturned": 10000,
+        "responseBytes": 3595001,
+        "grade": "PASS"
+      },
+      {
+        "requests": 10,
+        "successful": 10,
+        "failed": 0,
+        "errorRate": 0,
+        "requestsPerSecond": 7.95,
+        "bytes": 35950010,
+        "timeoutCount": 0,
+        "latency": {
+          "minMs": 1031.177776000004,
+          "averageMs": 1131,
+          "medianMs": 1106,
+          "p90Ms": 1220,
+          "p95Ms": 1246,
+          "p99Ms": 1246,
+          "maxMs": 1246.2167350000018
+        },
+        "statusCodes": {
+          "200": 10
+        },
+        "errorGroups": {},
+        "test": "GET /products",
+        "concurrency": 10,
+        "elapsedMs": 1257.4074580000015,
+        "rowsReturned": 10000,
+        "responseBytes": 3595001,
+        "grade": "WARNING"
+      },
+      {
+        "requests": 50,
+        "successful": 50,
+        "failed": 0,
+        "errorRate": 0,
+        "requestsPerSecond": 8.41,
+        "bytes": 179750050,
+        "timeoutCount": 0,
+        "latency": {
+          "minMs": 348.63214800000424,
+          "averageMs": 3605,
+          "medianMs": 3541,
+          "p90Ms": 5554,
+          "p95Ms": 5649,
+          "p99Ms": 5920,
+          "maxMs": 5920.471805000001
+        },
+        "statusCodes": {
+          "200": 50
+        },
+        "errorGroups": {},
+        "test": "GET /products",
+        "concurrency": 50,
+        "elapsedMs": 5946.087381999998,
+        "rowsReturned": 10000,
+        "responseBytes": 3595001,
+        "grade": "FAIL"
+      },
+      {
+        "requests": 1,
+        "successful": 1,
+        "failed": 0,
+        "errorRate": 0,
+        "requestsPerSecond": 5.6,
+        "bytes": 2015011,
+        "timeoutCount": 0,
+        "latency": {
+          "minMs": 167.89251199999853,
+          "averageMs": 168,
+          "medianMs": 168,
+          "p90Ms": 168,
+          "p95Ms": 168,
+          "p99Ms": 168,
+          "maxMs": 167.89251199999853
+        },
+        "statusCodes": {
+          "200": 1
+        },
+        "errorGroups": {},
+        "test": "GET /admin/staff",
+        "concurrency": 1,
+        "elapsedMs": 178.42370200000005,
+        "rowsReturned": 10000,
+        "responseBytes": 2015011,
+        "grade": "PASS"
+      },
+      {
+        "requests": 10,
+        "successful": 10,
+        "failed": 0,
+        "errorRate": 0,
+        "requestsPerSecond": 7.67,
+        "bytes": 20150110,
+        "timeoutCount": 0,
+        "latency": {
+          "minMs": 830.0501940000031,
+          "averageMs": 1093,
+          "medianMs": 1055,
+          "p90Ms": 1268,
+          "p95Ms": 1294,
+          "p99Ms": 1294,
+          "maxMs": 1293.868914999999
+        },
+        "statusCodes": {
+          "200": 10
+        },
+        "errorGroups": {},
+        "test": "GET /admin/staff",
+        "concurrency": 10,
+        "elapsedMs": 1304.6142369999943,
+        "rowsReturned": 10000,
+        "responseBytes": 2015011,
+        "grade": "WARNING"
+      },
+      {
+        "requests": 50,
+        "successful": 50,
+        "failed": 0,
+        "errorRate": 0,
+        "requestsPerSecond": 7.72,
+        "bytes": 100750550,
+        "timeoutCount": 0,
+        "latency": {
+          "minMs": 3556.9424690000014,
+          "averageMs": 4784,
+          "medianMs": 4200,
+          "p90Ms": 6380,
+          "p95Ms": 6423,
+          "p99Ms": 6461,
+          "maxMs": 6460.917438999997
+        },
+        "statusCodes": {
+          "200": 50
+        },
+        "errorGroups": {},
+        "test": "GET /admin/staff",
+        "concurrency": 50,
+        "elapsedMs": 6475.145423000002,
+        "rowsReturned": 10000,
+        "responseBytes": 2015011,
+        "grade": "FAIL"
+      },
+      {
+        "requests": 1,
+        "successful": 1,
+        "failed": 0,
+        "errorRate": 0,
+        "requestsPerSecond": 2.74,
+        "bytes": 9180956,
+        "timeoutCount": 0,
+        "latency": {
+          "minMs": 335.52363299999706,
+          "averageMs": 336,
+          "medianMs": 336,
+          "p90Ms": 336,
+          "p95Ms": 336,
+          "p99Ms": 336,
+          "maxMs": 335.52363299999706
+        },
+        "statusCodes": {
+          "200": 1
+        },
+        "errorGroups": {},
+        "test": "GET /business/my-businesses",
+        "concurrency": 1,
+        "elapsedMs": 364.8972489999942,
+        "rowsReturned": null,
+        "responseBytes": 9180956,
+        "grade": "PASS"
+      },
+      {
+        "requests": 10,
+        "successful": 10,
+        "failed": 0,
+        "errorRate": 0,
+        "requestsPerSecond": 3.05,
+        "bytes": 91809560,
+        "timeoutCount": 0,
+        "latency": {
+          "minMs": 2876.684119999998,
+          "averageMs": 3063,
+          "medianMs": 3045,
+          "p90Ms": 3205,
+          "p95Ms": 3242,
+          "p99Ms": 3242,
+          "maxMs": 3241.7026160000023
+        },
+        "statusCodes": {
+          "200": 10
+        },
+        "errorGroups": {},
+        "test": "GET /business/my-businesses",
+        "concurrency": 10,
+        "elapsedMs": 3277.8278710000013,
+        "rowsReturned": null,
+        "responseBytes": 9180956,
+        "grade": "FAIL"
+      },
+      {
+        "requests": 50,
+        "successful": 12,
+        "failed": 38,
+        "errorRate": 0.76,
+        "requestsPerSecond": 4.99,
+        "bytes": 110171472,
+        "timeoutCount": 38,
+        "latency": {
+          "minMs": 3607.8747569999978,
+          "averageMs": 9171,
+          "medianMs": 10003,
+          "p90Ms": 10008,
+          "p95Ms": 10008,
+          "p99Ms": 10008,
+          "maxMs": 10008.485257
+        },
+        "statusCodes": {
+          "200": 12,
+          "error": 38
+        },
+        "errorGroups": {
+          "timeout": {
+            "count": 38,
+            "example": "The operation was aborted due to timeout"
+          }
+        },
+        "test": "GET /business/my-businesses",
+        "concurrency": 50,
+        "elapsedMs": 10012.174186000004,
+        "rowsReturned": null,
+        "responseBytes": 9180956,
+        "grade": "FAIL"
+      },
+      {
+        "requests": 1,
+        "successful": 1,
+        "failed": 0,
+        "errorRate": 0,
+        "requestsPerSecond": 0.25,
+        "bytes": 3691518,
+        "timeoutCount": 0,
+        "latency": {
+          "minMs": 3941.0100110000058,
+          "averageMs": 3941,
+          "medianMs": 3941,
+          "p90Ms": 3941,
+          "p95Ms": 3941,
+          "p99Ms": 3941,
+          "maxMs": 3941.0100110000058
+        },
+        "statusCodes": {
+          "200": 1
+        },
+        "errorGroups": {},
+        "test": "GET /dashboard",
+        "concurrency": 1,
+        "elapsedMs": 3952.177300000003,
+        "rowsReturned": 10000,
+        "responseBytes": 3691518,
+        "grade": "FAIL"
+      },
+      {
+        "requests": 10,
+        "successful": 10,
+        "failed": 0,
+        "errorRate": 0,
+        "requestsPerSecond": 7.42,
+        "bytes": 36915180,
+        "timeoutCount": 0,
+        "latency": {
+          "minMs": 426.3040489999985,
+          "averageMs": 915,
+          "medianMs": 804,
+          "p90Ms": 1318,
+          "p95Ms": 1334,
+          "p99Ms": 1334,
+          "maxMs": 1334.0019500000053
+        },
+        "statusCodes": {
+          "200": 10
+        },
+        "errorGroups": {},
+        "test": "GET /dashboard",
+        "concurrency": 10,
+        "elapsedMs": 1347.8787900000025,
+        "rowsReturned": 10000,
+        "responseBytes": 3691518,
+        "grade": "WARNING"
+      },
+      {
+        "requests": 50,
+        "successful": 50,
+        "failed": 0,
+        "errorRate": 0,
+        "requestsPerSecond": 7.43,
+        "bytes": 184575900,
+        "timeoutCount": 0,
+        "latency": {
+          "minMs": 479.8910590000014,
+          "averageMs": 3681,
+          "medianMs": 3701,
+          "p90Ms": 6454,
+          "p95Ms": 6674,
+          "p99Ms": 6710,
+          "maxMs": 6710.087757000001
+        },
+        "statusCodes": {
+          "200": 50
+        },
+        "errorGroups": {},
+        "test": "GET /dashboard",
+        "concurrency": 50,
+        "elapsedMs": 6725.51026000001,
+        "rowsReturned": 10000,
+        "responseBytes": 3691518,
+        "grade": "FAIL"
+      },
+      {
+        "requests": 1,
+        "successful": 1,
+        "failed": 0,
+        "errorRate": 0,
+        "requestsPerSecond": 136.47,
+        "bytes": 11219,
+        "timeoutCount": 0,
+        "latency": {
+          "minMs": 7.187289999987115,
+          "averageMs": 7,
+          "medianMs": 7,
+          "p90Ms": 7,
+          "p95Ms": 7,
+          "p99Ms": 7,
+          "maxMs": 7.187289999987115
+        },
+        "statusCodes": {
+          "200": 1
+        },
+        "errorGroups": {},
+        "test": "GET /sales?page=1&limit=25",
+        "concurrency": 1,
+        "elapsedMs": 7.327543999999762,
+        "rowsReturned": 25,
+        "responseBytes": 11219,
+        "grade": "PASS"
+      },
+      {
+        "requests": 10,
+        "successful": 10,
+        "failed": 0,
+        "errorRate": 0,
+        "requestsPerSecond": 340.49,
+        "bytes": 112190,
+        "timeoutCount": 0,
+        "latency": {
+          "minMs": 19.38178300000436,
+          "averageMs": 25,
+          "medianMs": 27,
+          "p90Ms": 28,
+          "p95Ms": 28,
+          "p99Ms": 28,
+          "maxMs": 28.32019100000616
+        },
+        "statusCodes": {
+          "200": 10
+        },
+        "errorGroups": {},
+        "test": "GET /sales?page=1&limit=25",
+        "concurrency": 10,
+        "elapsedMs": 29.369677000009688,
+        "rowsReturned": 25,
+        "responseBytes": 11219,
+        "grade": "PASS"
+      },
+      {
+        "requests": 50,
+        "successful": 50,
+        "failed": 0,
+        "errorRate": 0,
+        "requestsPerSecond": 322.07,
+        "bytes": 560950,
+        "timeoutCount": 0,
+        "latency": {
+          "minMs": 82.68384299999161,
+          "averageMs": 118,
+          "medianMs": 117,
+          "p90Ms": 150,
+          "p95Ms": 153,
+          "p99Ms": 154,
+          "maxMs": 153.5105889999977
+        },
+        "statusCodes": {
+          "200": 50
+        },
+        "errorGroups": {},
+        "test": "GET /sales?page=1&limit=25",
+        "concurrency": 50,
+        "elapsedMs": 155.24750199999835,
+        "rowsReturned": 25,
+        "responseBytes": 11219,
+        "grade": "PASS"
+      }
+    ],
+    "stops": [],
+    "notes": [
+      "GET /products and GET /admin/staff return full collections with no page parameter.",
+      "GET /sales is paginated (page/limit).",
+      "Response byte sizes in the stage detail show payload growth risk."
+    ]
+  },
+  "dir": "/var/www/Almadel_Backend/stress/results/gap-20260924T135037Z/list-growth",
+  "meta": {
+    "id": "gap-20260924T135037Z",
+    "startedAt": "2026-09-24T13:50:37.908Z",
+    "profile": "standard",
+    "connectedDatabase": "almadel_stress",
+    "git": "4bbff74",
+    "app": {
+      "host": "ubuntu-8gb-hel1-1",
+      "platform": "linux 7.0.0-27-generic",
+      "cpuCount": 4,
+      "loadAvg": [
+        1.58,
+        0.75,
+        0.45
+      ],
+      "totalMemoryMb": 7746,
+      "freeMemoryMb": 3767,
+      "node": "v22.23.1",
+      "pm2": [
+        {
+          "name": "almadel-api",
+          "status": "online",
+          "restarts": 362245,
+          "cpu": 0.1,
+          "memoryMb": 72
+        },
+        {
+          "name": "almadel-backend",
+          "status": "online",
+          "restarts": 11,
+          "cpu": 0.1,
+          "memoryMb": 167
+        }
+      ]
+    },
+    "database": {
+      "version": "PostgreSQL 18.6 (Ubuntu 18.6-0ubuntu0.26.04.1) on x86_64-pc-linux-gnu",
+      "activity": {
+        "active": 2,
+        "idle": 3,
+        "waiting": 3,
+        "total": 5
+      },
+      "database": {
+        "commits": 74105,
+        "rollbacks": 11,
+        "deadlocks": 0,
+        "blocks_hit": 16202057,
+        "blocks_read": 45,
+        "backends": 5,
+        "cacheHitRatio": 1
+      },
+      "largestTables": [
+        {
+          "table_name": "products",
+          "total_bytes": 4833280,
+          "estimated_rows": 1000
+        },
+        {
+          "table_name": "User",
+          "total_bytes": 3465216,
+          "estimated_rows": 1002
+        },
+        {
+          "table_name": "business_members",
+          "total_bytes": 2867200,
+          "estimated_rows": 2001
+        },
+        {
+          "table_name": "businesses",
+          "total_bytes": 2441216,
+          "estimated_rows": 2001
+        },
+        {
+          "table_name": "stock_logs",
+          "total_bytes": 1802240,
+          "estimated_rows": 1000
+        },
+        {
+          "table_name": "activity_logs",
+          "total_bytes": 368640,
+          "estimated_rows": 0
+        },
+        {
+          "table_name": "ledger_transactions",
+          "total_bytes": 73728,
+          "estimated_rows": 0
+        },
+        {
+          "table_name": "sales",
+          "total_bytes": 73728,
+          "estimated_rows": 0
+        },
+        {
+          "table_name": "accounts",
+          "total_bytes": 65536,
+          "estimated_rows": -1
+        },
+        {
+          "table_name": "payments",
+          "total_bytes": 57344,
+          "estimated_rows": 0
+        },
+        {
+          "table_name": "sale_items",
+          "total_bytes": 40960,
+          "estimated_rows": 0
+        },
+        {
+          "table_name": "PasswordResetToken",
+          "total_bytes": 32768,
+          "estimated_rows": -1
+        }
+      ]
+    }
+  }
+}

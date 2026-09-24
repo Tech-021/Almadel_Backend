@@ -1,0 +1,208 @@
+{
+  "stages": [
+    {
+      "requests": 20,
+      "successful": 20,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 10.55,
+      "bytes": 2301,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 459.6353570000001,
+        "averageMs": 473,
+        "medianMs": 469,
+        "p90Ms": 488,
+        "p95Ms": 492,
+        "p99Ms": 496,
+        "maxMs": 495.7937709999999
+      },
+      "statusCodes": {
+        "201": 20
+      },
+      "errorGroups": {},
+      "test": "team-create",
+      "scenario": "WORST-CASE SINGLE TENANT. One business. 50% staff and 50% accountant via POST /admin/staff.",
+      "stage": "20",
+      "target": 20,
+      "concurrency": 5,
+      "elapsedMs": 1896.121923,
+      "byRole": {
+        "staff": {
+          "requests": 10,
+          "successful": 10,
+          "failed": 0,
+          "errorRate": 0,
+          "requestsPerSecond": 0,
+          "bytes": 1075,
+          "timeoutCount": 0,
+          "latency": {
+            "minMs": 460.55476699999963,
+            "averageMs": 474,
+            "medianMs": 468,
+            "p90Ms": 488,
+            "p95Ms": 496,
+            "p99Ms": 496,
+            "maxMs": 495.7937709999999
+          },
+          "statusCodes": {
+            "201": 10
+          },
+          "errorGroups": {},
+          "role": "staff"
+        },
+        "accountant": {
+          "requests": 10,
+          "successful": 10,
+          "failed": 0,
+          "errorRate": 0,
+          "requestsPerSecond": 0,
+          "bytes": 1226,
+          "timeoutCount": 0,
+          "latency": {
+            "minMs": 459.6353570000001,
+            "averageMs": 473,
+            "medianMs": 469,
+            "p90Ms": 485,
+            "p95Ms": 492,
+            "p99Ms": 492,
+            "maxMs": 492.34875799999986
+          },
+          "statusCodes": {
+            "201": 10
+          },
+          "errorGroups": {},
+          "role": "accountant"
+        }
+      },
+      "grade": "PASS",
+      "stoppedEarly": false
+    },
+    {
+      "requests": 1,
+      "successful": 1,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 111.97,
+      "bytes": 4132,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 8.801896000000397,
+        "averageMs": 9,
+        "medianMs": 9,
+        "p90Ms": 9,
+        "p95Ms": 9,
+        "p99Ms": 9,
+        "maxMs": 8.801896000000397
+      },
+      "statusCodes": {
+        "200": 1
+      },
+      "errorGroups": {},
+      "test": "team-list",
+      "endpoint": "GET /admin/staff",
+      "concurrency": 1,
+      "elapsedMs": 8.930637999999817,
+      "paginated": false,
+      "rowsReturned": 20,
+      "grade": "PASS"
+    },
+    {
+      "requests": 5,
+      "successful": 5,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 142.69,
+      "bytes": 20660,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 25.262947999999597,
+        "averageMs": 30,
+        "medianMs": 33,
+        "p90Ms": 35,
+        "p95Ms": 35,
+        "p99Ms": 35,
+        "maxMs": 34.98931300000004
+      },
+      "statusCodes": {
+        "200": 5
+      },
+      "errorGroups": {},
+      "test": "team-list",
+      "endpoint": "GET /admin/staff",
+      "concurrency": 5,
+      "elapsedMs": 35.04150200000004,
+      "paginated": false,
+      "rowsReturned": 20,
+      "grade": "PASS"
+    }
+  ],
+  "aborted": null,
+  "created": 20,
+  "localBcrypt": {
+    "rounds": 10,
+    "samples": 3,
+    "meanMs": 93,
+    "note": "Local bcrypt sample in the test process. It is not the server measurement. Compare it with endpoint latency."
+  },
+  "listProbe": [
+    {
+      "requests": 1,
+      "successful": 1,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 111.97,
+      "bytes": 4132,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 8.801896000000397,
+        "averageMs": 9,
+        "medianMs": 9,
+        "p90Ms": 9,
+        "p95Ms": 9,
+        "p99Ms": 9,
+        "maxMs": 8.801896000000397
+      },
+      "statusCodes": {
+        "200": 1
+      },
+      "errorGroups": {},
+      "test": "team-list",
+      "endpoint": "GET /admin/staff",
+      "concurrency": 1,
+      "elapsedMs": 8.930637999999817,
+      "paginated": false,
+      "rowsReturned": 20,
+      "grade": "PASS"
+    },
+    {
+      "requests": 5,
+      "successful": 5,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 142.69,
+      "bytes": 20660,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 25.262947999999597,
+        "averageMs": 30,
+        "medianMs": 33,
+        "p90Ms": 35,
+        "p95Ms": 35,
+        "p99Ms": 35,
+        "maxMs": 34.98931300000004
+      },
+      "statusCodes": {
+        "200": 5
+      },
+      "errorGroups": {},
+      "test": "team-list",
+      "endpoint": "GET /admin/staff",
+      "concurrency": 5,
+      "elapsedMs": 35.04150200000004,
+      "paginated": false,
+      "rowsReturned": 20,
+      "grade": "PASS"
+    }
+  ]
+}

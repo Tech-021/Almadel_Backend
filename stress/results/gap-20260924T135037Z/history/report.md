@@ -1,0 +1,38 @@
+# Almadel Gap Test Report: Large sale and activity history
+**Report ID:** gap-20260924T135037Z-history
+
+## Purpose
+
+Measure application behavior after the tenant already has weeks of sales-like history, not only an empty transaction log.
+
+## Bottom line
+
+**Attention needed.** 3 stage(s) FAILED, 1 WARNING, 8 PASS.
+
+History volume was seeded directly for speed, then measured through real HTTP read endpoints.
+
+## What was tested
+
+Synthetic sales, payments, and activity logs were inserted for the worst-case stress business. Then sales list and dashboard endpoints were read under concurrent load.
+
+## Results
+
+| Stage | Concurrency | Requests | Success | Errors | Avg | P95 | Bytes | Grade |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| GET /sales?page=1&limit=25 | 1 | 1 | 1 | 0 | 13 | 13 | 11219 | PASS |
+| GET /dashboard | 1 | 1 | 1 | 0 | 126 | 126 | 3691518 | PASS |
+| GET /logs | 1 | 1 | 1 | 0 | 10 | 10 | 28459 | PASS |
+| GET /sales?page=1&limit=25 | 10 | 10 | 10 | 0 | 33 | 39 | 11219 | PASS |
+| GET /dashboard | 10 | 10 | 10 | 0 | 890 | 1369 | 3691518 | WARNING |
+| GET /logs | 10 | 10 | 10 | 0 | 27 | 32 | 28459 | PASS |
+| GET /sales?page=1&limit=25 | 50 | 50 | 50 | 0 | 122 | 142 | 11219 | PASS |
+| GET /dashboard | 50 | 50 | 50 | 0 | 3683 | 6502 | 3691518 | FAIL |
+| GET /logs | 50 | 50 | 50 | 0 | 94 | 136 | 28459 | PASS |
+| GET /sales?page=1&limit=25 | 100 | 100 | 100 | 0 | 252 | 304 | 11219 | PASS |
+| GET /dashboard | 100 | 100 | 74 | 26 | 6456 | 10004 | 3691518 | FAIL |
+| GET /logs | 100 | 100 | 100 | 0 | 2930 | 3037 | 28459 | FAIL |
+
+## How to explain this to your lead
+
+A system can look fast on empty history and slow once invoices accumulate. This suite checks whether sales/dashboard paths remain usable after thousands of historical sales.
+

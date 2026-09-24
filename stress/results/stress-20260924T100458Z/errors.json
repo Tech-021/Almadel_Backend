@@ -1,0 +1,82 @@
+[
+  {
+    "test": "business-list",
+    "stage": "GET /business/my-businesses",
+    "errorGroups": {}
+  },
+  {
+    "test": "business-list",
+    "stage": "GET /business/my-businesses",
+    "errorGroups": {}
+  },
+  {
+    "test": "dashboard",
+    "stage": "GET /dashboard",
+    "errorGroups": {}
+  },
+  {
+    "test": "dashboard",
+    "stage": "GET /dashboard",
+    "errorGroups": {}
+  },
+  {
+    "test": "team-list",
+    "stage": "GET /admin/staff",
+    "errorGroups": {}
+  },
+  {
+    "test": "team-list",
+    "stage": "GET /admin/staff",
+    "errorGroups": {}
+  },
+  {
+    "test": "product-list",
+    "stage": "GET /products",
+    "errorGroups": {}
+  },
+  {
+    "test": "product-list",
+    "stage": "GET /products",
+    "errorGroups": {}
+  },
+  {
+    "test": "product-search",
+    "stage": "GET /products/search?q=Loadtest",
+    "errorGroups": {}
+  },
+  {
+    "test": "product-search",
+    "stage": "GET /products/search?q=Loadtest",
+    "errorGroups": {}
+  },
+  {
+    "test": "sales-list",
+    "stage": "GET /sales",
+    "errorGroups": {}
+  },
+  {
+    "test": "sales-list",
+    "stage": "GET /sales",
+    "errorGroups": {}
+  },
+  {
+    "test": "product-barcode",
+    "stage": "GET /products/barcode/STRESS-P-000001",
+    "errorGroups": {}
+  },
+  {
+    "test": "product-barcode",
+    "stage": "GET /products/barcode/STRESS-P-000001",
+    "errorGroups": {}
+  },
+  {
+    "test": "business-detail",
+    "stage": "GET /business/10001",
+    "errorGroups": {}
+  },
+  {
+    "test": "business-detail",
+    "stage": "GET /business/10001",
+    "errorGroups": {}
+  }
+]
