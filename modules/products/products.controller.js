@@ -71,6 +71,11 @@ async function createProduct(req, res) {
       toNonNegativeNumber(req.body.stock ?? 0, "Opening stock"),
     );
 
+    const VALID_DISCOUNT_TYPES = new Set(["none", "fixed", "percentage"]);
+    const discountType = String(req.body.discountType ?? "none").toLowerCase();
+    const parsedDiscountType = VALID_DISCOUNT_TYPES.has(discountType) ? discountType : "none";
+    let discountValue = toNonNegativeNumber(req.body.discountValue ?? 0, "Discount value");
+
     if (!barcode || !name || name.length < 2) {
       return res.status(400).json({
         message: "Barcode and a valid product name (min 2 characters) are required.",
@@ -83,6 +88,22 @@ async function createProduct(req, res) {
       });
     }
 
+    if (parsedDiscountType === "percentage" && discountValue > 100) {
+      return res.status(400).json({
+        message: "Percentage discount cannot exceed 100%.",
+      });
+    }
+
+    if (parsedDiscountType === "fixed" && discountValue > sellingPrice) {
+      return res.status(400).json({
+        message: "Fixed discount cannot exceed selling price.",
+      });
+    }
+
+    if (parsedDiscountType === "none") {
+      discountValue = 0;
+    }
+
     const product = await prisma.product.create({
       data: {
         barcode,
@@ -90,6 +111,8 @@ async function createProduct(req, res) {
         category: category || null,
         costPrice,
         createdByUserId: req.user.id,
+        discountType: parsedDiscountType,
+        discountValue,
         imageUrl: imageUrl || null,
         lowStockThreshold,
         name,
@@ -142,6 +165,11 @@ async function updateProduct(req, res) {
       toNonNegativeNumber(req.body.stock ?? 0, "Current stock"),
     );
 
+    const VALID_DISCOUNT_TYPES = new Set(["none", "fixed", "percentage"]);
+    const discountType = String(req.body.discountType ?? "none").toLowerCase();
+    const parsedDiscountType = VALID_DISCOUNT_TYPES.has(discountType) ? discountType : "none";
+    let discountValue = toNonNegativeNumber(req.body.discountValue ?? 0, "Discount value");
+
     if (!barcode || !name || name.length < 2) {
       return res.status(400).json({
         message: "Barcode and a valid product name (min 2 characters) are required.",
@@ -152,6 +180,22 @@ async function updateProduct(req, res) {
       return res.status(400).json({
         message: "Selling price must be greater than 0.",
       });
+    }
+
+    if (parsedDiscountType === "percentage" && discountValue > 100) {
+      return res.status(400).json({
+        message: "Percentage discount cannot exceed 100%.",
+      });
+    }
+
+    if (parsedDiscountType === "fixed" && discountValue > sellingPrice) {
+      return res.status(400).json({
+        message: "Fixed discount cannot exceed selling price.",
+      });
+    }
+
+    if (parsedDiscountType === "none") {
+      discountValue = 0;
     }
 
     const existing = await prisma.product.findFirst({
@@ -167,6 +211,8 @@ async function updateProduct(req, res) {
         barcode,
         category: category || null,
         costPrice,
+        discountType: parsedDiscountType,
+        discountValue,
         imageUrl: imageUrl || null,
         lowStockThreshold,
         name,
@@ -241,6 +287,11 @@ async function importProducts(req, res) {
           barcode = `BC-${Date.now().toString().slice(-6)}-${index + 1}`;
         }
 
+        const discountType = ["fixed", "percentage"].includes(String(item.discountType || "").toLowerCase())
+          ? String(item.discountType).toLowerCase()
+          : "none";
+        const discountValue = cleanNum(item.discountValue, 0);
+
         const existing = await prisma.product.findFirst({
           where: { businessId: req.businessId, barcode },
         });
@@ -250,6 +301,8 @@ async function importProducts(req, res) {
             data: {
               category: category || existing.category || null,
               costPrice: costPrice !== undefined ? costPrice : existing.costPrice,
+              discountType: item.discountType !== undefined ? discountType : existing.discountType,
+              discountValue: item.discountValue !== undefined ? discountValue : existing.discountValue,
               imageUrl: imageUrl || existing.imageUrl || null,
               lowStockThreshold,
               name,
@@ -270,6 +323,8 @@ async function importProducts(req, res) {
               category: category || null,
               costPrice,
               createdByUserId: req.user.id,
+              discountType,
+              discountValue,
               imageUrl: imageUrl || null,
               lowStockThreshold,
               name,
