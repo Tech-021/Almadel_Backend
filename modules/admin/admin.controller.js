@@ -21,6 +21,15 @@ function isValidEmail(value) {
 async function listStaff(req, res) {
   const businessId = req.businessId;
 
+  // Staff page also has no pagination; 10k members freezes the UI. Cap the list for display.
+  const DEFAULT_LIMIT = Number(process.env.STAFF_LIST_DEFAULT_LIMIT || 200);
+  const MAX_LIMIT = Number(process.env.STAFF_LIST_MAX_LIMIT || 10000);
+  const requested = req.query.limit;
+  const limit =
+    requested === undefined || requested === ""
+      ? DEFAULT_LIMIT
+      : Math.min(Math.max(Number(requested) || DEFAULT_LIMIT, 1), MAX_LIMIT);
+
   const members = await prisma.businessMember.findMany({
     where: { businessId, role: { in: ["staff", "accountant"] } },
     include: {
@@ -34,6 +43,7 @@ async function listStaff(req, res) {
       },
     },
     orderBy: { createdAt: "asc" },
+    take: limit,
   });
 
   const staffUsers = members.map((m) => ({

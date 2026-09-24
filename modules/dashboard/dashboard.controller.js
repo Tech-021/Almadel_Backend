@@ -12,17 +12,19 @@ function getTodayRange() {
 async function getAdminDashboard(req, res) {
   const { startOfDay, endOfDay } = getTodayRange();
   const businessId = req.businessId;
-  
+
+  // Do NOT return the full product table here. At 10k rows the JSON is ~3.5MB and the
+  // Vercel UI freezes on "Refreshing…" with zeros / an empty products grid.
+  // Keep a tiny products stand-in so the existing client still derives inventory + low stock.
   const [
-    products,
     sales,
     staffCount,
     myProductCount,
     staffProductCount,
     unassignedProductCount,
     todaySalesData,
+    inventoryRows,
   ] = await Promise.all([
-    prisma.product.findMany({ where: { businessId }, orderBy: { name: "asc" } }),
     prisma.sale.findMany({ where: { businessId }, orderBy: { createdAt: "desc" }, take: 500 }),
     prisma.businessMember.count({ where: { businessId, role: "staff" } }),
     prisma.product.count({ where: { businessId, createdByUserId: req.user.id } }),
@@ -34,10 +36,37 @@ async function getAdminDashboard(req, res) {
         createdAt: { gte: startOfDay, lt: endOfDay },
       },
     }),
+    prisma.$queryRaw`
+      SELECT
+        COALESCE(SUM(stock * COALESCE("sellingPrice", price, 0)), 0)::float AS inventory_value,
+        COUNT(*) FILTER (
+          WHERE stock <= COALESCE("lowStockThreshold", 5)
+        )::int AS low_stock
+      FROM products
+      WHERE "businessId" = ${businessId}
+    `,
   ]);
 
   const todaySales = todaySalesData.reduce((sum, sale) => sum + (sale.totalAmount || 0), 0);
   const todayBills = todaySalesData.length;
+  const inventoryValue = Number(inventoryRows[0]?.inventory_value || 0);
+  const lowStockCount = Number(inventoryRows[0]?.low_stock || 0);
+
+  const productsForUi = [
+    {
+      sellingPrice: inventoryValue,
+      price: inventoryValue,
+      stock: 1,
+      // Must stay above threshold so this inventory stand-in is not counted as low stock.
+      lowStockThreshold: 0,
+    },
+    ...Array.from({ length: Math.min(lowStockCount, 500) }, () => ({
+      sellingPrice: 0,
+      price: 0,
+      stock: 0,
+      lowStockThreshold: 5,
+    })),
+  ];
 
   res.json({
     productBreakdown: {
@@ -45,7 +74,7 @@ async function getAdminDashboard(req, res) {
       staffProducts: staffProductCount,
       unassignedProducts: unassignedProductCount,
     },
-    products,
+    products: productsForUi,
     sales: sales.map(saleResponse),
     staffCount,
     todaySales,

@@ -4,9 +4,20 @@ const { productAccessWhere } = require("./product-access");
 const { emitBusinessEvent } = require("../realtime/socket");
 
 async function listProducts(req, res) {
+  // The web app has no product-list pagination. Returning 10k rows (~3.5MB) makes the
+  // Products page paint blank / freeze. Default to a UI-safe page; pass ?limit=10000 for full dump.
+  const DEFAULT_LIMIT = Number(process.env.PRODUCTS_LIST_DEFAULT_LIMIT || 250);
+  const MAX_LIMIT = Number(process.env.PRODUCTS_LIST_MAX_LIMIT || 10000);
+  const requested = req.query.limit;
+  const limit =
+    requested === undefined || requested === ""
+      ? DEFAULT_LIMIT
+      : Math.min(Math.max(Number(requested) || DEFAULT_LIMIT, 1), MAX_LIMIT);
+
   const products = await prisma.product.findMany({
     orderBy: { name: "asc" },
     where: productAccessWhere(req),
+    take: limit,
   });
 
   res.json(products);

@@ -31,7 +31,8 @@
     "stress:cleanup": "node stress/seed/cleanup-stress.js",
     "db:studio": "prisma studio",
     "admin:create": "node create-admin.js",
-    "seed": "node seed.js"
+    "seed": "node seed.js",
+    "seed:manual-qa": "node scripts/seed-manual-qa-volume.js"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",
