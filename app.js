@@ -15,8 +15,7 @@ const { stockRouter } = require("./modules/stock/stock.routes");
 const logsRoutes = require("./modules/logs/logs.routes");
 const { financeRouter } = require("./modules/finance/finance.routes");
 const { suppliersRouter } = require("./modules/suppliers/suppliers.routes");
-
-
+const { reportsRouter } = require("./modules/reports/reports.routes");
 
 const { billingRouter } = require("./modules/billing/billing.routes");
 
@@ -84,6 +83,7 @@ function createApp() {
   app.use("/logs", logsRoutes);
   app.use("/finance", financeRouter);
   app.use("/suppliers", suppliersRouter);
+  app.use("/reports", reportsRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
