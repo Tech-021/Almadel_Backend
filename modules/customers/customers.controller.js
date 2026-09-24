@@ -8,11 +8,60 @@ function hashPassword(password) {
 }
 
 async function getCustomers(req, res) {
+  const search = String(req.query.q || req.query.search || "").trim();
+  const where = {
+    businessId: req.businessId,
+    ...(search
+      ? {
+          OR: [
+            { name: { contains: search, mode: "insensitive" } },
+            { mobile: { contains: search } },
+            { email: { contains: search, mode: "insensitive" } },
+          ],
+        }
+      : {}),
+  };
+
   const customers = await prisma.customer.findMany({
-    where: { businessId: req.businessId },
+    where,
     orderBy: { createdAt: "desc" },
   });
   res.json({ customers: customers.map(customerResponse) });
+}
+
+async function getCustomerHistory(req, res) {
+  const customerId = Number(req.params.customerId);
+  if (!Number.isInteger(customerId) || customerId <= 0) {
+    return res.status(400).json({ message: "Invalid customer ID." });
+  }
+
+  const customer = await prisma.customer.findFirst({
+    where: { id: customerId, businessId: req.businessId },
+  });
+  if (!customer) {
+    return res.status(404).json({ message: "Customer not found." });
+  }
+
+  const sales = await prisma.sale.findMany({
+    where: {
+      businessId: req.businessId,
+      OR: [
+        { customerId },
+        ...(customer.mobile ? [{ customerMobile: customer.mobile }] : []),
+      ],
+    },
+    include: {
+      items: true,
+      user: { select: { fullName: true, email: true } },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  const { invoiceResponse } = require("../../utils/serializers");
+  return res.json({
+    customer: customerResponse(customer),
+    sales: sales.map(invoiceResponse),
+  });
 }
 
 async function createCustomer(req, res) {
@@ -133,4 +182,4 @@ async function deleteCustomer(req, res) {
   }
 }
 
-module.exports = { getCustomers, createCustomer, updateCustomer, deleteCustomer };
+module.exports = { getCustomers, getCustomerHistory, createCustomer, updateCustomer, deleteCustomer };

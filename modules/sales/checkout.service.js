@@ -45,21 +45,47 @@ function normalizeCheckoutDetails(body) {
   };
 }
 
-function calculateTotals(subtotal, discountType, discountValue) {
+function calculateTotals(grossSubtotal, cartDiscountTypeOrItemDiscount, cartDiscountValueOrType, maybeDiscountValue) {
+  if (typeof cartDiscountTypeOrItemDiscount === "number") {
+    const itemDiscountAmount = cartDiscountTypeOrItemDiscount;
+    const cartDiscountType = String(cartDiscountValueOrType || "none").toLowerCase();
+    const cartDiscountValue = Number(maybeDiscountValue || 0);
+
+    let cartDiscount = 0;
+    const netBeforeCartDiscount = Math.max(0, grossSubtotal - itemDiscountAmount);
+
+    if (cartDiscountType === "fixed") {
+      if (cartDiscountValue > netBeforeCartDiscount) {
+        throw new Error("Fixed discount cannot exceed the cart total.");
+      }
+      cartDiscount = cartDiscountValue;
+    } else if (cartDiscountType === "percentage") {
+      cartDiscount = netBeforeCartDiscount * (cartDiscountValue / 100);
+    }
+
+    const totalDiscountAmount = roundMoney(itemDiscountAmount + cartDiscount);
+    return {
+      discountAmount: totalDiscountAmount,
+      totalAmount: roundMoney(Math.max(0, grossSubtotal - totalDiscountAmount)),
+    };
+  }
+
+  const discountType = String(cartDiscountTypeOrItemDiscount || "none").toLowerCase();
+  const discountValue = Number(cartDiscountValueOrType || 0);
   let discountAmount = 0;
 
   if (discountType === "fixed") {
-    if (discountValue > subtotal) {
+    if (discountValue > grossSubtotal) {
       throw new Error("Fixed discount cannot exceed the subtotal.");
     }
     discountAmount = discountValue;
   } else if (discountType === "percentage") {
-    discountAmount = subtotal * (discountValue / 100);
+    discountAmount = grossSubtotal * (discountValue / 100);
   }
 
   return {
     discountAmount: roundMoney(discountAmount),
-    totalAmount: roundMoney(Math.max(0, subtotal - discountAmount)),
+    totalAmount: roundMoney(Math.max(0, grossSubtotal - discountAmount)),
   };
 }
 
@@ -105,13 +131,36 @@ async function createSale(tx, userOrReq, rawItems, rawDetails) {
     }
 
     const price = roundMoney(product.sellingPrice || product.price);
+    const itemDiscountType = String(
+      item.discountType !== undefined ? item.discountType : (product.discountType || "none")
+    ).toLowerCase();
+    const rawDiscountVal = Number(
+      item.discountValue !== undefined ? item.discountValue : (product.discountValue || 0)
+    );
+    const itemDiscountValue = Number.isFinite(rawDiscountVal) && rawDiscountVal >= 0 ? rawDiscountVal : 0;
+
+    let itemDiscountAmount = 0;
+    const baseLineTotal = roundMoney(price * quantity);
+
+    if (itemDiscountType === "fixed" && itemDiscountValue > 0) {
+      itemDiscountAmount = roundMoney(Math.min(baseLineTotal, itemDiscountValue * quantity));
+    } else if (itemDiscountType === "percentage" && itemDiscountValue > 0) {
+      const pct = Math.min(100, Math.max(0, itemDiscountValue));
+      itemDiscountAmount = roundMoney(baseLineTotal * (pct / 100));
+    }
+
+    const lineTotal = roundMoney(Math.max(0, baseLineTotal - itemDiscountAmount));
+
     saleItems.push({
       barcode: product.barcode || "",
       name: product.name,
       price,
       productId: product.id,
       quantity,
-      total: roundMoney(price * quantity),
+      discountType: itemDiscountType,
+      discountValue: itemDiscountValue,
+      discountAmount: itemDiscountAmount,
+      total: lineTotal,
     });
 
     const stockUpdate = await tx.product.updateMany({
@@ -123,8 +172,11 @@ async function createSale(tx, userOrReq, rawItems, rawDetails) {
     }
   }
 
-  const subtotal = roundMoney(
-    saleItems.reduce((sum, item) => sum + item.total, 0),
+  const grossSubtotal = roundMoney(
+    saleItems.reduce((sum, item) => sum + (item.price * item.quantity), 0),
+  );
+  const totalItemDiscounts = roundMoney(
+    saleItems.reduce((sum, item) => sum + (item.discountAmount || 0), 0),
   );
 
   let customerId = null;
@@ -144,8 +196,21 @@ async function createSale(tx, userOrReq, rawItems, rawDetails) {
     customerId = customer.id;
   }
   const totalItems = saleItems.reduce((sum, item) => sum + item.quantity, 0);
+
+  const hasAnyDiscounts = totalItemDiscounts > 0 || (details.discountType !== "none" && details.discountValue > 0);
+  if (hasAnyDiscounts) {
+    const biz = await tx.business.findUnique({
+      where: { id: businessId },
+      select: { allowDiscounts: true },
+    });
+    if (biz && biz.allowDiscounts === false) {
+      throw new Error("Discounts are disabled for this store by the owner.");
+    }
+  }
+
   const totals = calculateTotals(
-    subtotal,
+    grossSubtotal,
+    totalItemDiscounts,
     details.discountType,
     details.discountValue,
   );
@@ -158,7 +223,7 @@ async function createSale(tx, userOrReq, rawItems, rawDetails) {
       customerId,
       invoiceNumber: createInvoiceNumber(),
       items: { create: saleItems },
-      subtotal,
+      subtotal: grossSubtotal,
       totalItems,
       userId: userId || null,
     },

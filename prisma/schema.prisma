@@ -54,6 +54,7 @@ model Business {
   hasSupplierUdhaar   Boolean          @default(false)
   supplierPayable     Float            @default(0)
   manageStock         Boolean          @default(true)
+  allowDiscounts      Boolean          @default(true)
   currentStockValue   Float            @default(0)
   taxRegistered       String?          @default("no")
   ntn                 String?
@@ -130,6 +131,8 @@ model Product {
   sellingPrice      Float      @default(0)
   stock             Int        @default(0)
   lowStockThreshold Int        @default(5)
+  discountType      String     @default("none")
+  discountValue     Float      @default(0)
   createdAt         DateTime   @default(now())
   updatedAt         DateTime   @updatedAt
   createdByUserId   Int?
@@ -145,16 +148,19 @@ model Product {
 }
 
 model SaleItem {
-  id        Int     @id @default(autoincrement())
-  saleId    Int
-  productId Int
-  barcode   String
-  name      String
-  price     Float
-  quantity  Int
-  total     Float
-  sale      Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
-  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  id             Int     @id @default(autoincrement())
+  saleId         Int
+  productId      Int
+  barcode        String
+  name           String
+  price          Float
+  quantity       Int
+  discountType   String  @default("none")
+  discountValue  Float   @default(0)
+  discountAmount Float   @default(0)
+  total          Float
+  sale           Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product        Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@map("sale_items")
 }
