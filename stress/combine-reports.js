@@ -98,6 +98,9 @@ function combineMarkdown(api, db, combinedId, apiPath, dbPath) {
   const team = firstCreateStage(api.suites?.team);
   const products = firstCreateStage(api.suites?.products);
   const stock = (api.suites?.stock?.stages || [])[0];
+  const customers = firstCreateStage(api.suites?.customers);
+  const finance = firstCreateStage(api.suites?.finance);
+  const reports = (api.suites?.reports?.stages || [])[0];
   const mixed = firstCreateStage(api.suites?.mixed);
 
   const slowQueries = [...benches].sort((a, b) => b.p95Ms - a.p95Ms).slice(0, 3);
@@ -151,16 +154,19 @@ function combineMarkdown(api, db, combinedId, apiPath, dbPath) {
   lines.push(`- Accountants in that business: **${volume.accountants ?? dataset.accountants ?? "n/a"}**`);
   lines.push(`- Products in that business: **${volume.products ?? dataset.products ?? "n/a"}**`);
   lines.push(`- Stock log rows: **${volume.stockLogs ?? dataset.stockLogs ?? "n/a"}**`);
+  lines.push(`- Customers (khata): **${volume.customers ?? dataset["stress customers"] ?? "n/a"}**`);
+  lines.push(`- Expenses: **${volume.expenses ?? dataset["stress expenses"] ?? "n/a"}**`);
+  lines.push(`- Ledger transactions: **${volume.ledgerTransactions ?? dataset["stress ledger rows"] ?? "n/a"}**`);
   lines.push(`- Stress businesses overall: **${volume.stressBusinesses ?? volume.businesses ?? dataset["stress businesses"] ?? "n/a"}**`);
   lines.push("");
   lines.push(
-    "Important interpretation note: having 10,000 businesses in the database does **not** mean every business also has 10,000 staff. Staff and products were concentrated into one worst-case tenant so we could measure the expensive list/join paths without creating an unrealistic hundreds-of-millions-row dataset.",
+    "Important interpretation note: having 10,000 businesses in the database does **not** mean every business also has 10,000 staff. Staff, products, customers, and finance rows were concentrated into one worst-case tenant so we could measure the expensive list/join paths without creating an unrealistic hundreds-of-millions-row dataset.",
   );
   lines.push("");
   lines.push("## 4. API load testing findings");
   lines.push("");
   lines.push(
-    "The API suite called the real application routes over HTTP. Business creation used owner sign-up followed by business setup. Team creation used `POST /admin/staff` for both staff and accountant roles. Product and stock operations used the live product and inventory endpoints. Mixed traffic simulated a more realistic blend of reads and writes.",
+    "The API suite called the real application routes over HTTP. Business creation used owner sign-up followed by business setup. Team creation used `POST /admin/staff` for both staff and accountant roles. Product and stock operations used the live product and inventory endpoints. Customers / Khata, Cash / Accounts, and Reports & Balance Sheet suites exercise the newer UI areas. Mixed traffic simulated a more realistic blend of reads and writes.",
   );
   lines.push("");
   lines.push("### 4.1 Business creation");
@@ -207,7 +213,37 @@ function combineMarkdown(api, db, combinedId, apiPath, dbPath) {
     );
   }
   lines.push("");
-  lines.push("### 4.4 Mixed realistic traffic");
+  lines.push("### 4.4 Customers / Khata");
+  lines.push("");
+  if (customers) {
+    lines.push(
+      `Customer create completed **${customers.successful}/${customers.requests}** requests with p95 **${ms(customers.latency.p95Ms)}** (**${customers.grade}**). Customer list and history reads were also probed under concurrency. Opening khata balances for volume tests were seeded in the database because \`POST /customers\` does not accept opening balance.`,
+    );
+  } else {
+    lines.push("Customers / Khata was not included in the selected API run.");
+  }
+  lines.push("");
+  lines.push("### 4.5 Cash / Accounts");
+  lines.push("");
+  if (finance) {
+    lines.push(
+      `Finance writes (expenses / ledger) completed **${finance.successful}/${finance.requests}** requests in the first create stage with p95 **${ms(finance.latency.p95Ms)}** (**${finance.grade}**). Account, expense, payment, and summary list endpoints were also read under concurrency.`,
+    );
+  } else {
+    lines.push("Cash / Accounts was not included in the selected API run.");
+  }
+  lines.push("");
+  lines.push("### 4.6 Reports & Balance Sheet");
+  lines.push("");
+  if (reports) {
+    lines.push(
+      `Report reads were exercised against \`/reports/sales\`, \`/reports/products\`, \`/reports/stock\`, and \`/finance/reports/summary\`. First stage p95 was **${ms(reports.latency.p95Ms)}** (**${reports.grade}**). There is no separate Balance Sheet table; the finance summary plus account balances are the closest server aggregates.`,
+    );
+  } else {
+    lines.push("Reports & Balance Sheet was not included in the selected API run.");
+  }
+  lines.push("");
+  lines.push("### 4.7 Mixed realistic traffic");
   lines.push("");
   if (mixed) {
     lines.push(
@@ -217,7 +253,7 @@ function combineMarkdown(api, db, combinedId, apiPath, dbPath) {
     lines.push("Mixed workload was not included in the selected API run.");
   }
   lines.push("");
-  lines.push("### 4.5 API stage detail");
+  lines.push("### 4.8 API stage detail");
   lines.push("");
   for (const [name, suite] of Object.entries(api.suites || {})) {
     lines.push(`**${name}**`);
@@ -238,11 +274,11 @@ function combineMarkdown(api, db, combinedId, apiPath, dbPath) {
       `Checkpoints: **${scale.summary.checkpoints}**. PASS: **${scale.summary.pass}**. WARNING: **${scale.summary.warning}**. FAIL: **${scale.summary.fail}**.`,
     );
     lines.push("");
-    lines.push("| Size | Team | Products | Businesses | Grade | Isolation |");
-    lines.push("| ---: | ---: | ---: | ---: | --- | --- |");
+    lines.push("| Size | Team | Products | Customers | Expenses | Businesses | Grade | Isolation |");
+    lines.push("| ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |");
     for (const checkpoint of scale.checkpoints) {
       lines.push(
-        `| ${checkpoint.size} | ${checkpoint.counts.teamMembers} | ${checkpoint.counts.products} | ${checkpoint.counts.businesses} | ${checkpoint.grade} | ${checkpoint.isolation.result} |`,
+        `| ${checkpoint.size} | ${checkpoint.counts.teamMembers} | ${checkpoint.counts.products} | ${checkpoint.counts.customers ?? "-"} | ${checkpoint.counts.expenses ?? "-"} | ${checkpoint.counts.businesses} | ${checkpoint.grade} | ${checkpoint.isolation.result} |`,
       );
     }
     lines.push("");

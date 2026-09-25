@@ -54,7 +54,7 @@ async function resolveWorstCaseBusiness() {
 }
 
 async function volumeCounts(businessId) {
-  const [staffMembers, accountants, products, stockLogs, businesses, users] = await Promise.all([
+  const [staffMembers, accountants, products, stockLogs, businesses, users, customers, suppliers, expenses, ledger, payments, accounts] = await Promise.all([
     prisma().businessMember.count({ where: { businessId, role: "staff" } }),
     prisma().businessMember.count({ where: { businessId, role: "accountant" } }),
     prisma().product.count({ where: { businessId, barcode: { startsWith: "STRESS-P-" } } }),
@@ -68,6 +68,12 @@ async function volumeCounts(businessId) {
         ],
       },
     }),
+    prisma().customer.count({ where: { businessId } }),
+    prisma().supplier.count({ where: { businessId } }),
+    prisma().expense.count({ where: { businessId } }),
+    prisma().ledgerTransaction.count({ where: { businessId } }),
+    prisma().payment.count({ where: { businessId } }),
+    prisma().account.count({ where: { businessId } }),
   ]);
   return {
     worstCaseBusinessId: businessId,
@@ -77,6 +83,12 @@ async function volumeCounts(businessId) {
     stockLogs,
     stressBusinesses: businesses,
     stressTeamUsers: users,
+    customers,
+    suppliers,
+    expenses,
+    ledgerTransactions: ledger,
+    payments,
+    accounts,
   };
 }
 
@@ -143,6 +155,42 @@ async function runQueryBenchmarks(business) {
         _count: { id: true },
       });
       return result._count.id;
+    }),
+    await timedQuery("list customers (khata)", () =>
+      prisma().customer.findMany({
+        where: { businessId },
+        orderBy: { createdAt: "desc" },
+        select: { id: true, name: true, mobile: true, currentBalance: true, openingBalance: true },
+      }),
+    ),
+    await timedQuery("list expenses ordered by date", () =>
+      prisma().expense.findMany({
+        where: { businessId },
+        orderBy: { occurredAt: "desc" },
+        take: 1000,
+      }),
+    ),
+    await timedQuery("list ledger transactions page", () =>
+      prisma().ledgerTransaction.findMany({
+        where: { businessId },
+        orderBy: { occurredAt: "desc" },
+        take: 100,
+      }),
+    ),
+    await timedQuery("accounts with transaction aggregates", () =>
+      prisma().account.findMany({
+        where: { businessId },
+        include: { transactions: { select: { amount: true, direction: true } } },
+      }),
+    ),
+    await timedQuery("finance summary aggregates", async () => {
+      const [sales, expenses, receivable, payable] = await Promise.all([
+        prisma().sale.aggregate({ where: { businessId }, _sum: { totalAmount: true }, _count: { id: true } }),
+        prisma().expense.aggregate({ where: { businessId }, _sum: { amount: true }, _count: { id: true } }),
+        prisma().customer.aggregate({ where: { businessId }, _sum: { currentBalance: true } }),
+        prisma().supplier.aggregate({ where: { businessId }, _sum: { currentBalance: true } }),
+      ]);
+      return (sales._count.id || 0) + (expenses._count.id || 0);
     }),
   ];
 }

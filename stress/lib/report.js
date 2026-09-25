@@ -94,7 +94,9 @@ function bottleneckNotes(report) {
       "Email timings were not recorded by the API process. Team-create latency includes whatever mail path that server used. Start the API with NODE_ENV=stress and STRESS_TEST=true so credential mail uses the in-process sink.",
     );
   }
-  const lists = collectStages(report).filter((stage) => stage.test === "product-list" || stage.test === "team-list");
+  const lists = collectStages(report).filter((stage) =>
+    ["product-list", "team-list", "customer-list", "finance-accounts", "finance-expenses", "reports-products", "reports-stock"].includes(stage.test),
+  );
   for (const stage of lists) {
     if (stage.latency.p95Ms >= 1000) {
       notes.push(
@@ -120,6 +122,9 @@ function markdown(report) {
       "Business creation used owner sign-up plus `POST /business/setup`.",
       "Team creation used `POST /admin/staff` for staff and accountant roles on one business.",
       "Product and stock suites used the live product and inventory endpoints.",
+      "Customers / Khata used `POST /customers` plus list and history reads.",
+      "Cash / Accounts used `POST /finance/expenses` and `POST /finance/transactions`, plus accounts/expenses/payments/summary reads.",
+      "Reports & Balance Sheet used read-only probes of `/reports/sales|products|stock` and `/finance/reports/summary`.",
       "Mixed traffic combined reads and writes to approximate normal usage.",
       "Concurrency was ramped in stages. If a stage became unhealthy, later stages for that suite were skipped.",
     ].map((line) => `- ${line}`).join("\n"),
@@ -170,6 +175,12 @@ function markdown(report) {
   sections.push(productStages.length ? stageTable(productStages) : "Not run.");
   sections.push("## Stock API Results");
   sections.push(report.suites.stock?.stages?.length ? stageTable(report.suites.stock.stages) : "Not run.");
+  sections.push("## Customers / Khata API Results");
+  sections.push(report.suites.customers?.stages?.length ? stageTable(report.suites.customers.stages) : "Not run.");
+  sections.push("## Cash / Accounts API Results");
+  sections.push(report.suites.finance?.stages?.length ? stageTable(report.suites.finance.stages) : "Not run.");
+  sections.push("## Reports & Balance Sheet API Results");
+  sections.push(report.suites.reports?.stages?.length ? stageTable(report.suites.reports.stages) : "Not run.");
   sections.push("## Inventory Correctness");
   if (!report.integrity?.length) {
     sections.push("No inventory correctness checks were recorded in this run.");

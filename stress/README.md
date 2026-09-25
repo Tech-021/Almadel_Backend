@@ -21,6 +21,13 @@ Derived from the current routes:
 | Product lookup | `GET /products/barcode/:barcode` | |
 | Stock add | `POST /stock/add` | `barcode`, `quantity`, `note` |
 | Sale decrement | `POST /sales/checkout` | `items[{ productId, quantity }]`, `paymentMethod`, `discountType` |
+| Customer create | `POST /customers` | `name`, `mobile`, `email?` |
+| Customer list / history | `GET /customers`, `GET /customers/:id/history` | List is not paginated |
+| Finance account | `POST /finance/accounts` | `name`, `type?`, `openingBalance?` |
+| Finance expense | `POST /finance/expenses` | `accountId`, `amount`, `category` |
+| Finance ledger | `POST /finance/transactions` | `accountId`, `amount`, `direction` |
+| Finance lists / summary | `GET /finance/accounts|expenses|payments|reports/summary` | Date filters default to today |
+| Reports | `GET /reports/sales|products|stock` | Read-only analytics |
 | Dashboard | `GET /dashboard` | |
 | Sales list | `GET /sales` | |
 
@@ -59,8 +66,8 @@ When both variables are set, credential and password-reset mail is built and the
 
 | Profile | What it does |
 | --- | --- |
-| `smoke` (default) | 10 businesses, 20 team members, 50 products, concurrency 5 |
-| `standard` | Up to 1,000 businesses, 1,000 team members, 1,000 products, concurrency up to 100 |
+| `smoke` (default) | Small create counts + low concurrency for customers/finance/reports too |
+| `standard` | Up to 1,000 creates for customers/expenses/ledger, concurrency up to 100 |
 | `heavy` | Up to 10,000 of each, higher concurrency. Requires `--confirm-heavy` |
 
 ```bash
@@ -78,6 +85,9 @@ npm run stress:business
 npm run stress:team
 npm run stress:products
 npm run stress:stock
+npm run stress:customers
+npm run stress:finance
+npm run stress:reports
 npm run stress:reads
 npm run stress:mixed
 npm run stress:all
@@ -86,6 +96,8 @@ npm run stress:seed:businesses
 npm run stress:seed:team
 npm run stress:seed:products
 npm run stress:seed:stock
+npm run stress:seed:customers
+npm run stress:seed:finance
 npm run stress:seed:realistic
 
 npm run stress:report
@@ -93,7 +105,19 @@ npm run stress:compare -- stress/results/<run-a> stress/results/<run-b>
 npm run stress:cleanup
 ```
 
-`stress:all` runs business, team, products, stock, reads, then mixed. It does not start the seed scripts.
+`stress:all` runs business, team, products, stock, customers, finance, reports, reads, then mixed. It does not start the seed scripts.
+
+Recommended order for the newer UI areas:
+
+```bash
+npm run stress:seed:customers
+npm run stress:seed:finance
+npm run stress:customers -- --profile standard
+npm run stress:finance -- --profile standard
+npm run stress:reports -- --profile standard
+npm run stress:db
+npm run stress:combine
+```
 
 ## Gap suites (high concurrency, history, images, lists, frontend)
 
