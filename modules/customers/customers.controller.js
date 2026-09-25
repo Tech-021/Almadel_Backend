@@ -8,6 +8,9 @@ function hashPassword(password) {
 }
 
 async function getCustomers(req, res) {
+  const hasPagination = req.query.page !== undefined || req.query.limit !== undefined;
+  const page = Math.max(1, Number(req.query.page) || 1);
+  const limit = req.query.limit === "all" ? undefined : Math.min(200, Math.max(1, Number(req.query.limit) || 25));
   const search = String(req.query.q || req.query.search || "").trim();
   const where = {
     businessId: req.businessId,
@@ -22,11 +25,21 @@ async function getCustomers(req, res) {
       : {}),
   };
 
-  const customers = await prisma.customer.findMany({
-    where,
-    orderBy: { createdAt: "desc" },
+  const [customers, total] = await Promise.all([
+    prisma.customer.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      ...(hasPagination && limit ? { skip: (page - 1) * limit, take: limit } : {}),
+    }),
+    prisma.customer.count({ where }),
+  ]);
+
+  res.json({
+    customers: customers.map(customerResponse),
+    total,
+    page: hasPagination ? page : 1,
+    limit: limit || total,
   });
-  res.json({ customers: customers.map(customerResponse) });
 }
 
 async function getCustomerHistory(req, res) {
