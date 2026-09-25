@@ -90,7 +90,26 @@ async function setupBusiness(req, res) {
         });
       }
 
-      // 3. Initial log
+      // 3. Create Default Primary Branch (single branch MVP & seamless multi-branch expansion)
+      const branchClient = tx.branch || tx.Branch || tx.branches;
+      if (branchClient) {
+        try {
+          await branchClient.create({
+            data: {
+              businessId: newBiz.id,
+              name: "Main Branch",
+              address: address?.trim() || null,
+              phone: mobileNumber.trim(),
+              isMain: true,
+              isActive: true,
+            },
+          });
+        } catch (branchErr) {
+          console.warn("Branch creation notice:", branchErr.message);
+        }
+      }
+
+      // 4. Initial log
       if (logClient) {
         try {
           await logClient.create({
