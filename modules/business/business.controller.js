@@ -48,6 +48,31 @@ async function setupBusiness(req, res) {
     const openingBalanceNum = Number(openingCashBalance) || 0;
     const startDate = accountingStartDate ? new Date(accountingStartDate) : new Date();
 
+    // Enforce 1 Admin = 1 Business: Check if user already owns or belongs to a business
+    const existingOwnerBiz = await (prisma.business || prisma.Business).findUnique({
+      where: { ownerId: userId },
+    });
+    if (existingOwnerBiz) {
+      return res.status(400).json({
+        message: "You already have a registered business with this account. Each account is strictly limited to one business.",
+        business: formatBusinessSubscription(existingOwnerBiz),
+      });
+    }
+
+    const memberModel = prisma.businessMember || prisma.BusinessMember;
+    if (memberModel) {
+      const existingMembership = await memberModel.findUnique({
+        where: { userId },
+        include: { business: true },
+      });
+      if (existingMembership) {
+        return res.status(400).json({
+          message: "You already belong to a registered business. Each account is strictly limited to one business.",
+          business: formatBusinessSubscription(existingMembership.business),
+        });
+      }
+    }
+
     const business = await prisma.$transaction(async (tx) => {
       // Safe model references
       const bizClient = tx.business || tx.Business || tx.businesses;
@@ -90,7 +115,26 @@ async function setupBusiness(req, res) {
         });
       }
 
-      // 3. Initial log
+      // 3. Create Default Primary Branch (single branch MVP & seamless multi-branch expansion)
+      const branchClient = tx.branch || tx.Branch || tx.branches;
+      if (branchClient) {
+        try {
+          await branchClient.create({
+            data: {
+              businessId: newBiz.id,
+              name: "Main Branch",
+              address: address?.trim() || null,
+              phone: mobileNumber.trim(),
+              isMain: true,
+              isActive: true,
+            },
+          });
+        } catch (branchErr) {
+          console.warn("Branch creation notice:", branchErr.message);
+        }
+      }
+
+      // 4. Initial log
       if (logClient) {
         try {
           await logClient.create({
@@ -164,16 +208,30 @@ async function getMyBusinesses(req, res) {
       return res.json({ success: true, businesses: [] });
     }
 
+    // Single Business Per Admin Rule:
+    // Query memberships for this user and return ONLY the primary single business
     const memberships = await memberModel.findMany({
       where: { userId },
       include: { business: true },
       orderBy: { createdAt: "desc" },
     });
 
-    const businesses = memberships.map((m) => ({
-      ...formatBusinessSubscription(m.business),
-      membershipRole: m.role,
-    }));
+    if (!memberships.length) {
+      return res.json({ success: true, businesses: [] });
+    }
+
+    // Prioritize owned business first, then primary membership
+    const primary = memberships.find((m) => m.business && m.business.ownerId === userId) || memberships[0];
+    if (!primary || !primary.business) {
+      return res.json({ success: true, businesses: [] });
+    }
+
+    const businesses = [
+      {
+        ...formatBusinessSubscription(primary.business),
+        membershipRole: primary.role,
+      },
+    ];
 
     return res.json({ success: true, businesses });
   } catch (error) {

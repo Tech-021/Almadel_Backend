@@ -69,7 +69,7 @@ model Business {
   stripePriceId       String?
   currentPeriodEnd    DateTime?
   cancelAtPeriodEnd   Boolean          @default(false)
-  ownerId             Int
+  ownerId             Int              @unique
   owner               User             @relation("BusinessOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   createdAt           DateTime         @default(now())
   updatedAt           DateTime         @updatedAt
@@ -85,8 +85,8 @@ model Business {
   expenses            Expense[]
   dailyClosings       DailyClosing[]
   payments            Payment[]
+  branches            Branch[]
 
-  @@index([ownerId])
   @@map("businesses")
 }
 
@@ -94,13 +94,13 @@ model BusinessMember {
   id         Int      @id @default(autoincrement())
   businessId Int
   business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  userId     Int
+  userId     Int      @unique
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   role       String   @default("owner")
   createdAt  DateTime @default(now())
 
   @@unique([businessId, userId])
-  @@index([userId])
+  @@index([businessId])
   @@map("business_members")
 }
 
@@ -142,6 +142,8 @@ model Product {
 
   @@unique([businessId, barcode])
   @@index([businessId])
+  @@index([businessId, name])
+  @@index([businessId, category])
   @@index([name])
   @@index([category])
   @@map("products")
@@ -177,10 +179,13 @@ model StockLog {
   note          String?
   createdAt     DateTime  @default(now())
   userId        Int?
+  branchId      Int?
+  branch        Branch?   @relation(fields: [branchId], references: [id], onDelete: SetNull)
   product       Product   @relation(fields: [productId], references: [id])
   user          User?     @relation(fields: [userId], references: [id])
 
   @@index([businessId])
+  @@index([branchId])
   @@map("stock_logs")
 }
 
@@ -243,10 +248,13 @@ model Sale {
   user           User?      @relation(fields: [userId], references: [id])
   customerId     Int?
   customer       Customer?  @relation(fields: [customerId], references: [id])
+  branchId       Int?
+  branch         Branch?    @relation(fields: [branchId], references: [id], onDelete: SetNull)
   items          SaleItem[]
   payments       Payment[]
 
   @@index([businessId])
+  @@index([branchId])
   @@map("sales")
 }
 
@@ -381,3 +389,25 @@ model DailyClosing {
   @@index([businessId, status])
   @@map("daily_closings")
 }
+
+model Branch {
+  id         Int        @id @default(autoincrement())
+  businessId Int
+  business   Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name       String     @default("Main Branch")
+  code       String?
+  address    String?
+  city       String?
+  phone      String?
+  isMain     Boolean    @default(true)
+  isActive   Boolean    @default(true)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  sales      Sale[]
+  stockLogs  StockLog[]
+
+  @@unique([businessId, name])
+  @@index([businessId])
+  @@map("branches")
+}
+

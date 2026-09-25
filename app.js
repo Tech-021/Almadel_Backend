@@ -23,6 +23,7 @@ function createApp() {
   const app = express();
 
   app.disable("x-powered-by");
+  app.set("trust proxy", 1);
   const defaultAllowedOrigins = [
     "http://localhost:3000",
     "http://localhost:3001",
