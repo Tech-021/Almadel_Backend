@@ -18,6 +18,7 @@ const { suppliersRouter } = require("./modules/suppliers/suppliers.routes");
 const { reportsRouter } = require("./modules/reports/reports.routes");
 
 const { billingRouter } = require("./modules/billing/billing.routes");
+const { categoriesRouter } = require("./modules/categories/categories.routes");
 
 function createApp() {
   const app = express();
@@ -85,6 +86,7 @@ function createApp() {
   app.use("/finance", financeRouter);
   app.use("/suppliers", suppliersRouter);
   app.use("/reports", reportsRouter);
+  app.use("/categories", categoriesRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

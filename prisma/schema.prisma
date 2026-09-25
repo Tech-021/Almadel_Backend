@@ -86,6 +86,7 @@ model Business {
   dailyClosings       DailyClosing[]
   payments            Payment[]
   branches            Branch[]
+  categories          Category[]
 
   @@map("businesses")
 }
@@ -102,6 +103,20 @@ model BusinessMember {
   @@unique([businessId, userId])
   @@index([businessId])
   @@map("business_members")
+}
+
+model Category {
+  id          Int      @id @default(autoincrement())
+  businessId  Int
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([businessId, name])
+  @@index([businessId])
+  @@map("categories")
 }
 
 model PasswordResetToken {
