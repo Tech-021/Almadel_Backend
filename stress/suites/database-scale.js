@@ -182,6 +182,71 @@ async function ensureStockLogs(business, owner, target) {
   return products.length;
 }
 
+async function growCustomers(business, target) {
+  const existing = await prisma.customer.count({
+    where: { businessId: business.id, mobile: { startsWith: "0399" } },
+  });
+  const needed = Math.max(0, target - existing);
+  if (needed > 0) {
+    const rows = Array.from({ length: needed }, (_, index) => {
+      const sequence = existing + index + 1;
+      const id = String(sequence).padStart(6, "0");
+      const opening = 100 + (sequence % 50);
+      return {
+        businessId: business.id,
+        name: `Stress customer ${id}`,
+        mobile: `0399${String(sequence).padStart(7, "0")}`.slice(0, 11),
+        email: `stress_customer_${id}@example.test`,
+        openingBalance: opening,
+        currentBalance: opening,
+      };
+    });
+    await createInBatches(`customers->${target}`, rows, (slice) =>
+      prisma.customer.createMany({ data: slice, skipDuplicates: true }),
+    );
+  }
+  return prisma.customer.count({
+    where: { businessId: business.id, mobile: { startsWith: "0399" } },
+  });
+}
+
+async function growExpenses(business, owner, target) {
+  let account = await prisma.account.findFirst({
+    where: { businessId: business.id, name: "Stress Cash in hand" },
+  });
+  if (!account) {
+    account = await prisma.account.create({
+      data: {
+        businessId: business.id,
+        name: "Stress Cash in hand",
+        type: "cash",
+        openingBalance: 100000,
+      },
+    });
+  }
+  const existing = await prisma.expense.count({
+    where: { businessId: business.id, category: { startsWith: "Stress expense" } },
+  });
+  const needed = Math.max(0, target - existing);
+  if (needed > 0) {
+    const rows = Array.from({ length: needed }, (_, index) => {
+      const sequence = existing + index + 1;
+      return {
+        businessId: business.id,
+        accountId: account.id,
+        amount: 20 + (sequence % 80),
+        category: `Stress expense ${(sequence % 20) + 1}`,
+        description: `Scale expense ${sequence}`,
+        createdById: owner.id,
+      };
+    });
+    await createInBatches(`expenses->${target}`, rows, (slice) =>
+      prisma.expense.createMany({ data: slice }),
+    );
+  }
+  return prisma.expense.count({ where: { businessId: business.id } });
+}
+
 async function measureCheckpoint(business, owner, size) {
   const queries = [
     await timed("count products", () => prisma.product.count({ where: { businessId: business.id } })),
@@ -227,6 +292,28 @@ async function measureCheckpoint(business, owner, size) {
       });
       return result._count.id;
     }),
+    await timed("list customers khata", () =>
+      prisma.customer.findMany({
+        where: { businessId: business.id },
+        orderBy: { createdAt: "desc" },
+        select: { id: true, name: true, mobile: true, currentBalance: true },
+      }),
+    ),
+    await timed("list expenses", () =>
+      prisma.expense.findMany({
+        where: { businessId: business.id },
+        orderBy: { occurredAt: "desc" },
+        take: 1000,
+      }),
+    ),
+    await timed("finance summary aggregates", async () => {
+      const [sales, expenses, receivable] = await Promise.all([
+        prisma.sale.aggregate({ where: { businessId: business.id }, _sum: { totalAmount: true }, _count: { id: true } }),
+        prisma.expense.aggregate({ where: { businessId: business.id }, _sum: { amount: true }, _count: { id: true } }),
+        prisma.customer.aggregate({ where: { businessId: business.id }, _sum: { currentBalance: true } }),
+      ]);
+      return (sales._count.id || 0) + (expenses._count.id || 0) + (receivable._sum.currentBalance || 0);
+    }),
   ];
 
   const contention = Math.min(50, Math.max(5, Math.floor(size / 20)));
@@ -268,6 +355,8 @@ async function measureCheckpoint(business, owner, size) {
         where: { businessId: business.id, barcode: { startsWith: "STRESS-P-" } },
       }),
       stockLogs: await prisma.stockLog.count({ where: { businessId: business.id } }),
+      customers: await prisma.customer.count({ where: { businessId: business.id } }),
+      expenses: await prisma.expense.count({ where: { businessId: business.id } }),
     },
     queries,
     isolation: {
@@ -314,10 +403,12 @@ async function runDatabaseScaleSuite(config, { fresh = false } = {}) {
     await growTeam(business, hash, size);
     await growProducts(business, owner, size);
     await ensureStockLogs(business, owner, size);
+    await growCustomers(business, size);
+    await growExpenses(business, owner, size);
     const checkpoint = await measureCheckpoint(business, owner, size);
     results.push(checkpoint);
     console.log(
-      `checkpoint ${size}: products=${checkpoint.counts.products} team=${checkpoint.counts.teamMembers} grade=${checkpoint.grade}`,
+      `checkpoint ${size}: products=${checkpoint.counts.products} customers=${checkpoint.counts.customers} expenses=${checkpoint.counts.expenses} grade=${checkpoint.grade}`,
     );
   }
 

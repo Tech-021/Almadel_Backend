@@ -17,11 +17,17 @@ const { probeProductReads, runProductSuite } = require("./suites/products");
 const { runStockSuite } = require("./suites/stock");
 const { runReadSuite } = require("./suites/reads");
 const { runMixedSuite } = require("./suites/mixed");
+const { probeCustomerReads, runCustomerSuite } = require("./suites/customers");
+const { runFinanceSuite } = require("./suites/finance");
+const { runReportsSuite } = require("./suites/reports");
 
 const HELP = `Almadel stress runner
 
   npm run stress:all
   npm run stress:business
+  npm run stress:customers
+  npm run stress:finance
+  npm run stress:reports
   npm run stress -- --suite team --profile standard
   npm run stress:all -- --profile heavy --confirm-heavy
 
@@ -30,7 +36,7 @@ Heavy requires --confirm-heavy.
 `;
 
 async function datasetCounts(prisma) {
-  const [businesses, team, products, stockLogs] = await Promise.all([
+  const [businesses, team, products, stockLogs, customers, expenses, ledger, payments] = await Promise.all([
     prisma.business.count({
       where: { OR: [{ name: { startsWith: "stress_" } }, { name: { startsWith: "loadtest_" } }] },
     }),
@@ -43,12 +49,28 @@ async function datasetCounts(prisma) {
     prisma.stockLog.count({
       where: { OR: [{ barcode: { startsWith: "STRESS-" } }, { barcode: { startsWith: "LOADTEST-" } }] },
     }),
+    prisma.customer.count({
+      where: { OR: [{ mobile: { startsWith: "0399" } }, { email: { startsWith: "stress_customer_" } }, { email: { startsWith: "loadtest_customer_" } }] },
+    }),
+    prisma.expense.count({
+      where: { OR: [{ category: { startsWith: "Stress expense" } }, { category: { startsWith: "Loadtest expense" } }] },
+    }),
+    prisma.ledgerTransaction.count({
+      where: { OR: [{ note: { startsWith: "stress seed ledger" } }, { note: { startsWith: "Loadtest ledger" } }] },
+    }),
+    prisma.payment.count({
+      where: { reference: { startsWith: "STRESS-PAY-" } },
+    }),
   ]);
   return {
     "stress businesses": businesses,
     "stress memberships": team,
     "stress products": products,
     "stress stock logs": stockLogs,
+    "stress customers": customers,
+    "stress expenses": expenses,
+    "stress ledger rows": ledger,
+    "stress khata payments": payments,
   };
 }
 
@@ -58,6 +80,19 @@ async function readAnchorForTarget(config, anchor, prisma) {
   if (!business) {
     throw new Error("No worst-case seed business found. Run the seed scripts first.");
   }
+  const session = await signIn(config, SEED_OWNER_EMAIL);
+  return {
+    token: session.token,
+    businessId: business.id,
+    email: SEED_OWNER_EMAIL,
+    businessName: business.name,
+  };
+}
+
+/** Prefer worst-case seeded tenant when present (customers / finance / reports volume tests). */
+async function preferSeedTenant(config, anchor, prisma) {
+  const business = await prisma.business.findFirst({ where: { name: WORST_CASE_BUSINESS } });
+  if (!business) return anchor;
   const session = await signIn(config, SEED_OWNER_EMAIL);
   return {
     token: session.token,
@@ -102,8 +137,8 @@ async function main() {
 
     const suite = config.args.suite;
     const selected = suite === "all"
-      ? ["business", "team", "products", "stock", "reads", "mixed"]
-      : [suite];
+      ? ["business", "team", "products", "stock", "customers", "finance", "reports", "reads", "mixed"]
+      : String(suite).split(",").map((name) => name.trim()).filter(Boolean);
 
     let anchor = null;
     const needsAnchor = selected.some((name) => name !== "business");
@@ -124,6 +159,20 @@ async function main() {
       } else if (name === "stock") {
         report.suites.stock = await runStockSuite(config, anchor, runSalt);
         report.integrity.push(...(report.suites.stock.integrity || []));
+      } else if (name === "customers") {
+        const target = await preferSeedTenant(config, anchor, prisma);
+        report.suites.customers = await runCustomerSuite(config, target, runSalt);
+        const probes = await probeCustomerReads(config, target, config.profile.readConcurrency);
+        report.suites.customers.stages.push(...probes);
+        report.suites.customers.targetBusinessId = target.businessId;
+      } else if (name === "finance") {
+        const target = await preferSeedTenant(config, anchor, prisma);
+        report.suites.finance = await runFinanceSuite(config, target, runSalt);
+        report.suites.finance.targetBusinessId = target.businessId;
+      } else if (name === "reports") {
+        const target = await preferSeedTenant(config, anchor, prisma);
+        report.suites.reports = await runReportsSuite(config, target);
+        report.suites.reports.targetBusinessId = target.businessId;
       } else if (name === "reads") {
         const target = await readAnchorForTarget(config, anchor, prisma);
         report.suites.reads = await runReadSuite(config, target);

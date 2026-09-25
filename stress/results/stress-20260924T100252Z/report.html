@@ -1,0 +1,58 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>stress-20260924T100252Z</title>
+<style>body{font-family:Georgia,serif;max-width:980px;margin:32px auto;color:#1f2933;line-height:1.45}table{border-collapse:collapse;width:100%;margin:12px 0}td,th{border:1px solid #d9e2ec;padding:6px 8px;text-align:left}th{background:#f0f4f8}</style>
+</head><body><h1>Almadel stress report stress-20260924T100252Z</h1><br><br>
+<h2>Executive Summary</h2><br><br>
+<ul><li>The stages that completed stayed inside the pass thresholds, and inventory checks matched expected quantities.</li>
+<li>Highest concurrency exercised in a completed stage: 0.</li>
+<li>Highest concurrency that still graded PASS: 0.</li>
+<li>API load and database volume are separate measurements. This report only includes suites that were executed in the run.</li>
+</ul>
+<h2>Environment</h2><br><br>
+<ul><li>Date: 2026-09-24T10:02:52.873Z</li>
+<li>Profile: smoke</li>
+<li>Base URL: http://127.0.0.1:4000</li>
+<li>Git: undefined</li>
+<li>Node: undefined</li>
+<li>Host: undefined (undefined)</li>
+<li>CPUs: undefined</li>
+<li>Memory free / total MB: undefined / undefined</li>
+<li>PostgreSQL: unavailable</li>
+<li>Database connections (active/idle/total): - / - / -</li>
+<li>Cache hit ratio: -</li>
+<li>Deadlocks counter: -</li>
+</ul>
+<h2>Dataset</h2><br><br>
+<ul><li>No dataset counts collected.</li>
+</ul>
+<h2>Business API Results</h2><br><br>
+Not run.<br><br>
+<h2>Team-Member API Results</h2><br><br>
+Not run.<br><br>
+<h2>Product API Results</h2><br><br>
+Not run.<br><br>
+<h2>Stock API Results</h2><br><br>
+Not run.<br><br>
+<h2>Inventory Correctness</h2><br><br>
+No inventory correctness checks were recorded in this run.<br><br>
+<h2>Large Dataset Performance</h2><br><br>
+Not run. Seed a dataset, then run `npm run stress:reads` with STRESS_READ_TARGET=seed.<br><br>
+<h2>Mixed Workload</h2><br><br>
+Not run.<br><br>
+<h2>Error Analysis</h2><br><br>
+No failed requests were recorded.<br><br>
+<h2>Bottlenecks</h2><br><br>
+<ul><li>Email timings were not recorded by the API process. Team-create latency includes whatever mail path that server used. Start the API with NODE_ENV=stress and STRESS_TEST=true so credential mail uses the in-process sink.</li>
+</ul>
+<h2>Stop Conditions</h2><br><br>
+No ramp was stopped early.<br><br>
+<h2>Thresholds</h2><br><br>
+<ul><li>PASS: error rate under 1% and p95 under 1 second, with no integrity failure.</li>
+</ul>
+<ul><li>WARNING: error rate from 1% to 5%, or p95 from 1 to 3 seconds.</li>
+</ul>
+<ul><li>FAIL: error rate above 5%, p95 above 3 seconds, or a data-integrity failure.</li>
+</ul>
+<h2>Recommendations</h2><br><br>
+These are follow-ups from the measurements above. They were not applied.<br><br>
+<ul><li>Email timings were not recorded by the API process. Team-create latency includes whatever mail path that server used. Start the API with NODE_ENV=stress and STRESS_TEST=true so credential mail uses the in-process sink.</li>
+</ul><h2>Stage tables</h2></body></html>

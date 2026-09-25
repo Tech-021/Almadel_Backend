@@ -1,0 +1,493 @@
+{
+  "id": "stress-db-scale-20260924T135021Z",
+  "kind": "database-scale",
+  "startedAt": "2026-09-24T13:50:21.296Z",
+  "profile": "standard",
+  "connectedDatabase": "almadel_stress",
+  "suites": {
+    "databaseScale": {
+      "scenario": "DATABASE SCALABILITY CHECKPOINTS",
+      "kind": "database-scale",
+      "businessId": 11192,
+      "checkpoints": [
+        {
+          "size": 100,
+          "counts": {
+            "businesses": 100,
+            "teamMembers": 100,
+            "products": 100,
+            "stockLogs": 100
+          },
+          "queries": [
+            {
+              "test": "count products",
+              "count": 5,
+              "averageMs": 1,
+              "medianMs": 1,
+              "p95Ms": 2,
+              "maxMs": 2,
+              "rows": 100,
+              "grade": "PASS"
+            },
+            {
+              "test": "list all products",
+              "count": 5,
+              "averageMs": 2,
+              "medianMs": 2,
+              "p95Ms": 2,
+              "maxMs": 2,
+              "rows": 100,
+              "grade": "PASS"
+            },
+            {
+              "test": "search products",
+              "count": 5,
+              "averageMs": 4,
+              "medianMs": 3,
+              "p95Ms": 7,
+              "maxMs": 7,
+              "rows": 50,
+              "grade": "PASS"
+            },
+            {
+              "test": "barcode lookup",
+              "count": 5,
+              "averageMs": 1,
+              "medianMs": 1,
+              "p95Ms": 2,
+              "maxMs": 2,
+              "rows": 1,
+              "grade": "PASS"
+            },
+            {
+              "test": "list team members",
+              "count": 5,
+              "averageMs": 6,
+              "medianMs": 5,
+              "p95Ms": 9,
+              "maxMs": 9,
+              "rows": 100,
+              "grade": "PASS"
+            },
+            {
+              "test": "owner business list",
+              "count": 5,
+              "averageMs": 5,
+              "medianMs": 5,
+              "p95Ms": 6,
+              "maxMs": 6,
+              "rows": 101,
+              "grade": "PASS"
+            },
+            {
+              "test": "stock aggregate",
+              "count": 5,
+              "averageMs": 2,
+              "medianMs": 1,
+              "p95Ms": 4,
+              "maxMs": 4,
+              "rows": 100,
+              "grade": "PASS"
+            }
+          ],
+          "isolation": {
+            "concurrency": 5,
+            "successful": 5,
+            "expected": 995,
+            "actual": 995,
+            "elapsedMs": 15,
+            "result": "PASS"
+          },
+          "grade": "PASS"
+        },
+        {
+          "size": 1000,
+          "counts": {
+            "businesses": 1000,
+            "teamMembers": 1000,
+            "products": 1000,
+            "stockLogs": 1000
+          },
+          "queries": [
+            {
+              "test": "count products",
+              "count": 5,
+              "averageMs": 1,
+              "medianMs": 1,
+              "p95Ms": 1,
+              "maxMs": 1,
+              "rows": 1000,
+              "grade": "PASS"
+            },
+            {
+              "test": "list all products",
+              "count": 5,
+              "averageMs": 3,
+              "medianMs": 3,
+              "p95Ms": 4,
+              "maxMs": 4,
+              "rows": 1000,
+              "grade": "PASS"
+            },
+            {
+              "test": "search products",
+              "count": 5,
+              "averageMs": 3,
+              "medianMs": 3,
+              "p95Ms": 3,
+              "maxMs": 3,
+              "rows": 50,
+              "grade": "PASS"
+            },
+            {
+              "test": "barcode lookup",
+              "count": 5,
+              "averageMs": 1,
+              "medianMs": 1,
+              "p95Ms": 1,
+              "maxMs": 1,
+              "rows": 1,
+              "grade": "PASS"
+            },
+            {
+              "test": "list team members",
+              "count": 5,
+              "averageMs": 13,
+              "medianMs": 14,
+              "p95Ms": 15,
+              "maxMs": 15,
+              "rows": 1000,
+              "grade": "PASS"
+            },
+            {
+              "test": "owner business list",
+              "count": 5,
+              "averageMs": 25,
+              "medianMs": 23,
+              "p95Ms": 32,
+              "maxMs": 32,
+              "rows": 1001,
+              "grade": "PASS"
+            },
+            {
+              "test": "stock aggregate",
+              "count": 5,
+              "averageMs": 1,
+              "medianMs": 1,
+              "p95Ms": 2,
+              "maxMs": 2,
+              "rows": 1000,
+              "grade": "PASS"
+            }
+          ],
+          "isolation": {
+            "concurrency": 50,
+            "successful": 50,
+            "expected": 950,
+            "actual": 950,
+            "elapsedMs": 39,
+            "result": "PASS"
+          },
+          "grade": "PASS"
+        },
+        {
+          "size": 5000,
+          "counts": {
+            "businesses": 5000,
+            "teamMembers": 5000,
+            "products": 5000,
+            "stockLogs": 5000
+          },
+          "queries": [
+            {
+              "test": "count products",
+              "count": 5,
+              "averageMs": 2,
+              "medianMs": 2,
+              "p95Ms": 2,
+              "maxMs": 2,
+              "rows": 5000,
+              "grade": "PASS"
+            },
+            {
+              "test": "list all products",
+              "count": 5,
+              "averageMs": 17,
+              "medianMs": 17,
+              "p95Ms": 18,
+              "maxMs": 18,
+              "rows": 5000,
+              "grade": "PASS"
+            },
+            {
+              "test": "search products",
+              "count": 5,
+              "averageMs": 2,
+              "medianMs": 2,
+              "p95Ms": 4,
+              "maxMs": 4,
+              "rows": 50,
+              "grade": "PASS"
+            },
+            {
+              "test": "barcode lookup",
+              "count": 5,
+              "averageMs": 1,
+              "medianMs": 1,
+              "p95Ms": 1,
+              "maxMs": 1,
+              "rows": 1,
+              "grade": "PASS"
+            },
+            {
+              "test": "list team members",
+              "count": 5,
+              "averageMs": 42,
+              "medianMs": 41,
+              "p95Ms": 45,
+              "maxMs": 45,
+              "rows": 5000,
+              "grade": "PASS"
+            },
+            {
+              "test": "owner business list",
+              "count": 5,
+              "averageMs": 116,
+              "medianMs": 115,
+              "p95Ms": 129,
+              "maxMs": 129,
+              "rows": 5001,
+              "grade": "PASS"
+            },
+            {
+              "test": "stock aggregate",
+              "count": 5,
+              "averageMs": 3,
+              "medianMs": 2,
+              "p95Ms": 5,
+              "maxMs": 5,
+              "rows": 5000,
+              "grade": "PASS"
+            }
+          ],
+          "isolation": {
+            "concurrency": 50,
+            "successful": 50,
+            "expected": 950,
+            "actual": 950,
+            "elapsedMs": 42,
+            "result": "PASS"
+          },
+          "grade": "PASS"
+        },
+        {
+          "size": 10000,
+          "counts": {
+            "businesses": 10000,
+            "teamMembers": 10000,
+            "products": 10000,
+            "stockLogs": 10000
+          },
+          "queries": [
+            {
+              "test": "count products",
+              "count": 5,
+              "averageMs": 2,
+              "medianMs": 2,
+              "p95Ms": 3,
+              "maxMs": 3,
+              "rows": 10000,
+              "grade": "PASS"
+            },
+            {
+              "test": "list all products",
+              "count": 5,
+              "averageMs": 17,
+              "medianMs": 17,
+              "p95Ms": 18,
+              "maxMs": 18,
+              "rows": 10000,
+              "grade": "PASS"
+            },
+            {
+              "test": "search products",
+              "count": 5,
+              "averageMs": 1,
+              "medianMs": 1,
+              "p95Ms": 2,
+              "maxMs": 2,
+              "rows": 50,
+              "grade": "PASS"
+            },
+            {
+              "test": "barcode lookup",
+              "count": 5,
+              "averageMs": 1,
+              "medianMs": 1,
+              "p95Ms": 1,
+              "maxMs": 1,
+              "rows": 1,
+              "grade": "PASS"
+            },
+            {
+              "test": "list team members",
+              "count": 5,
+              "averageMs": 86,
+              "medianMs": 86,
+              "p95Ms": 88,
+              "maxMs": 88,
+              "rows": 10000,
+              "grade": "PASS"
+            },
+            {
+              "test": "owner business list",
+              "count": 5,
+              "averageMs": 225,
+              "medianMs": 219,
+              "p95Ms": 245,
+              "maxMs": 245,
+              "rows": 10001,
+              "grade": "PASS"
+            },
+            {
+              "test": "stock aggregate",
+              "count": 5,
+              "averageMs": 3,
+              "medianMs": 3,
+              "p95Ms": 4,
+              "maxMs": 4,
+              "rows": 10000,
+              "grade": "PASS"
+            }
+          ],
+          "isolation": {
+            "concurrency": 50,
+            "successful": 50,
+            "expected": 950,
+            "actual": 950,
+            "elapsedMs": 27,
+            "result": "PASS"
+          },
+          "grade": "PASS"
+        }
+      ],
+      "summary": {
+        "checkpoints": 4,
+        "pass": 4,
+        "warning": 0,
+        "fail": 0
+      }
+    }
+  },
+  "git": "4bbff74",
+  "app": {
+    "host": "ubuntu-8gb-hel1-1",
+    "platform": "linux 7.0.0-27-generic",
+    "cpuCount": 4,
+    "loadAvg": [
+      0.48,
+      0.51,
+      0.37
+    ],
+    "totalMemoryMb": 7746,
+    "freeMemoryMb": 3826,
+    "node": "v22.23.1",
+    "pm2": [
+      {
+        "name": "almadel-api",
+        "status": "online",
+        "restarts": 362245,
+        "cpu": 0.1,
+        "memoryMb": 72
+      },
+      {
+        "name": "almadel-backend",
+        "status": "online",
+        "restarts": 11,
+        "cpu": 0.2,
+        "memoryMb": 167
+      }
+    ]
+  },
+  "database": {
+    "version": "PostgreSQL 18.6 (Ubuntu 18.6-0ubuntu0.26.04.1) on x86_64-pc-linux-gnu",
+    "activity": {
+      "active": 1,
+      "idle": 3,
+      "waiting": 3,
+      "total": 4
+    },
+    "database": {
+      "commits": 73502,
+      "rollbacks": 11,
+      "deadlocks": 0,
+      "blocks_hit": 14873402,
+      "blocks_read": 45,
+      "backends": 4,
+      "cacheHitRatio": 1
+    },
+    "largestTables": [
+      {
+        "table_name": "User",
+        "total_bytes": 3317760,
+        "estimated_rows": 1
+      },
+      {
+        "table_name": "products",
+        "total_bytes": 2793472,
+        "estimated_rows": 0
+      },
+      {
+        "table_name": "business_members",
+        "total_bytes": 1466368,
+        "estimated_rows": 0
+      },
+      {
+        "table_name": "businesses",
+        "total_bytes": 417792,
+        "estimated_rows": 0
+      },
+      {
+        "table_name": "stock_logs",
+        "total_bytes": 417792,
+        "estimated_rows": 0
+      },
+      {
+        "table_name": "activity_logs",
+        "total_bytes": 368640,
+        "estimated_rows": 0
+      },
+      {
+        "table_name": "sales",
+        "total_bytes": 73728,
+        "estimated_rows": 0
+      },
+      {
+        "table_name": "ledger_transactions",
+        "total_bytes": 73728,
+        "estimated_rows": 0
+      },
+      {
+        "table_name": "accounts",
+        "total_bytes": 65536,
+        "estimated_rows": -1
+      },
+      {
+        "table_name": "payments",
+        "total_bytes": 57344,
+        "estimated_rows": 0
+      },
+      {
+        "table_name": "sale_items",
+        "total_bytes": 40960,
+        "estimated_rows": 0
+      },
+      {
+        "table_name": "_prisma_migrations",
+        "total_bytes": 32768,
+        "estimated_rows": -1
+      }
+    ]
+  },
+  "finishedAt": "2026-09-24T13:50:37.342Z"
+}

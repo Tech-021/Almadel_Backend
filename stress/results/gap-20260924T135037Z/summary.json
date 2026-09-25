@@ -1,0 +1,30 @@
+{
+  "kind": "gap-combined",
+  "reports": [
+    {
+      "id": "gap-20260924T135037Z-high-concurrency",
+      "title": "Hundreds of concurrent users",
+      "dir": "/var/www/Almadel_Backend/stress/results/gap-20260924T135037Z/high-concurrency"
+    },
+    {
+      "id": "gap-20260924T135037Z-history",
+      "title": "Large sale and activity history",
+      "dir": "/var/www/Almadel_Backend/stress/results/gap-20260924T135037Z/history"
+    },
+    {
+      "id": "gap-20260924T135037Z-images",
+      "title": "Image-heavy product catalog",
+      "dir": "/var/www/Almadel_Backend/stress/results/gap-20260924T135037Z/images"
+    },
+    {
+      "id": "gap-20260924T135037Z-list-growth",
+      "title": "Unbounded list endpoint growth",
+      "dir": "/var/www/Almadel_Backend/stress/results/gap-20260924T135037Z/list-growth"
+    },
+    {
+      "id": "gap-20260924T135037Z-frontend",
+      "title": "Frontend network path and client session",
+      "dir": "/var/www/Almadel_Backend/stress/results/gap-20260924T135037Z/frontend"
+    }
+  ]
+}

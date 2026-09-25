@@ -1,0 +1,82 @@
+{
+  "stages": [
+    {
+      "requests": 100,
+      "successful": 100,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 253.46,
+      "bytes": 38550,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 11.857036999999764,
+        "averageMs": 19,
+        "medianMs": 19,
+        "p90Ms": 24,
+        "p95Ms": 27,
+        "p99Ms": 34,
+        "maxMs": 36.22256399999969
+      },
+      "statusCodes": {
+        "200": 100
+      },
+      "errorGroups": {},
+      "test": "stock-increment",
+      "endpoint": "POST /stock/add",
+      "concurrency": 5,
+      "elapsedMs": 394.5396520000004,
+      "grade": "PASS"
+    },
+    {
+      "requests": 5,
+      "successful": 5,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 55.3,
+      "bytes": 2255,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 46.330589000000145,
+        "averageMs": 69,
+        "medianMs": 71,
+        "p90Ms": 91,
+        "p95Ms": 91,
+        "p99Ms": 91,
+        "maxMs": 90.76372600000013
+      },
+      "statusCodes": {
+        "201": 5
+      },
+      "errorGroups": {},
+      "test": "stock-contention-decrement",
+      "endpoint": "POST /sales/checkout",
+      "concurrency": 5,
+      "elapsedMs": 90.41418700000031,
+      "grade": "PASS"
+    }
+  ],
+  "integrity": [
+    {
+      "test": "20 products x 5 concurrent increments",
+      "operation": "POST /stock/add quantity 1",
+      "initial": "per-product opening stock",
+      "expected": "opening stock + successful increments for that product",
+      "actual": "matched",
+      "checked": 20,
+      "mismatches": 0,
+      "example": null,
+      "result": "PASS"
+    },
+    {
+      "test": "5 concurrent sale decrements",
+      "operation": "POST /sales/checkout quantity 1",
+      "initial": 1000,
+      "successful": 5,
+      "failed": 0,
+      "expected": 995,
+      "actual": 995,
+      "result": "PASS"
+    }
+  ],
+  "aborted": null
+}

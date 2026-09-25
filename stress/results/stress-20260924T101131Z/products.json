@@ -1,0 +1,210 @@
+{
+  "stages": [
+    {
+      "requests": 50,
+      "successful": 50,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 320.96,
+      "bytes": 18571,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 7.36361799999986,
+        "averageMs": 15,
+        "medianMs": 16,
+        "p90Ms": 19,
+        "p95Ms": 21,
+        "p99Ms": 22,
+        "maxMs": 21.51859000000013
+      },
+      "statusCodes": {
+        "201": 50
+      },
+      "errorGroups": {},
+      "test": "product-create",
+      "scenario": "API load against one stress business via POST /products.",
+      "stage": "50",
+      "target": 50,
+      "concurrency": 5,
+      "elapsedMs": 155.78473099999974,
+      "grade": "PASS",
+      "stoppedEarly": false
+    },
+    {
+      "requests": 1,
+      "successful": 1,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 139.12,
+      "bytes": 18622,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 7.0127299999999195,
+        "averageMs": 7,
+        "medianMs": 7,
+        "p90Ms": 7,
+        "p95Ms": 7,
+        "p99Ms": 7,
+        "maxMs": 7.0127299999999195
+      },
+      "statusCodes": {
+        "200": 1
+      },
+      "errorGroups": {},
+      "test": "product-list",
+      "endpoint": "GET /products",
+      "concurrency": 1,
+      "elapsedMs": 7.188199000000168,
+      "rowsReturned": 50,
+      "paginated": false,
+      "grade": "PASS"
+    },
+    {
+      "requests": 5,
+      "successful": 5,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 287.63,
+      "bytes": 93110,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 11.928882000000158,
+        "averageMs": 14,
+        "medianMs": 14,
+        "p90Ms": 17,
+        "p95Ms": 17,
+        "p99Ms": 17,
+        "maxMs": 16.728986000000077
+      },
+      "statusCodes": {
+        "200": 5
+      },
+      "errorGroups": {},
+      "test": "product-list",
+      "endpoint": "GET /products",
+      "concurrency": 5,
+      "elapsedMs": 17.383658000000196,
+      "rowsReturned": 50,
+      "paginated": false,
+      "grade": "PASS"
+    },
+    {
+      "requests": 1,
+      "successful": 1,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 116.08,
+      "bytes": 18650,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 8.479800000000068,
+        "averageMs": 8,
+        "medianMs": 8,
+        "p90Ms": 8,
+        "p95Ms": 8,
+        "p99Ms": 8,
+        "maxMs": 8.479800000000068
+      },
+      "statusCodes": {
+        "200": 1
+      },
+      "errorGroups": {},
+      "test": "product-search",
+      "endpoint": "GET /products/search?q=Loadtest",
+      "concurrency": 1,
+      "elapsedMs": 8.614994000000024,
+      "rowsReturned": 50,
+      "paginated": true,
+      "grade": "PASS"
+    },
+    {
+      "requests": 5,
+      "successful": 5,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 282.56,
+      "bytes": 93250,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 12.524640999999974,
+        "averageMs": 15,
+        "medianMs": 15,
+        "p90Ms": 17,
+        "p95Ms": 17,
+        "p99Ms": 17,
+        "maxMs": 16.82925400000022
+      },
+      "statusCodes": {
+        "200": 5
+      },
+      "errorGroups": {},
+      "test": "product-search",
+      "endpoint": "GET /products/search?q=Loadtest",
+      "concurrency": 5,
+      "elapsedMs": 17.695094000000154,
+      "rowsReturned": 50,
+      "paginated": true,
+      "grade": "PASS"
+    },
+    {
+      "requests": 1,
+      "successful": 1,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 231.06,
+      "bytes": 371,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 4.256830999999693,
+        "averageMs": 4,
+        "medianMs": 4,
+        "p90Ms": 4,
+        "p95Ms": 4,
+        "p99Ms": 4,
+        "maxMs": 4.256830999999693
+      },
+      "statusCodes": {
+        "200": 1
+      },
+      "errorGroups": {},
+      "test": "product-barcode",
+      "endpoint": "GET /products/barcode/LOADTEST-1863-000001",
+      "concurrency": 1,
+      "elapsedMs": 4.327855999999883,
+      "rowsReturned": 1,
+      "paginated": false,
+      "grade": "PASS"
+    },
+    {
+      "requests": 5,
+      "successful": 5,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 378.86,
+      "bytes": 1855,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 10.506313999999747,
+        "averageMs": 11,
+        "medianMs": 11,
+        "p90Ms": 13,
+        "p95Ms": 13,
+        "p99Ms": 13,
+        "maxMs": 12.709952000000158
+      },
+      "statusCodes": {
+        "200": 5
+      },
+      "errorGroups": {},
+      "test": "product-barcode",
+      "endpoint": "GET /products/barcode/LOADTEST-1863-000001",
+      "concurrency": 5,
+      "elapsedMs": 13.197349000000031,
+      "rowsReturned": 1,
+      "paginated": false,
+      "grade": "PASS"
+    }
+  ],
+  "aborted": null,
+  "created": 50
+}

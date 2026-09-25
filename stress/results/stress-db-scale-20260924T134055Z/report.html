@@ -1,0 +1,125 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>stress-db-scale-20260924T134055Z</title>
+<style>body{font-family:Georgia,serif;max-width:920px;margin:40px auto;padding:0 20px;line-height:1.55}table{border-collapse:collapse;width:100%;margin:12px 0}td,th{border:1px solid #d9e2ec;padding:8px;text-align:left}th{background:#f0f4f8}</style>
+</head><body><pre style="white-space:pre-wrap;font-family:inherit"># Almadel Database Scalability Report
+**Report ID:** stress-db-scale-20260924T134055Z
+
+## 1. Purpose
+
+This report measures how database query cost and stock correctness change as Almadel data grows. Unlike a single snapshot against an already-full database, this run grows the stress dataset through checkpoints and measures the same queries at each size. That produces a scalability curve.
+
+## 2. Bottom line
+
+Checkpoints measured: **4**. PASS: **4**. WARNING: **0**. FAIL: **0**.
+
+Across the measured sizes, query timings stayed inside pass thresholds and concurrent stock decrements remained correct.
+
+## 3. How the test worked
+
+For each checkpoint size, the suite grew businesses, team members, products, and stock logs to that size inside `almadel_stress`, then timed the same Prisma queries and ran a concurrent stock-decrement isolation check. API HTTP load was not part of this report.
+
+Profile: **standard**. Worst-case business id: **7**.
+
+## 4. Checkpoint summary
+
+| Size | Businesses | Team | Products | Stock logs | Checkpoint grade | Isolation |
+| ---: | ---: | ---: | ---: | ---: | --- | --- |
+| 100 | 10000 | 10000 | 10000 | 10000 | PASS | PASS (5 writers) |
+| 1000 | 10000 | 10000 | 10000 | 10000 | PASS | PASS (50 writers) |
+| 5000 | 10000 | 10000 | 10000 | 10000 | PASS | PASS (50 writers) |
+| 10000 | 10000 | 10000 | 10000 | 10000 | PASS | PASS (50 writers) |
+
+## 5. Scalability curves
+
+The tables below show how p95 latency changed as row counts increased. Rising p95 with size is expected for unbounded list queries. A sharp jump is more important than a small absolute number.
+
+### list all products
+
+| Dataset size | Avg | P95 | Rows | Grade |
+| ---: | ---: | ---: | ---: | --- |
+| 100 | 19 ms | 24 ms | 10000 | PASS |
+| 1000 | 18 ms | 22 ms | 10000 | PASS |
+| 5000 | 19 ms | 20 ms | 10000 | PASS |
+| 10000 | 19 ms | 21 ms | 10000 | PASS |
+
+From size **100** to **10000**, p95 moved from **24 ms** to **21 ms** (about **0.9x**).
+
+### list team members
+
+| Dataset size | Avg | P95 | Rows | Grade |
+| ---: | ---: | ---: | ---: | --- |
+| 100 | 94 ms | 117 ms | 10000 | PASS |
+| 1000 | 82 ms | 100 ms | 10000 | PASS |
+| 5000 | 102 ms | 121 ms | 10000 | PASS |
+| 10000 | 90 ms | 121 ms | 10000 | PASS |
+
+From size **100** to **10000**, p95 moved from **117 ms** to **121 ms** (about **1.0x**).
+
+### owner business list
+
+| Dataset size | Avg | P95 | Rows | Grade |
+| ---: | ---: | ---: | ---: | --- |
+| 100 | 210 ms | 221 ms | 10001 | PASS |
+| 1000 | 215 ms | 264 ms | 10001 | PASS |
+| 5000 | 241 ms | 282 ms | 10001 | PASS |
+| 10000 | 214 ms | 244 ms | 10001 | PASS |
+
+From size **100** to **10000**, p95 moved from **221 ms** to **244 ms** (about **1.1x**).
+
+### search products
+
+| Dataset size | Avg | P95 | Rows | Grade |
+| ---: | ---: | ---: | ---: | --- |
+| 100 | 2 ms | 6 ms | 50 | PASS |
+| 1000 | 1 ms | 2 ms | 50 | PASS |
+| 5000 | 2 ms | 2 ms | 50 | PASS |
+| 10000 | 2 ms | 2 ms | 50 | PASS |
+
+From size **100** to **10000**, p95 moved from **6 ms** to **2 ms** (about **0.3x**).
+
+### barcode lookup
+
+| Dataset size | Avg | P95 | Rows | Grade |
+| ---: | ---: | ---: | ---: | --- |
+| 100 | 1 ms | 1 ms | 1 | PASS |
+| 1000 | 1 ms | 1 ms | 1 | PASS |
+| 5000 | 1 ms | 1 ms | 1 | PASS |
+| 10000 | 1 ms | 1 ms | 1 | PASS |
+
+From size **100** to **10000**, p95 moved from **1 ms** to **1 ms** (about **1.0x**).
+
+### stock aggregate
+
+| Dataset size | Avg | P95 | Rows | Grade |
+| ---: | ---: | ---: | ---: | --- |
+| 100 | 3 ms | 4 ms | 10000 | PASS |
+| 1000 | 3 ms | 4 ms | 10000 | PASS |
+| 5000 | 3 ms | 4 ms | 10000 | PASS |
+| 10000 | 2 ms | 4 ms | 10000 | PASS |
+
+From size **100** to **10000**, p95 moved from **4 ms** to **4 ms** (about **1.0x**).
+
+## 6. Isolation / inventory correctness during growth
+
+At every checkpoint, many writers decremented the same product using conditional updates. Expected final stock had to equal starting stock minus successful decrements.
+
+| Size | Writers | Successful | Expected stock | Actual stock | Result |
+| ---: | ---: | ---: | ---: | ---: | --- |
+| 100 | 5 | 5 | 995 | 995 | PASS |
+| 1000 | 50 | 50 | 950 | 950 | PASS |
+| 5000 | 50 | 50 | 950 | 950 | PASS |
+| 10000 | 50 | 50 | 950 | 950 | PASS |
+
+## 7. What this proves
+
+- Database query cost can be compared across growing dataset sizes.
+- Stock isolation behavior was checked while the tenant was large, not only on a tiny sample.
+- This is not an HTTP concurrency result. Use the API scalability report for request ramps.
+
+## 8. Environment
+
+- Date: 2026-09-24T13:40:55.198Z
+- PostgreSQL: PostgreSQL 18.6 (Ubuntu 18.6-0ubuntu0.26.04.1) on x86_64-pc-linux-gnu
+- Host: ubuntu-8gb-hel1-1
+- Node: v22.23.1
+
+</pre></body></html>

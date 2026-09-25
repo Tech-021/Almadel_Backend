@@ -1,0 +1,1073 @@
+{
+  "stages": [
+    {
+      "requests": 1906,
+      "successful": 1906,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 63.36,
+      "bytes": 522908370,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 7.757295999996131,
+        "averageMs": 149,
+        "medianMs": 121,
+        "p90Ms": 271,
+        "p95Ms": 471,
+        "p99Ms": 557,
+        "maxMs": 608.8943710000021
+      },
+      "statusCodes": {
+        "200": 1716,
+        "201": 190
+      },
+      "errorGroups": {},
+      "test": "mixed",
+      "scenario": "Realistic mixed traffic on one existing business. Creates stay inside this timed stage.",
+      "concurrency": 10,
+      "elapsedMs": 30080.013292000018,
+      "seconds": 30,
+      "mix": [
+        {
+          "name": "product-read",
+          "weight": 40
+        },
+        {
+          "name": "product-search",
+          "weight": 15
+        },
+        {
+          "name": "stock-read",
+          "weight": 10
+        },
+        {
+          "name": "stock-update",
+          "weight": 10
+        },
+        {
+          "name": "team-read",
+          "weight": 10
+        },
+        {
+          "name": "business-read",
+          "weight": 5
+        },
+        {
+          "name": "product-create",
+          "weight": 5
+        },
+        {
+          "name": "team-create",
+          "weight": 3
+        },
+        {
+          "name": "business-create",
+          "weight": 2
+        }
+      ],
+      "grade": "PASS",
+      "byKind": {
+        "product-read": {
+          "requests": 766,
+          "successful": 766,
+          "failed": 0,
+          "errorRate": 0,
+          "requestsPerSecond": 0,
+          "bytes": 379334187,
+          "timeoutCount": 0,
+          "latency": {
+            "minMs": 29.502439000003505,
+            "averageMs": 190,
+            "medianMs": 168,
+            "p90Ms": 326,
+            "p95Ms": 473,
+            "p99Ms": 516,
+            "maxMs": 549.9199369999988
+          },
+          "statusCodes": {
+            "200": 766
+          },
+          "errorGroups": {}
+        },
+        "product-search": {
+          "requests": 285,
+          "successful": 285,
+          "failed": 0,
+          "errorRate": 0,
+          "requestsPerSecond": 0,
+          "bytes": 5413703,
+          "timeoutCount": 0,
+          "latency": {
+            "minMs": 7.757295999996131,
+            "averageMs": 67,
+            "medianMs": 65,
+            "p90Ms": 119,
+            "p95Ms": 135,
+            "p99Ms": 157,
+            "maxMs": 169.74565500000608
+          },
+          "statusCodes": {
+            "200": 285
+          },
+          "errorGroups": {}
+        },
+        "stock-read": {
+          "requests": 190,
+          "successful": 190,
+          "failed": 0,
+          "errorRate": 0,
+          "requestsPerSecond": 0,
+          "bytes": 94054180,
+          "timeoutCount": 0,
+          "latency": {
+            "minMs": 26.636704999982612,
+            "averageMs": 107,
+            "medianMs": 106,
+            "p90Ms": 165,
+            "p95Ms": 174,
+            "p99Ms": 210,
+            "maxMs": 216.25730200001271
+          },
+          "statusCodes": {
+            "200": 190
+          },
+          "errorGroups": {}
+        },
+        "stock-update": {
+          "requests": 190,
+          "successful": 190,
+          "failed": 0,
+          "errorRate": 0,
+          "requestsPerSecond": 0,
+          "bytes": 70870,
+          "timeoutCount": 0,
+          "latency": {
+            "minMs": 9.313435999996727,
+            "averageMs": 151,
+            "medianMs": 145,
+            "p90Ms": 237,
+            "p95Ms": 282,
+            "p99Ms": 341,
+            "maxMs": 342.967765999987
+          },
+          "statusCodes": {
+            "200": 190
+          },
+          "errorGroups": {}
+        },
+        "team-read": {
+          "requests": 190,
+          "successful": 190,
+          "failed": 0,
+          "errorRate": 0,
+          "requestsPerSecond": 0,
+          "bytes": 43861630,
+          "timeoutCount": 0,
+          "latency": {
+            "minMs": 25.990947999991477,
+            "averageMs": 81,
+            "medianMs": 76,
+            "p90Ms": 113,
+            "p95Ms": 154,
+            "p99Ms": 190,
+            "maxMs": 293.5165449999913
+          },
+          "statusCodes": {
+            "200": 190
+          },
+          "errorGroups": {}
+        },
+        "business-read": {
+          "requests": 95,
+          "successful": 95,
+          "failed": 0,
+          "errorRate": 0,
+          "requestsPerSecond": 0,
+          "bytes": 95095,
+          "timeoutCount": 0,
+          "latency": {
+            "minMs": 23.538391000009142,
+            "averageMs": 53,
+            "medianMs": 47,
+            "p90Ms": 74,
+            "p95Ms": 93,
+            "p99Ms": 137,
+            "maxMs": 137.35938499998883
+          },
+          "statusCodes": {
+            "200": 95
+          },
+          "errorGroups": {}
+        },
+        "product-create": {
+          "requests": 95,
+          "successful": 95,
+          "failed": 0,
+          "errorRate": 0,
+          "requestsPerSecond": 0,
+          "bytes": 35340,
+          "timeoutCount": 0,
+          "latency": {
+            "minMs": 9.569347000011476,
+            "averageMs": 122,
+            "medianMs": 102,
+            "p90Ms": 304,
+            "p95Ms": 366,
+            "p99Ms": 459,
+            "maxMs": 458.8663720000186
+          },
+          "statusCodes": {
+            "201": 95
+          },
+          "errorGroups": {}
+        },
+        "team-create": {
+          "requests": 57,
+          "successful": 57,
+          "failed": 0,
+          "errorRate": 0,
+          "requestsPerSecond": 0,
+          "bytes": 7059,
+          "timeoutCount": 0,
+          "latency": {
+            "minMs": 467.9960120000178,
+            "averageMs": 545,
+            "medianMs": 547,
+            "p90Ms": 577,
+            "p95Ms": 590,
+            "p99Ms": 609,
+            "maxMs": 608.8943710000021
+          },
+          "statusCodes": {
+            "201": 57
+          },
+          "errorGroups": {}
+        },
+        "business-create": {
+          "requests": 38,
+          "successful": 38,
+          "failed": 0,
+          "errorRate": 0,
+          "requestsPerSecond": 0,
+          "bytes": 36306,
+          "timeoutCount": 0,
+          "latency": {
+            "minMs": 74.48106099999859,
+            "averageMs": 195,
+            "medianMs": 197,
+            "p90Ms": 303,
+            "p95Ms": 339,
+            "p99Ms": 370,
+            "maxMs": 370.01892000000225
+          },
+          "statusCodes": {
+            "201": 38
+          },
+          "errorGroups": {}
+        }
+      }
+    },
+    {
+      "requests": 1799,
+      "successful": 1799,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 59.09,
+      "bytes": 525326511,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 50.6474739999976,
+        "averageMs": 414,
+        "medianMs": 394,
+        "p90Ms": 588,
+        "p95Ms": 686,
+        "p99Ms": 976,
+        "maxMs": 1112.9685749999771
+      },
+      "statusCodes": {
+        "200": 1619,
+        "201": 180
+      },
+      "errorGroups": {},
+      "test": "mixed",
+      "scenario": "Realistic mixed traffic on one existing business. Creates stay inside this timed stage.",
+      "concurrency": 25,
+      "elapsedMs": 30447.123857,
+      "seconds": 30,
+      "mix": [
+        {
+          "name": "product-read",
+          "weight": 40
+        },
+        {
+          "name": "product-search",
+          "weight": 15
+        },
+        {
+          "name": "stock-read",
+          "weight": 10
+        },
+        {
+          "name": "stock-update",
+          "weight": 10
+        },
+        {
+          "name": "team-read",
+          "weight": 10
+        },
+        {
+          "name": "business-read",
+          "weight": 5
+        },
+        {
+          "name": "product-create",
+          "weight": 5
+        },
+        {
+          "name": "team-create",
+          "weight": 3
+        },
+        {
+          "name": "business-create",
+          "weight": 2
+        }
+      ],
+      "grade": "PASS",
+      "byKind": {
+        "product-read": {
+          "requests": 719,
+          "successful": 719,
+          "failed": 0,
+          "errorRate": 0,
+          "requestsPerSecond": 0,
+          "bytes": 380943523,
+          "timeoutCount": 0,
+          "latency": {
+            "minMs": 50.6474739999976,
+            "averageMs": 433,
+            "medianMs": 420,
+            "p90Ms": 543,
+            "p95Ms": 583,
+            "p99Ms": 660,
+            "maxMs": 700.5399719999987
+          },
+          "statusCodes": {
+            "200": 719
+          },
+          "errorGroups": {}
+        },
+        "product-search": {
+          "requests": 270,
+          "successful": 270,
+          "failed": 0,
+          "errorRate": 0,
+          "requestsPerSecond": 0,
+          "bytes": 5128922,
+          "timeoutCount": 0,
+          "latency": {
+            "minMs": 188.21292699998594,
+            "averageMs": 335,
+            "medianMs": 340,
+            "p90Ms": 418,
+            "p95Ms": 440,
+            "p99Ms": 463,
+            "maxMs": 488.42762299999595
+          },
+          "statusCodes": {
+            "200": 270
+          },
+          "errorGroups": {}
+        },
+        "stock-read": {
+          "requests": 180,
+          "successful": 180,
+          "failed": 0,
+          "errorRate": 0,
+          "requestsPerSecond": 0,
+          "bytes": 95314410,
+          "timeoutCount": 0,
+          "latency": {
+            "minMs": 116.90984000000753,
+            "averageMs": 232,
+            "medianMs": 233,
+            "p90Ms": 293,
+            "p95Ms": 306,
+            "p99Ms": 348,
+            "maxMs": 380.8988959999988
+          },
+          "statusCodes": {
+            "200": 180
+          },
+          "errorGroups": {}
+        },
+        "stock-update": {
+          "requests": 180,
+          "successful": 180,
+          "failed": 0,
+          "errorRate": 0,
+          "requestsPerSecond": 0,
+          "bytes": 67140,
+          "timeoutCount": 0,
+          "latency": {
+            "minMs": 210.77246399997966,
+            "averageMs": 473,
+            "medianMs": 382,
+            "p90Ms": 850,
+            "p95Ms": 904,
+            "p99Ms": 1000,
+            "maxMs": 1079.9066120000207
+          },
+          "statusCodes": {
+            "200": 180
+          },
+          "errorGroups": {}
+        },
+        "team-read": {
+          "requests": 180,
+          "successful": 180,
+          "failed": 0,
+          "errorRate": 0,
+          "requestsPerSecond": 0,
+          "bytes": 43707780,
+          "timeoutCount": 0,
+          "latency": {
+            "minMs": 255.46034799999325,
+            "averageMs": 477,
+            "medianMs": 497,
+            "p90Ms": 583,
+            "p95Ms": 613,
+            "p99Ms": 749,
+            "maxMs": 793.2336540000106
+          },
+          "statusCodes": {
+            "200": 180
+          },
+          "errorGroups": {}
+        },
+        "business-read": {
+          "requests": 90,
+          "successful": 90,
+          "failed": 0,
+          "errorRate": 0,
+          "requestsPerSecond": 0,
+          "bytes": 90090,
+          "timeoutCount": 0,
+          "latency": {
+            "minMs": 84.32273200000054,
+            "averageMs": 206,
+            "medianMs": 165,
+            "p90Ms": 362,
+            "p95Ms": 377,
+            "p99Ms": 444,
+            "maxMs": 443.9213910000108
+          },
+          "statusCodes": {
+            "200": 90
+          },
+          "errorGroups": {}
+        },
+        "product-create": {
+          "requests": 90,
+          "successful": 90,
+          "failed": 0,
+          "errorRate": 0,
+          "requestsPerSecond": 0,
+          "bytes": 33480,
+          "timeoutCount": 0,
+          "latency": {
+            "minMs": 311.846446999989,
+            "averageMs": 458,
+            "medianMs": 429,
+            "p90Ms": 602,
+            "p95Ms": 615,
+            "p99Ms": 670,
+            "maxMs": 669.8038179999567
+          },
+          "statusCodes": {
+            "201": 90
+          },
+          "errorGroups": {}
+        },
+        "team-create": {
+          "requests": 54,
+          "successful": 54,
+          "failed": 0,
+          "errorRate": 0,
+          "requestsPerSecond": 0,
+          "bytes": 6750,
+          "timeoutCount": 0,
+          "latency": {
+            "minMs": 700.1242779999739,
+            "averageMs": 936,
+            "medianMs": 920,
+            "p90Ms": 1057,
+            "p95Ms": 1089,
+            "p99Ms": 1113,
+            "maxMs": 1112.9685749999771
+          },
+          "statusCodes": {
+            "201": 54
+          },
+          "errorGroups": {}
+        },
+        "business-create": {
+          "requests": 36,
+          "successful": 36,
+          "failed": 0,
+          "errorRate": 0,
+          "requestsPerSecond": 0,
+          "bytes": 34416,
+          "timeoutCount": 0,
+          "latency": {
+            "minMs": 318.8106099999859,
+            "averageMs": 524,
+            "medianMs": 520,
+            "p90Ms": 628,
+            "p95Ms": 638,
+            "p99Ms": 675,
+            "maxMs": 675.2646700000041
+          },
+          "statusCodes": {
+            "201": 36
+          },
+          "errorGroups": {}
+        }
+      }
+    },
+    {
+      "requests": 1742,
+      "successful": 1742,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 56.74,
+      "bytes": 546132440,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 73.40398100001039,
+        "averageMs": 862,
+        "medianMs": 784,
+        "p90Ms": 1292,
+        "p95Ms": 1365,
+        "p99Ms": 1509,
+        "maxMs": 1667.9482499999576
+      },
+      "statusCodes": {
+        "200": 1572,
+        "201": 170
+      },
+      "errorGroups": {},
+      "test": "mixed",
+      "scenario": "Realistic mixed traffic on one existing business. Creates stay inside this timed stage.",
+      "concurrency": 50,
+      "elapsedMs": 30698.751217000012,
+      "seconds": 30,
+      "mix": [
+        {
+          "name": "product-read",
+          "weight": 40
+        },
+        {
+          "name": "product-search",
+          "weight": 15
+        },
+        {
+          "name": "stock-read",
+          "weight": 10
+        },
+        {
+          "name": "stock-update",
+          "weight": 10
+        },
+        {
+          "name": "team-read",
+          "weight": 10
+        },
+        {
+          "name": "business-read",
+          "weight": 5
+        },
+        {
+          "name": "product-create",
+          "weight": 5
+        },
+        {
+          "name": "team-create",
+          "weight": 3
+        },
+        {
+          "name": "business-create",
+          "weight": 2
+        }
+      ],
+      "grade": "WARNING",
+      "byKind": {
+        "product-read": {
+          "requests": 714,
+          "successful": 714,
+          "failed": 0,
+          "errorRate": 0,
+          "requestsPerSecond": 0,
+          "bytes": 402142350,
+          "timeoutCount": 0,
+          "latency": {
+            "minMs": 73.40398100001039,
+            "averageMs": 720,
+            "medianMs": 739,
+            "p90Ms": 871,
+            "p95Ms": 902,
+            "p99Ms": 961,
+            "maxMs": 1036.2734139999957
+          },
+          "statusCodes": {
+            "200": 714
+          },
+          "errorGroups": {}
+        },
+        "product-search": {
+          "requests": 263,
+          "successful": 263,
+          "failed": 0,
+          "errorRate": 0,
+          "requestsPerSecond": 0,
+          "bytes": 4996186,
+          "timeoutCount": 0,
+          "latency": {
+            "minMs": 569.6060429999488,
+            "averageMs": 700,
+            "medianMs": 698,
+            "p90Ms": 782,
+            "p95Ms": 817,
+            "p99Ms": 908,
+            "maxMs": 909.7153269999544
+          },
+          "statusCodes": {
+            "200": 263
+          },
+          "errorGroups": {}
+        },
+        "stock-read": {
+          "requests": 170,
+          "successful": 170,
+          "failed": 0,
+          "errorRate": 0,
+          "requestsPerSecond": 0,
+          "bytes": 95567540,
+          "timeoutCount": 0,
+          "latency": {
+            "minMs": 617.4043639999582,
+            "averageMs": 859,
+            "medianMs": 868,
+            "p90Ms": 945,
+            "p95Ms": 961,
+            "p99Ms": 995,
+            "maxMs": 1005.6183740000124
+          },
+          "statusCodes": {
+            "200": 170
+          },
+          "errorGroups": {}
+        },
+        "stock-update": {
+          "requests": 170,
+          "successful": 170,
+          "failed": 0,
+          "errorRate": 0,
+          "requestsPerSecond": 0,
+          "bytes": 63410,
+          "timeoutCount": 0,
+          "latency": {
+            "minMs": 967.4999909999897,
+            "averageMs": 1297,
+            "medianMs": 1278,
+            "p90Ms": 1505,
+            "p95Ms": 1550,
+            "p99Ms": 1609,
+            "maxMs": 1662.145091000013
+          },
+          "statusCodes": {
+            "200": 170
+          },
+          "errorGroups": {}
+        },
+        "team-read": {
+          "requests": 170,
+          "successful": 170,
+          "failed": 0,
+          "errorRate": 0,
+          "requestsPerSecond": 0,
+          "bytes": 43207370,
+          "timeoutCount": 0,
+          "latency": {
+            "minMs": 996.3516159999999,
+            "averageMs": 1265,
+            "medianMs": 1274,
+            "p90Ms": 1372,
+            "p95Ms": 1397,
+            "p99Ms": 1443,
+            "maxMs": 1486.2720020000124
+          },
+          "statusCodes": {
+            "200": 170
+          },
+          "errorGroups": {}
+        },
+        "business-read": {
+          "requests": 85,
+          "successful": 85,
+          "failed": 0,
+          "errorRate": 0,
+          "requestsPerSecond": 0,
+          "bytes": 85085,
+          "timeoutCount": 0,
+          "latency": {
+            "minMs": 471.2918880000361,
+            "averageMs": 773,
+            "medianMs": 784,
+            "p90Ms": 848,
+            "p95Ms": 863,
+            "p99Ms": 885,
+            "maxMs": 884.5237639999832
+          },
+          "statusCodes": {
+            "200": 85
+          },
+          "errorGroups": {}
+        },
+        "product-create": {
+          "requests": 85,
+          "successful": 85,
+          "failed": 0,
+          "errorRate": 0,
+          "requestsPerSecond": 0,
+          "bytes": 31620,
+          "timeoutCount": 0,
+          "latency": {
+            "minMs": 533.7676440000068,
+            "averageMs": 770,
+            "medianMs": 779,
+            "p90Ms": 825,
+            "p95Ms": 843,
+            "p99Ms": 848,
+            "maxMs": 848.4635250000283
+          },
+          "statusCodes": {
+            "201": 85
+          },
+          "errorGroups": {}
+        },
+        "team-create": {
+          "requests": 51,
+          "successful": 51,
+          "failed": 0,
+          "errorRate": 0,
+          "requestsPerSecond": 0,
+          "bytes": 6375,
+          "timeoutCount": 0,
+          "latency": {
+            "minMs": 1087.2534659999656,
+            "averageMs": 1292,
+            "medianMs": 1284,
+            "p90Ms": 1437,
+            "p95Ms": 1476,
+            "p99Ms": 1668,
+            "maxMs": 1667.9482499999576
+          },
+          "statusCodes": {
+            "201": 51
+          },
+          "errorGroups": {}
+        },
+        "business-create": {
+          "requests": 34,
+          "successful": 34,
+          "failed": 0,
+          "errorRate": 0,
+          "requestsPerSecond": 0,
+          "bytes": 32504,
+          "timeoutCount": 0,
+          "latency": {
+            "minMs": 615.8136280000326,
+            "averageMs": 708,
+            "medianMs": 708,
+            "p90Ms": 783,
+            "p95Ms": 853,
+            "p99Ms": 859,
+            "maxMs": 858.6992900000187
+          },
+          "statusCodes": {
+            "201": 34
+          },
+          "errorGroups": {}
+        }
+      }
+    },
+    {
+      "requests": 1744,
+      "successful": 1744,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 55.98,
+      "bytes": 565146577,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 262.28277300001355,
+        "averageMs": 1745,
+        "medianMs": 1609,
+        "p90Ms": 2938,
+        "p95Ms": 3021,
+        "p99Ms": 3147,
+        "maxMs": 3232.0001300000004
+      },
+      "statusCodes": {
+        "200": 1572,
+        "201": 172
+      },
+      "errorGroups": {},
+      "test": "mixed",
+      "scenario": "Realistic mixed traffic on one existing business. Creates stay inside this timed stage.",
+      "concurrency": 100,
+      "elapsedMs": 31152.832952000026,
+      "seconds": 30,
+      "mix": [
+        {
+          "name": "product-read",
+          "weight": 40
+        },
+        {
+          "name": "product-search",
+          "weight": 15
+        },
+        {
+          "name": "stock-read",
+          "weight": 10
+        },
+        {
+          "name": "stock-update",
+          "weight": 10
+        },
+        {
+          "name": "team-read",
+          "weight": 10
+        },
+        {
+          "name": "business-read",
+          "weight": 5
+        },
+        {
+          "name": "product-create",
+          "weight": 5
+        },
+        {
+          "name": "team-create",
+          "weight": 3
+        },
+        {
+          "name": "business-create",
+          "weight": 2
+        }
+      ],
+      "grade": "FAIL",
+      "byKind": {
+        "product-read": {
+          "requests": 680,
+          "successful": 680,
+          "failed": 0,
+          "errorRate": 0,
+          "requestsPerSecond": 0,
+          "bytes": 405088808,
+          "timeoutCount": 0,
+          "latency": {
+            "minMs": 862.7248599999584,
+            "averageMs": 1333,
+            "medianMs": 1268,
+            "p90Ms": 1695,
+            "p95Ms": 1741,
+            "p99Ms": 1813,
+            "maxMs": 1869.6142169999657
+          },
+          "statusCodes": {
+            "200": 680
+          },
+          "errorGroups": {}
+        },
+        "product-search": {
+          "requests": 262,
+          "successful": 262,
+          "failed": 0,
+          "errorRate": 0,
+          "requestsPerSecond": 0,
+          "bytes": 4977316,
+          "timeoutCount": 0,
+          "latency": {
+            "minMs": 262.28277300001355,
+            "averageMs": 1654,
+            "medianMs": 1667,
+            "p90Ms": 1806,
+            "p95Ms": 1850,
+            "p99Ms": 1954,
+            "maxMs": 1973.38217300002
+          },
+          "statusCodes": {
+            "200": 262
+          },
+          "errorGroups": {}
+        },
+        "stock-read": {
+          "requests": 180,
+          "successful": 180,
+          "failed": 0,
+          "errorRate": 0,
+          "requestsPerSecond": 0,
+          "bytes": 107063910,
+          "timeoutCount": 0,
+          "latency": {
+            "minMs": 581.4380230000243,
+            "averageMs": 1650,
+            "medianMs": 1702,
+            "p90Ms": 1803,
+            "p95Ms": 1824,
+            "p99Ms": 1903,
+            "maxMs": 1974.1749749999726
+          },
+          "statusCodes": {
+            "200": 180
+          },
+          "errorGroups": {}
+        },
+        "stock-update": {
+          "requests": 180,
+          "successful": 180,
+          "failed": 0,
+          "errorRate": 0,
+          "requestsPerSecond": 0,
+          "bytes": 67140,
+          "timeoutCount": 0,
+          "latency": {
+            "minMs": 1331.780056000047,
+            "averageMs": 2621,
+            "medianMs": 2760,
+            "p90Ms": 3048,
+            "p95Ms": 3132,
+            "p99Ms": 3208,
+            "maxMs": 3211.902527999948
+          },
+          "statusCodes": {
+            "200": 180
+          },
+          "errorGroups": {}
+        },
+        "team-read": {
+          "requests": 180,
+          "successful": 180,
+          "failed": 0,
+          "errorRate": 0,
+          "requestsPerSecond": 0,
+          "bytes": 47788070,
+          "timeoutCount": 0,
+          "latency": {
+            "minMs": 1286.3672369999695,
+            "averageMs": 2846,
+            "medianMs": 2987,
+            "p90Ms": 3120,
+            "p95Ms": 3150,
+            "p99Ms": 3215,
+            "maxMs": 3232.0001300000004
+          },
+          "statusCodes": {
+            "200": 180
+          },
+          "errorGroups": {}
+        },
+        "business-read": {
+          "requests": 90,
+          "successful": 90,
+          "failed": 0,
+          "errorRate": 0,
+          "requestsPerSecond": 0,
+          "bytes": 90090,
+          "timeoutCount": 0,
+          "latency": {
+            "minMs": 827.1753129999852,
+            "averageMs": 1455,
+            "medianMs": 1515,
+            "p90Ms": 1584,
+            "p95Ms": 1611,
+            "p99Ms": 1664,
+            "maxMs": 1663.5609970000223
+          },
+          "statusCodes": {
+            "200": 90
+          },
+          "errorGroups": {}
+        },
+        "product-create": {
+          "requests": 87,
+          "successful": 87,
+          "failed": 0,
+          "errorRate": 0,
+          "requestsPerSecond": 0,
+          "bytes": 32364,
+          "timeoutCount": 0,
+          "latency": {
+            "minMs": 842.3059120000107,
+            "averageMs": 1382,
+            "medianMs": 1422,
+            "p90Ms": 1496,
+            "p95Ms": 1512,
+            "p99Ms": 1537,
+            "maxMs": 1536.6495769999456
+          },
+          "statusCodes": {
+            "201": 87
+          },
+          "errorGroups": {}
+        },
+        "team-create": {
+          "requests": 51,
+          "successful": 51,
+          "failed": 0,
+          "errorRate": 0,
+          "requestsPerSecond": 0,
+          "bytes": 6375,
+          "timeoutCount": 0,
+          "latency": {
+            "minMs": 2038.937705999997,
+            "averageMs": 2750,
+            "medianMs": 2812,
+            "p90Ms": 2886,
+            "p95Ms": 2910,
+            "p99Ms": 3062,
+            "maxMs": 3062.1766589999897
+          },
+          "statusCodes": {
+            "201": 51
+          },
+          "errorGroups": {}
+        },
+        "business-create": {
+          "requests": 34,
+          "successful": 34,
+          "failed": 0,
+          "errorRate": 0,
+          "requestsPerSecond": 0,
+          "bytes": 32504,
+          "timeoutCount": 0,
+          "latency": {
+            "minMs": 531.0282969999826,
+            "averageMs": 935,
+            "medianMs": 910,
+            "p90Ms": 1140,
+            "p95Ms": 1689,
+            "p99Ms": 1695,
+            "maxMs": 1695.2289650000166
+          },
+          "statusCodes": {
+            "201": 34
+          },
+          "errorGroups": {}
+        }
+      }
+    }
+  ],
+  "aborted": null
+}

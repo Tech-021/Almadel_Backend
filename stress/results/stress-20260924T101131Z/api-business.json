@@ -1,0 +1,40 @@
+{
+  "stages": [
+    {
+      "requests": 10,
+      "successful": 10,
+      "failed": 0,
+      "errorRate": 0,
+      "requestsPerSecond": 9.97,
+      "bytes": 9520,
+      "timeoutCount": 0,
+      "latency": {
+        "minMs": 112.23704999999995,
+        "averageMs": 497,
+        "medianMs": 492,
+        "p90Ms": 700,
+        "p95Ms": 888,
+        "p99Ms": 888,
+        "maxMs": 888.4450390000001
+      },
+      "statusCodes": {
+        "201": 10
+      },
+      "errorGroups": {},
+      "test": "business-create",
+      "scenario": "API load. Each request signs up a new owner and calls POST /business/setup. No staff or products are attached.",
+      "stage": "10",
+      "target": 10,
+      "concurrency": 5,
+      "elapsedMs": 1003.379036,
+      "parts": {
+        "signupAvgMs": 331,
+        "setupAvgMs": 167
+      },
+      "grade": "PASS",
+      "stoppedEarly": false
+    }
+  ],
+  "aborted": null,
+  "created": 10
+}

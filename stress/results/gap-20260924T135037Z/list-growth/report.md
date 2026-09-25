@@ -1,0 +1,47 @@
+# Almadel Gap Test Report: Unbounded list endpoint growth
+**Report ID:** gap-20260924T135037Z-list-growth
+
+## Purpose
+
+Prove whether full-collection list endpoints remain usable on the large tenant under concurrent reads, and capture response sizes.
+
+## Bottom line
+
+**Attention needed.** 6 stage(s) FAILED, 3 WARNING, 6 PASS.
+
+Sales listing is paginated; products and staff lists currently are not.
+
+## What was tested
+
+Concurrent reads of products, staff, my-businesses, dashboard, and paginated sales against the large stress tenant.
+
+## Notes
+
+- GET /products and GET /admin/staff return full collections with no page parameter.
+- GET /sales is paginated (page/limit).
+- Response byte sizes in the stage detail show payload growth risk.
+
+## Results
+
+| Stage | Concurrency | Requests | Success | Errors | Avg | P95 | Bytes | Grade |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| GET /products | 1 | 1 | 1 | 0 | 135 | 135 | 3595001 | PASS |
+| GET /products | 10 | 10 | 10 | 0 | 1131 | 1246 | 3595001 | WARNING |
+| GET /products | 50 | 50 | 50 | 0 | 3605 | 5649 | 3595001 | FAIL |
+| GET /admin/staff | 1 | 1 | 1 | 0 | 168 | 168 | 2015011 | PASS |
+| GET /admin/staff | 10 | 10 | 10 | 0 | 1093 | 1294 | 2015011 | WARNING |
+| GET /admin/staff | 50 | 50 | 50 | 0 | 4784 | 6423 | 2015011 | FAIL |
+| GET /business/my-businesses | 1 | 1 | 1 | 0 | 336 | 336 | 9180956 | PASS |
+| GET /business/my-businesses | 10 | 10 | 10 | 0 | 3063 | 3242 | 9180956 | FAIL |
+| GET /business/my-businesses | 50 | 50 | 12 | 38 | 9171 | 10008 | 9180956 | FAIL |
+| GET /dashboard | 1 | 1 | 1 | 0 | 3941 | 3941 | 3691518 | FAIL |
+| GET /dashboard | 10 | 10 | 10 | 0 | 915 | 1334 | 3691518 | WARNING |
+| GET /dashboard | 50 | 50 | 50 | 0 | 3681 | 6674 | 3691518 | FAIL |
+| GET /sales?page=1&limit=25 | 1 | 1 | 1 | 0 | 7 | 7 | 11219 | PASS |
+| GET /sales?page=1&limit=25 | 10 | 10 | 10 | 0 | 25 | 28 | 11219 | PASS |
+| GET /sales?page=1&limit=25 | 50 | 50 | 50 | 0 | 118 | 153 | 11219 | PASS |
+
+## How to explain this to your lead
+
+Endpoints without pagination return more bytes as the tenant grows. This suite makes that risk visible with latency and byte measurements your lead can compare.
+

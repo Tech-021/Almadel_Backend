@@ -1,0 +1,214 @@
+{
+  "id": "gap-20260924T135037Z-images",
+  "title": "Image-heavy product catalog",
+  "purpose": "Measure create/list behavior when products carry image URLs and the image upload endpoint is exercised.",
+  "whatWasTested": "Repeated `POST /products/images` uploads, product creates with imageUrl, and a full product list to capture response payload size.",
+  "explain": "Image catalogs increase storage I/O and list payload size. Even with small synthetic PNGs, this shows whether upload and list paths remain healthy as imaged products grow.",
+  "bottomLineExtra": "Uploads used tiny PNG fixtures so the test measures endpoint scalability without filling disk with large photos.",
+  "suite": {
+    "kind": "gap-images",
+    "scenario": "Image-heavy product catalog",
+    "uploaded": 200,
+    "productsCreated": 200,
+    "listBytes": 83393,
+    "productsWithImages": 200,
+    "stages": [
+      {
+        "requests": 200,
+        "successful": 200,
+        "failed": 0,
+        "errorRate": 0,
+        "requestsPerSecond": 0,
+        "bytes": 11400,
+        "timeoutCount": 0,
+        "latency": {
+          "minMs": 2.69391600000381,
+          "averageMs": 5,
+          "medianMs": 5,
+          "p90Ms": 7,
+          "p95Ms": 8,
+          "p99Ms": 14,
+          "maxMs": 18.494762000002083
+        },
+        "statusCodes": {
+          "201": 200
+        },
+        "errorGroups": {},
+        "test": "image-upload",
+        "concurrency": 1,
+        "grade": "PASS"
+      },
+      {
+        "requests": 200,
+        "successful": 200,
+        "failed": 0,
+        "errorRate": 0,
+        "requestsPerSecond": 0,
+        "bytes": 83192,
+        "timeoutCount": 0,
+        "latency": {
+          "minMs": 3.2652610000004643,
+          "averageMs": 6,
+          "medianMs": 5,
+          "p90Ms": 7,
+          "p95Ms": 8,
+          "p99Ms": 13,
+          "maxMs": 13.986539000004996
+        },
+        "statusCodes": {
+          "201": 200
+        },
+        "errorGroups": {},
+        "test": "product-create-with-imageUrl",
+        "concurrency": 1,
+        "grade": "PASS"
+      },
+      {
+        "requests": 1,
+        "successful": 1,
+        "failed": 0,
+        "errorRate": 0,
+        "requestsPerSecond": 0,
+        "bytes": 83393,
+        "timeoutCount": 0,
+        "latency": {
+          "minMs": 7.591931999995722,
+          "averageMs": 8,
+          "medianMs": 8,
+          "p90Ms": 8,
+          "p95Ms": 8,
+          "p99Ms": 8,
+          "maxMs": 7.591931999995722
+        },
+        "statusCodes": {
+          "200": 1
+        },
+        "errorGroups": {},
+        "test": "product-list-image-catalog",
+        "concurrency": 1,
+        "responseBytes": 83393,
+        "rowsReturned": 200,
+        "productsWithImages": 200,
+        "grade": "PASS"
+      }
+    ],
+    "stops": []
+  },
+  "dir": "/var/www/Almadel_Backend/stress/results/gap-20260924T135037Z/images",
+  "meta": {
+    "id": "gap-20260924T135037Z",
+    "startedAt": "2026-09-24T13:50:37.908Z",
+    "profile": "standard",
+    "connectedDatabase": "almadel_stress",
+    "git": "4bbff74",
+    "app": {
+      "host": "ubuntu-8gb-hel1-1",
+      "platform": "linux 7.0.0-27-generic",
+      "cpuCount": 4,
+      "loadAvg": [
+        1.58,
+        0.75,
+        0.45
+      ],
+      "totalMemoryMb": 7746,
+      "freeMemoryMb": 3767,
+      "node": "v22.23.1",
+      "pm2": [
+        {
+          "name": "almadel-api",
+          "status": "online",
+          "restarts": 362245,
+          "cpu": 0.1,
+          "memoryMb": 72
+        },
+        {
+          "name": "almadel-backend",
+          "status": "online",
+          "restarts": 11,
+          "cpu": 0.1,
+          "memoryMb": 167
+        }
+      ]
+    },
+    "database": {
+      "version": "PostgreSQL 18.6 (Ubuntu 18.6-0ubuntu0.26.04.1) on x86_64-pc-linux-gnu",
+      "activity": {
+        "active": 2,
+        "idle": 3,
+        "waiting": 3,
+        "total": 5
+      },
+      "database": {
+        "commits": 74105,
+        "rollbacks": 11,
+        "deadlocks": 0,
+        "blocks_hit": 16202057,
+        "blocks_read": 45,
+        "backends": 5,
+        "cacheHitRatio": 1
+      },
+      "largestTables": [
+        {
+          "table_name": "products",
+          "total_bytes": 4833280,
+          "estimated_rows": 1000
+        },
+        {
+          "table_name": "User",
+          "total_bytes": 3465216,
+          "estimated_rows": 1002
+        },
+        {
+          "table_name": "business_members",
+          "total_bytes": 2867200,
+          "estimated_rows": 2001
+        },
+        {
+          "table_name": "businesses",
+          "total_bytes": 2441216,
+          "estimated_rows": 2001
+        },
+        {
+          "table_name": "stock_logs",
+          "total_bytes": 1802240,
+          "estimated_rows": 1000
+        },
+        {
+          "table_name": "activity_logs",
+          "total_bytes": 368640,
+          "estimated_rows": 0
+        },
+        {
+          "table_name": "ledger_transactions",
+          "total_bytes": 73728,
+          "estimated_rows": 0
+        },
+        {
+          "table_name": "sales",
+          "total_bytes": 73728,
+          "estimated_rows": 0
+        },
+        {
+          "table_name": "accounts",
+          "total_bytes": 65536,
+          "estimated_rows": -1
+        },
+        {
+          "table_name": "payments",
+          "total_bytes": 57344,
+          "estimated_rows": 0
+        },
+        {
+          "table_name": "sale_items",
+          "total_bytes": 40960,
+          "estimated_rows": 0
+        },
+        {
+          "table_name": "PasswordResetToken",
+          "total_bytes": 32768,
+          "estimated_rows": -1
+        }
+      ]
+    }
+  }
+}

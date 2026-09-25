@@ -1,0 +1,630 @@
+{
+  "id": "gap-20260924T135037Z-high-concurrency",
+  "title": "Hundreds of concurrent users",
+  "purpose": "Measure absolute request-handling capacity at hundreds of concurrent clients. This closes the earlier gap where only lower concurrency baselines existed.",
+  "whatWasTested": "Concurrent GET traffic against health, products, staff, dashboard, and business list, plus mixed search/stock bursts at 100 / 200 / 300 concurrent users (or until stop thresholds).",
+  "explain": "If p95 or errors climb sharply between 100 and 300 concurrent users, that is the practical concurrency ceiling for those endpoints on this server size. Inventory and list endpoints that return large payloads usually degrade first.",
+  "bottomLineExtra": "This is request scalability under many simultaneous clients, not database row-growth scalability.",
+  "suite": {
+    "kind": "gap-high-concurrency",
+    "stages": [
+      {
+        "requests": 100,
+        "successful": 100,
+        "failed": 0,
+        "errorRate": 0,
+        "requestsPerSecond": 1320.83,
+        "bytes": 1100,
+        "timeoutCount": 0,
+        "latency": {
+          "minMs": 38.501810999999975,
+          "averageMs": 45,
+          "medianMs": 45,
+          "p90Ms": 50,
+          "p95Ms": 51,
+          "p99Ms": 52,
+          "maxMs": 52.61328500000002
+        },
+        "statusCodes": {
+          "200": 100
+        },
+        "errorGroups": {},
+        "test": "high-concurrency /health",
+        "endpoint": "/health",
+        "concurrency": 100,
+        "elapsedMs": 75.70975499999997,
+        "responseBytes": 11,
+        "grade": "PASS"
+      },
+      {
+        "requests": 100,
+        "successful": 100,
+        "failed": 0,
+        "errorRate": 0,
+        "requestsPerSecond": 361.97,
+        "bytes": 200,
+        "timeoutCount": 0,
+        "latency": {
+          "minMs": 196.40206,
+          "averageMs": 240,
+          "medianMs": 240,
+          "p90Ms": 258,
+          "p95Ms": 259,
+          "p99Ms": 261,
+          "maxMs": 260.98249999999996
+        },
+        "statusCodes": {
+          "200": 100
+        },
+        "errorGroups": {},
+        "test": "high-concurrency /products",
+        "endpoint": "/products",
+        "concurrency": 100,
+        "elapsedMs": 276.2637769999999,
+        "responseBytes": 2,
+        "grade": "PASS"
+      },
+      {
+        "requests": 100,
+        "successful": 100,
+        "failed": 0,
+        "errorRate": 0,
+        "requestsPerSecond": 293.59,
+        "bytes": 1200,
+        "timeoutCount": 0,
+        "latency": {
+          "minMs": 225.81614100000002,
+          "averageMs": 284,
+          "medianMs": 279,
+          "p90Ms": 317,
+          "p95Ms": 319,
+          "p99Ms": 325,
+          "maxMs": 325.5519770000001
+        },
+        "statusCodes": {
+          "200": 100
+        },
+        "errorGroups": {},
+        "test": "high-concurrency /admin/staff",
+        "endpoint": "/admin/staff",
+        "concurrency": 100,
+        "elapsedMs": 340.609516,
+        "responseBytes": 12,
+        "grade": "PASS"
+      },
+      {
+        "requests": 100,
+        "successful": 100,
+        "failed": 0,
+        "errorRate": 0,
+        "requestsPerSecond": 207.5,
+        "bytes": 14800,
+        "timeoutCount": 0,
+        "latency": {
+          "minMs": 212.6003639999999,
+          "averageMs": 374,
+          "medianMs": 378,
+          "p90Ms": 435,
+          "p95Ms": 443,
+          "p99Ms": 446,
+          "maxMs": 445.9402200000002
+        },
+        "statusCodes": {
+          "200": 100
+        },
+        "errorGroups": {},
+        "test": "high-concurrency /dashboard",
+        "endpoint": "/dashboard",
+        "concurrency": 100,
+        "elapsedMs": 481.9202419999999,
+        "responseBytes": 148,
+        "grade": "PASS"
+      },
+      {
+        "requests": 100,
+        "successful": 100,
+        "failed": 0,
+        "errorRate": 0,
+        "requestsPerSecond": 496.36,
+        "bytes": 100100,
+        "timeoutCount": 0,
+        "latency": {
+          "minMs": 115.26091499999984,
+          "averageMs": 156,
+          "medianMs": 153,
+          "p90Ms": 185,
+          "p95Ms": 190,
+          "p99Ms": 191,
+          "maxMs": 191.06135900000004
+        },
+        "statusCodes": {
+          "200": 100
+        },
+        "errorGroups": {},
+        "test": "high-concurrency /business/my-businesses",
+        "endpoint": "/business/my-businesses",
+        "concurrency": 100,
+        "elapsedMs": 201.46647200000007,
+        "responseBytes": 1001,
+        "grade": "PASS"
+      },
+      {
+        "requests": 100,
+        "successful": 100,
+        "failed": 0,
+        "errorRate": 0,
+        "requestsPerSecond": 480.09,
+        "bytes": 3100,
+        "timeoutCount": 0,
+        "latency": {
+          "minMs": 133.43737499999997,
+          "averageMs": 180,
+          "medianMs": 182,
+          "p90Ms": 194,
+          "p95Ms": 194,
+          "p99Ms": 198,
+          "maxMs": 198.70247500000005
+        },
+        "statusCodes": {
+          "200": 100
+        },
+        "errorGroups": {},
+        "test": "high-concurrency mixed burst",
+        "concurrency": 100,
+        "elapsedMs": 208.29229000000032,
+        "grade": "PASS"
+      },
+      {
+        "requests": 200,
+        "successful": 200,
+        "failed": 0,
+        "errorRate": 0,
+        "requestsPerSecond": 1636.25,
+        "bytes": 2200,
+        "timeoutCount": 0,
+        "latency": {
+          "minMs": 39.82252000000017,
+          "averageMs": 67,
+          "medianMs": 68,
+          "p90Ms": 84,
+          "p95Ms": 90,
+          "p99Ms": 92,
+          "maxMs": 96.3742930000003
+        },
+        "statusCodes": {
+          "200": 200
+        },
+        "errorGroups": {},
+        "test": "high-concurrency /health",
+        "endpoint": "/health",
+        "concurrency": 200,
+        "elapsedMs": 122.23086400000011,
+        "responseBytes": 11,
+        "grade": "PASS"
+      },
+      {
+        "requests": 200,
+        "successful": 200,
+        "failed": 0,
+        "errorRate": 0,
+        "requestsPerSecond": 579.11,
+        "bytes": 400,
+        "timeoutCount": 0,
+        "latency": {
+          "minMs": 226.99124500000016,
+          "averageMs": 302,
+          "medianMs": 303,
+          "p90Ms": 320,
+          "p95Ms": 321,
+          "p99Ms": 323,
+          "maxMs": 323.4931889999998
+        },
+        "statusCodes": {
+          "200": 200
+        },
+        "errorGroups": {},
+        "test": "high-concurrency /products",
+        "endpoint": "/products",
+        "concurrency": 200,
+        "elapsedMs": 345.3549250000001,
+        "responseBytes": 2,
+        "grade": "PASS"
+      },
+      {
+        "requests": 200,
+        "successful": 200,
+        "failed": 0,
+        "errorRate": 0,
+        "requestsPerSecond": 470.47,
+        "bytes": 2400,
+        "timeoutCount": 0,
+        "latency": {
+          "minMs": 317.169167,
+          "averageMs": 376,
+          "medianMs": 378,
+          "p90Ms": 400,
+          "p95Ms": 403,
+          "p99Ms": 404,
+          "maxMs": 404.69932000000017
+        },
+        "statusCodes": {
+          "200": 200
+        },
+        "errorGroups": {},
+        "test": "high-concurrency /admin/staff",
+        "endpoint": "/admin/staff",
+        "concurrency": 200,
+        "elapsedMs": 425.10284699999966,
+        "responseBytes": 12,
+        "grade": "PASS"
+      },
+      {
+        "requests": 200,
+        "successful": 200,
+        "failed": 0,
+        "errorRate": 0,
+        "requestsPerSecond": 312.44,
+        "bytes": 29600,
+        "timeoutCount": 0,
+        "latency": {
+          "minMs": 235.65653900000007,
+          "averageMs": 487,
+          "medianMs": 497,
+          "p90Ms": 596,
+          "p95Ms": 608,
+          "p99Ms": 616,
+          "maxMs": 617.0288740000001
+        },
+        "statusCodes": {
+          "200": 200
+        },
+        "errorGroups": {},
+        "test": "high-concurrency /dashboard",
+        "endpoint": "/dashboard",
+        "concurrency": 200,
+        "elapsedMs": 640.1227709999998,
+        "responseBytes": 148,
+        "grade": "PASS"
+      },
+      {
+        "requests": 200,
+        "successful": 200,
+        "failed": 0,
+        "errorRate": 0,
+        "requestsPerSecond": 663.46,
+        "bytes": 200200,
+        "timeoutCount": 0,
+        "latency": {
+          "minMs": 195.04004499999974,
+          "averageMs": 247,
+          "medianMs": 249,
+          "p90Ms": 278,
+          "p95Ms": 282,
+          "p99Ms": 284,
+          "maxMs": 285.02946999999995
+        },
+        "statusCodes": {
+          "200": 200
+        },
+        "errorGroups": {},
+        "test": "high-concurrency /business/my-businesses",
+        "endpoint": "/business/my-businesses",
+        "concurrency": 200,
+        "elapsedMs": 301.45091600000023,
+        "responseBytes": 1001,
+        "grade": "PASS"
+      },
+      {
+        "requests": 200,
+        "successful": 200,
+        "failed": 0,
+        "errorRate": 0,
+        "requestsPerSecond": 601.76,
+        "bytes": 6200,
+        "timeoutCount": 0,
+        "latency": {
+          "minMs": 198.4762980000005,
+          "averageMs": 288,
+          "medianMs": 289,
+          "p90Ms": 314,
+          "p95Ms": 318,
+          "p99Ms": 320,
+          "maxMs": 320.73103699999956
+        },
+        "statusCodes": {
+          "200": 200
+        },
+        "errorGroups": {},
+        "test": "high-concurrency mixed burst",
+        "concurrency": 200,
+        "elapsedMs": 332.3600839999999,
+        "grade": "PASS"
+      },
+      {
+        "requests": 300,
+        "successful": 300,
+        "failed": 0,
+        "errorRate": 0,
+        "requestsPerSecond": 1993.93,
+        "bytes": 3300,
+        "timeoutCount": 0,
+        "latency": {
+          "minMs": 43.6855859999996,
+          "averageMs": 86,
+          "medianMs": 86,
+          "p90Ms": 119,
+          "p95Ms": 124,
+          "p99Ms": 129,
+          "maxMs": 128.8918619999995
+        },
+        "statusCodes": {
+          "200": 300
+        },
+        "errorGroups": {},
+        "test": "high-concurrency /health",
+        "endpoint": "/health",
+        "concurrency": 300,
+        "elapsedMs": 150.45672699999977,
+        "responseBytes": 11,
+        "grade": "PASS"
+      },
+      {
+        "requests": 300,
+        "successful": 300,
+        "failed": 0,
+        "errorRate": 0,
+        "requestsPerSecond": 586.8,
+        "bytes": 600,
+        "timeoutCount": 0,
+        "latency": {
+          "minMs": 333.14719700000023,
+          "averageMs": 427,
+          "medianMs": 424,
+          "p90Ms": 448,
+          "p95Ms": 453,
+          "p99Ms": 455,
+          "maxMs": 455.84039200000007
+        },
+        "statusCodes": {
+          "200": 300
+        },
+        "errorGroups": {},
+        "test": "high-concurrency /products",
+        "endpoint": "/products",
+        "concurrency": 300,
+        "elapsedMs": 511.250325,
+        "responseBytes": 2,
+        "grade": "PASS"
+      },
+      {
+        "requests": 300,
+        "successful": 300,
+        "failed": 0,
+        "errorRate": 0,
+        "requestsPerSecond": 588.35,
+        "bytes": 3600,
+        "timeoutCount": 0,
+        "latency": {
+          "minMs": 371.77253999999994,
+          "averageMs": 456,
+          "medianMs": 463,
+          "p90Ms": 483,
+          "p95Ms": 488,
+          "p99Ms": 491,
+          "maxMs": 491.6551100000006
+        },
+        "statusCodes": {
+          "200": 300
+        },
+        "errorGroups": {},
+        "test": "high-concurrency /admin/staff",
+        "endpoint": "/admin/staff",
+        "concurrency": 300,
+        "elapsedMs": 509.9041879999995,
+        "responseBytes": 12,
+        "grade": "PASS"
+      },
+      {
+        "requests": 300,
+        "successful": 300,
+        "failed": 0,
+        "errorRate": 0,
+        "requestsPerSecond": 357.79,
+        "bytes": 44400,
+        "timeoutCount": 0,
+        "latency": {
+          "minMs": 348.7373260000004,
+          "averageMs": 659,
+          "medianMs": 666,
+          "p90Ms": 782,
+          "p95Ms": 796,
+          "p99Ms": 809,
+          "maxMs": 809.9110350000001
+        },
+        "statusCodes": {
+          "200": 300
+        },
+        "errorGroups": {},
+        "test": "high-concurrency /dashboard",
+        "endpoint": "/dashboard",
+        "concurrency": 300,
+        "elapsedMs": 838.4877999999999,
+        "responseBytes": 148,
+        "grade": "PASS"
+      },
+      {
+        "requests": 300,
+        "successful": 300,
+        "failed": 0,
+        "errorRate": 0,
+        "requestsPerSecond": 757.57,
+        "bytes": 300300,
+        "timeoutCount": 0,
+        "latency": {
+          "minMs": 239.44376399999965,
+          "averageMs": 325,
+          "medianMs": 324,
+          "p90Ms": 362,
+          "p95Ms": 368,
+          "p99Ms": 370,
+          "maxMs": 371.06363599999986
+        },
+        "statusCodes": {
+          "200": 300
+        },
+        "errorGroups": {},
+        "test": "high-concurrency /business/my-businesses",
+        "endpoint": "/business/my-businesses",
+        "concurrency": 300,
+        "elapsedMs": 396.00442999999996,
+        "responseBytes": 1001,
+        "grade": "PASS"
+      },
+      {
+        "requests": 300,
+        "successful": 300,
+        "failed": 0,
+        "errorRate": 0,
+        "requestsPerSecond": 747.01,
+        "bytes": 9460,
+        "timeoutCount": 0,
+        "latency": {
+          "minMs": 225.39872399999967,
+          "averageMs": 352,
+          "medianMs": 365,
+          "p90Ms": 383,
+          "p95Ms": 385,
+          "p99Ms": 387,
+          "maxMs": 387.4298069999995
+        },
+        "statusCodes": {
+          "200": 300
+        },
+        "errorGroups": {},
+        "test": "high-concurrency mixed burst",
+        "concurrency": 300,
+        "elapsedMs": 401.5991189999995,
+        "grade": "PASS"
+      }
+    ],
+    "stops": [],
+    "scenario": "Hundreds of concurrent API users"
+  },
+  "dir": "/var/www/Almadel_Backend/stress/results/gap-20260924T135037Z/high-concurrency",
+  "meta": {
+    "id": "gap-20260924T135037Z",
+    "startedAt": "2026-09-24T13:50:37.908Z",
+    "profile": "standard",
+    "connectedDatabase": "almadel_stress",
+    "git": "4bbff74",
+    "app": {
+      "host": "ubuntu-8gb-hel1-1",
+      "platform": "linux 7.0.0-27-generic",
+      "cpuCount": 4,
+      "loadAvg": [
+        1.58,
+        0.75,
+        0.45
+      ],
+      "totalMemoryMb": 7746,
+      "freeMemoryMb": 3767,
+      "node": "v22.23.1",
+      "pm2": [
+        {
+          "name": "almadel-api",
+          "status": "online",
+          "restarts": 362245,
+          "cpu": 0.1,
+          "memoryMb": 72
+        },
+        {
+          "name": "almadel-backend",
+          "status": "online",
+          "restarts": 11,
+          "cpu": 0.1,
+          "memoryMb": 167
+        }
+      ]
+    },
+    "database": {
+      "version": "PostgreSQL 18.6 (Ubuntu 18.6-0ubuntu0.26.04.1) on x86_64-pc-linux-gnu",
+      "activity": {
+        "active": 2,
+        "idle": 3,
+        "waiting": 3,
+        "total": 5
+      },
+      "database": {
+        "commits": 74105,
+        "rollbacks": 11,
+        "deadlocks": 0,
+        "blocks_hit": 16202057,
+        "blocks_read": 45,
+        "backends": 5,
+        "cacheHitRatio": 1
+      },
+      "largestTables": [
+        {
+          "table_name": "products",
+          "total_bytes": 4833280,
+          "estimated_rows": 1000
+        },
+        {
+          "table_name": "User",
+          "total_bytes": 3465216,
+          "estimated_rows": 1002
+        },
+        {
+          "table_name": "business_members",
+          "total_bytes": 2867200,
+          "estimated_rows": 2001
+        },
+        {
+          "table_name": "businesses",
+          "total_bytes": 2441216,
+          "estimated_rows": 2001
+        },
+        {
+          "table_name": "stock_logs",
+          "total_bytes": 1802240,
+          "estimated_rows": 1000
+        },
+        {
+          "table_name": "activity_logs",
+          "total_bytes": 368640,
+          "estimated_rows": 0
+        },
+        {
+          "table_name": "ledger_transactions",
+          "total_bytes": 73728,
+          "estimated_rows": 0
+        },
+        {
+          "table_name": "sales",
+          "total_bytes": 73728,
+          "estimated_rows": 0
+        },
+        {
+          "table_name": "accounts",
+          "total_bytes": 65536,
+          "estimated_rows": -1
+        },
+        {
+          "table_name": "payments",
+          "total_bytes": 57344,
+          "estimated_rows": 0
+        },
+        {
+          "table_name": "sale_items",
+          "total_bytes": 40960,
+          "estimated_rows": 0
+        },
+        {
+          "table_name": "PasswordResetToken",
+          "total_bytes": 32768,
+          "estimated_rows": -1
+        }
+      ]
+    }
+  }
+}
