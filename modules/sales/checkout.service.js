@@ -215,17 +215,29 @@ async function createSale(tx, userOrReq, rawItems, rawDetails) {
     details.discountValue,
   );
 
+  // Idempotency check for offline sync
+  if (rawDetails?.offlineInvoiceNumber) {
+    const existing = await tx.sale.findFirst({
+      where: { businessId, invoiceNumber: String(rawDetails.offlineInvoiceNumber) },
+      include: { items: true, user: true },
+    });
+    if (existing) {
+      return existing;
+    }
+  }
+
   const sale = await tx.sale.create({
     data: {
       ...details,
       ...totals,
       businessId,
       customerId,
-      invoiceNumber: createInvoiceNumber(),
+      invoiceNumber: rawDetails?.offlineInvoiceNumber ? String(rawDetails.offlineInvoiceNumber) : createInvoiceNumber(),
       items: { create: saleItems },
       subtotal: grossSubtotal,
       totalItems,
       userId: userId || null,
+      createdAt: rawDetails?.offlineCreatedAt ? new Date(rawDetails.offlineCreatedAt) : undefined,
     },
     include: { items: true, user: true },
   });
