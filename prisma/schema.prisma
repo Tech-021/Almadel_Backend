@@ -143,6 +143,8 @@ model Product {
 
   @@unique([businessId, barcode])
   @@index([businessId])
+  @@index([businessId, name])
+  @@index([businessId, category])
   @@index([name])
   @@index([category])
   @@map("products")
