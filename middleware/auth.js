@@ -43,23 +43,30 @@ async function requireAuth(req, res, next) {
   }
 }
 
-function requireAdmin(req, res, next) {
-  if (req.user?.role !== "admin") {
-    return res.status(403).json({ message: "Admin access required." });
-  }
+/**
+ * Platform operator (created via create-admin.js). Not granted on public signup.
+ * Must not bypass tenant membership checks on business-scoped routes.
+ */
+function isPlatformAdmin(user) {
+  return user?.role === "admin";
+}
 
-  return next();
+/**
+ * Store management (products, stock, staff). Requires business owner/admin membership.
+ * Must run after requireBusiness.
+ */
+function requireAdmin(req, res, next) {
+  return requireBusinessOwnerOrAdmin(req, res, next);
 }
 
 function requireFinanceAccess(req, res, next) {
-  const role = req.user?.role;
+  const userRole = req.user?.role;
   const bizRole = req.businessRole;
   if (
-    role === "admin" ||
-    role === "accountant" ||
-    bizRole === "admin" ||
     bizRole === "owner" ||
-    bizRole === "accountant"
+    bizRole === "admin" ||
+    bizRole === "accountant" ||
+    userRole === "accountant"
   ) {
     return next();
   }
@@ -177,6 +184,7 @@ async function optionalBusiness(req, res, next) {
 }
 
 module.exports = {
+  isPlatformAdmin,
   requireAdmin,
   requireAuth,
   requireBusiness,

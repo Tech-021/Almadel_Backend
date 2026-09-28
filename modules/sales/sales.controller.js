@@ -46,7 +46,9 @@ async function getInvoice(req, res) {
     where: {
       id: saleId,
       businessId: req.businessId,
-      ...(req.user.role === "admin" ? {} : { userId: req.user.id }),
+      ...(req.businessRole === "owner" || req.businessRole === "admin"
+        ? {}
+        : { userId: req.user.id }),
     },
   });
 

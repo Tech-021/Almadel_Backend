@@ -10,6 +10,8 @@ enum UserRole {
   admin
   staff
   accountant
+  pending
+  owner
 }
 
 model User {
@@ -31,6 +33,19 @@ model User {
   createdLedgerTransactions LedgerTransaction[] @relation("LedgerCreator")
   createdDailyClosings DailyClosing[] @relation("ClosingCreator")
   createdPayments Payment[] @relation("PaymentCreator")
+  businessOnboardingDraft BusinessOnboardingDraft?
+}
+
+model BusinessOnboardingDraft {
+  id            Int      @id @default(autoincrement())
+  userId        Int      @unique
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payload       Json
+  workspaceMode String   @default("pos")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("business_onboarding_drafts")
 }
 
 model Business {
