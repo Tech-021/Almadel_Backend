@@ -286,22 +286,43 @@ async function createPortalSession({ businessId, returnUrl }) {
 
 /**
  * Handles incoming Stripe Webhook events.
+ * Fail-closed: requires STRIPE_WEBHOOK_SECRET, Stripe-Signature, and a raw body.
+ * Never processes unsigned or unverified payloads.
  */
 async function handleWebhookEvent(rawBody, signature) {
   const stripe = getStripeClient();
   if (!stripe) {
-    throw new Error("STRIPE_SECRET_KEY not configured.");
+    const err = new Error("STRIPE_SECRET_KEY not configured.");
+    err.status = 500;
+    throw err;
   }
 
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-  let event;
-
-  if (webhookSecret && signature) {
-    event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
-  } else {
-    event = typeof rawBody === "string" ? JSON.parse(rawBody) : rawBody;
+  const webhookSecret = String(process.env.STRIPE_WEBHOOK_SECRET || "").trim();
+  if (!webhookSecret) {
+    const err = new Error("STRIPE_WEBHOOK_SECRET is not configured.");
+    err.status = 500;
+    throw err;
   }
 
+  if (!signature) {
+    const err = new Error("Missing Stripe-Signature header.");
+    err.status = 400;
+    throw err;
+  }
+
+  // constructEvent needs the exact raw bytes/string Stripe signed — never a parsed JSON object.
+  const hasRawBody =
+    Buffer.isBuffer(rawBody) ||
+    typeof rawBody === "string" ||
+    rawBody instanceof Uint8Array;
+
+  if (!hasRawBody) {
+    const err = new Error("Raw request body required for webhook signature verification.");
+    err.status = 400;
+    throw err;
+  }
+
+  const event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
   const dataObject = event.data?.object;
 
   switch (event.type) {

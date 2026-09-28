@@ -236,14 +236,22 @@ async function createPortal(req, res) {
 // POST /billing/webhook
 async function handleWebhook(req, res) {
   const sig = req.headers["stripe-signature"];
-  const rawBody = req.rawBody || req.body;
+  // Use only the raw buffer captured by express.json verify — never fall back to parsed body.
+  const rawBody = req.rawBody;
+
+  if (!rawBody) {
+    return res
+      .status(400)
+      .send("Webhook Error: Raw request body required for signature verification.");
+  }
 
   try {
     const result = await handleWebhookEvent(rawBody, sig);
     return res.json(result);
   } catch (error) {
     console.error("Stripe Webhook error:", error.message);
-    return res.status(400).send(`Webhook Error: ${error.message}`);
+    const status = Number(error.status) || 400;
+    return res.status(status).send(`Webhook Error: ${error.message}`);
   }
 }
 
