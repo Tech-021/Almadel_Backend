@@ -311,7 +311,11 @@ async function updateBusiness(req, res) {
       province,
       logoUrl,
       allowDiscounts,
+      workspaceMode,
     } = req.body;
+
+    const normalizedWorkspaceMode =
+      workspaceMode === "pos" || workspaceMode === "financial" ? workspaceMode : undefined;
 
     const updated = await bizModel.update({
       where: { id: businessId },
@@ -328,6 +332,7 @@ async function updateBusiness(req, res) {
         province: province !== undefined ? province.trim() : undefined,
         logoUrl: logoUrl !== undefined ? (logoUrl ? String(logoUrl).trim() : null) : undefined,
         allowDiscounts: allowDiscounts !== undefined ? Boolean(allowDiscounts) : undefined,
+        workspaceMode: normalizedWorkspaceMode,
       },
     });
 
