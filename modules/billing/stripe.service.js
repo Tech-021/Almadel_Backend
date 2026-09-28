@@ -122,9 +122,9 @@ async function createCheckoutSession({ businessId, userEmail, businessName, succ
 }
 
 /**
- * Directly verifies a completed Checkout Session on redirect return (works without webhooks).
+ * Retrieves a Checkout Session and extracts the linked business ID (no DB mutation).
  */
-async function verifyCheckoutSession(sessionId) {
+async function getCheckoutSessionContext(sessionId) {
   const stripe = getStripeClient();
   if (!stripe || !sessionId) {
     return null;
@@ -135,20 +135,63 @@ async function verifyCheckoutSession(sessionId) {
     return null;
   }
 
-  const businessId = Number(session.client_reference_id || session.metadata?.businessId);
-  if (businessId && (session.status === "complete" || session.payment_status === "paid" || session.payment_status === "no_payment_required")) {
-    const updated = await prisma.business.update({
-      where: { id: businessId },
-      data: {
-        subscriptionStatus: "active",
-        stripeCustomerId: session.customer ? String(session.customer) : undefined,
-        stripeSubscriptionId: session.subscription ? String(session.subscription) : undefined,
-      },
-    });
-    return updated;
+  const businessId = Number(session.client_reference_id || session.metadata?.businessId) || null;
+  const isComplete =
+    session.status === "complete" ||
+    session.payment_status === "paid" ||
+    session.payment_status === "no_payment_required";
+
+  return { session, businessId, isComplete };
+}
+
+/**
+ * Activates a business from an already-authorized, completed Checkout Session.
+ * Callers must verify the user is allowed to manage `businessId` first.
+ */
+async function activateBusinessFromCheckoutSession(session, businessId) {
+  if (!session || !businessId) {
+    return null;
   }
 
-  return null;
+  const isComplete =
+    session.status === "complete" ||
+    session.payment_status === "paid" ||
+    session.payment_status === "no_payment_required";
+
+  if (!isComplete) {
+    return null;
+  }
+
+  return prisma.business.update({
+    where: { id: businessId },
+    data: {
+      subscriptionStatus: "active",
+      stripeCustomerId: session.customer ? String(session.customer) : undefined,
+      stripeSubscriptionId: session.subscription ? String(session.subscription) : undefined,
+    },
+  });
+}
+
+/**
+ * Directly verifies a completed Checkout Session on redirect return (works without webhooks).
+ * When `authorizedBusinessId` is provided, refuses to activate any other business.
+ */
+async function verifyCheckoutSession(sessionId, { authorizedBusinessId } = {}) {
+  const ctx = await getCheckoutSessionContext(sessionId);
+  if (!ctx?.businessId || !ctx.isComplete) {
+    return null;
+  }
+
+  if (
+    authorizedBusinessId != null &&
+    Number(authorizedBusinessId) !== Number(ctx.businessId)
+  ) {
+    const err = new Error("Checkout session does not belong to the authorized business.");
+    err.status = 403;
+    throw err;
+  }
+
+  return activateBusinessFromCheckoutSession(ctx.session, ctx.businessId);
 }
 
 /**
@@ -243,22 +286,43 @@ async function createPortalSession({ businessId, returnUrl }) {
 
 /**
  * Handles incoming Stripe Webhook events.
+ * Fail-closed: requires STRIPE_WEBHOOK_SECRET, Stripe-Signature, and a raw body.
+ * Never processes unsigned or unverified payloads.
  */
 async function handleWebhookEvent(rawBody, signature) {
   const stripe = getStripeClient();
   if (!stripe) {
-    throw new Error("STRIPE_SECRET_KEY not configured.");
+    const err = new Error("STRIPE_SECRET_KEY not configured.");
+    err.status = 500;
+    throw err;
   }
 
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-  let event;
-
-  if (webhookSecret && signature) {
-    event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
-  } else {
-    event = typeof rawBody === "string" ? JSON.parse(rawBody) : rawBody;
+  const webhookSecret = String(process.env.STRIPE_WEBHOOK_SECRET || "").trim();
+  if (!webhookSecret) {
+    const err = new Error("STRIPE_WEBHOOK_SECRET is not configured.");
+    err.status = 500;
+    throw err;
   }
 
+  if (!signature) {
+    const err = new Error("Missing Stripe-Signature header.");
+    err.status = 400;
+    throw err;
+  }
+
+  // constructEvent needs the exact raw bytes/string Stripe signed — never a parsed JSON object.
+  const hasRawBody =
+    Buffer.isBuffer(rawBody) ||
+    typeof rawBody === "string" ||
+    rawBody instanceof Uint8Array;
+
+  if (!hasRawBody) {
+    const err = new Error("Raw request body required for webhook signature verification.");
+    err.status = 400;
+    throw err;
+  }
+
+  const event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
   const dataObject = event.data?.object;
 
   switch (event.type) {
@@ -363,6 +427,8 @@ async function handleWebhookEvent(rawBody, signature) {
 module.exports = {
   getStripeClient,
   createCheckoutSession,
+  getCheckoutSessionContext,
+  activateBusinessFromCheckoutSession,
   verifyCheckoutSession,
   syncBusinessSubscription,
   createPortalSession,
