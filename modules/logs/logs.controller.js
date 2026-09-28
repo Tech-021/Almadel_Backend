@@ -1,9 +1,25 @@
 const { prisma } = require("../../db");
 
-// POST /admin/logs or POST /logs - Record new activity event
+function requireScopedBusinessId(req, res) {
+  const businessId = Number(req.businessId);
+  if (!Number.isInteger(businessId) || businessId <= 0) {
+    res.status(400).json({
+      success: false,
+      message: "Active business is required.",
+      requiresBusinessSetup: true,
+    });
+    return null;
+  }
+  return businessId;
+}
+
+// POST /logs - Record new activity event (scoped to the caller's business)
 async function createLog(req, res) {
   try {
-    const { action, category, details, target, meta, userName: bodyName, userEmail: bodyEmail, userRole: bodyRole, userId: bodyId } = req.body;
+    const businessId = requireScopedBusinessId(req, res);
+    if (!businessId) return;
+
+    const { action, category, details, target, meta } = req.body;
 
     if (!action || !category || !details) {
       return res.status(400).json({
@@ -12,16 +28,17 @@ async function createLog(req, res) {
       });
     }
 
+    // Derive actor from the authenticated session — never trust client-supplied identity.
     const authUser = req.user;
-    const userName = authUser?.fullName || authUser?.name || bodyName || "System Operator";
-    const userEmail = authUser?.email || bodyEmail || "system@almadel.com";
-    const userRole = authUser?.role || bodyRole || "staff";
-    const userId = authUser?.id ? Number(authUser.id) : (bodyId ? Number(bodyId) : null);
+    const userName = authUser?.fullName || authUser?.name || "System Operator";
+    const userEmail = authUser?.email || "system@almadel.com";
+    const userRole = req.businessRole || authUser?.role || "staff";
+    const userId = authUser?.id ? Number(authUser.id) : null;
 
     const log = await prisma.activityLog.create({
       data: {
         action: String(action),
-        businessId: req.businessId,
+        businessId,
         category: String(category),
         details: String(details),
         target: target ? String(target) : null,
@@ -29,7 +46,7 @@ async function createLog(req, res) {
         userId,
         userName,
         userEmail,
-        userRole,
+        userRole: String(userRole),
       },
     });
 
@@ -48,13 +65,16 @@ async function createLog(req, res) {
   }
 }
 
-// GET /admin/logs or GET /logs - Retrieve logs with filter & search
+// GET /logs - Retrieve logs for the active business only
 async function getLogs(req, res) {
   try {
+    const businessId = requireScopedBusinessId(req, res);
+    if (!businessId) return;
+
     const { category, action, search, page = 1, limit = 100 } = req.query;
 
     const where = {
-      businessId: req.businessId,
+      businessId,
     };
 
     if (category && category !== "All") {
@@ -131,15 +151,20 @@ async function getLogs(req, res) {
   }
 }
 
-// DELETE /admin/logs or DELETE /logs - Clear logs
+// DELETE /logs - Clear logs for the active business only (owner/admin)
 async function clearLogs(req, res) {
   try {
-    await prisma.activityLog.deleteMany({
-      where: { businessId: req.businessId },
+    const businessId = requireScopedBusinessId(req, res);
+    if (!businessId) return;
+
+    const result = await prisma.activityLog.deleteMany({
+      where: { businessId },
     });
+
     return res.status(200).json({
       success: true,
       message: "All activity logs have been cleared successfully.",
+      deleted: result.count,
     });
   } catch (error) {
     console.error("Error in clearLogs:", error);

@@ -120,6 +120,26 @@ async function requireBusiness(req, res, next) {
   return next();
 }
 
+/**
+ * Requires business membership role owner or admin.
+ * Must run after requireBusiness. Does not treat global User.role === "admin" as cross-tenant access.
+ */
+function requireBusinessOwnerOrAdmin(req, res, next) {
+  const role = req.businessRole;
+  if (role === "owner" || role === "admin") {
+    return next();
+  }
+
+  return res.status(403).json({
+    message: "Only business owners or admins can perform this action.",
+  });
+}
+
+/**
+ * Optional business context with membership validation.
+ * Unlike the previous version, a forged x-business-id without membership is ignored
+ * (falls back to the user's primary business) and never trusted blindly.
+ */
 async function optionalBusiness(req, res, next) {
   if (!req.user || !req.user.id) return next();
 
@@ -127,12 +147,20 @@ async function optionalBusiness(req, res, next) {
   const userId = Number(req.user.id);
   let businessId = headerBizId && !isNaN(Number(headerBizId)) ? Number(headerBizId) : null;
 
-  if (businessId) {
-    req.businessId = businessId;
-    return next();
-  }
-
   try {
+    if (businessId) {
+      const membership = await prisma.businessMember.findUnique({
+        where: { businessId_userId: { businessId, userId } },
+      });
+      if (membership) {
+        req.businessId = businessId;
+        req.businessRole = membership.role;
+        return next();
+      }
+      // Forged / foreign header — do not assign; fall through to primary membership.
+      businessId = null;
+    }
+
     const primary = await prisma.businessMember.findFirst({
       where: { userId },
       orderBy: { createdAt: "asc" },
@@ -141,7 +169,9 @@ async function optionalBusiness(req, res, next) {
       req.businessId = primary.businessId;
       req.businessRole = primary.role;
     }
-  } catch {}
+  } catch {
+    // leave business unset
+  }
 
   return next();
 }
@@ -150,6 +180,7 @@ module.exports = {
   requireAdmin,
   requireAuth,
   requireBusiness,
+  requireBusinessOwnerOrAdmin,
   optionalBusiness,
   requireFinanceAccess,
 };
