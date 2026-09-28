@@ -4,8 +4,60 @@ const {
   createPortalSession,
   handleWebhookEvent,
   syncBusinessSubscription,
-  verifyCheckoutSession,
+  getCheckoutSessionContext,
+  activateBusinessFromCheckoutSession,
 } = require("./stripe.service");
+
+const BILLING_MANAGE_ROLES = new Set(["owner", "admin"]);
+
+/**
+ * Ensures the authenticated user belongs to the target business.
+ * When `manage` is true, requires business role owner or admin (billing mutations).
+ * Does not treat global User.role === "admin" as cross-tenant access.
+ */
+async function assertBillingAccess(userId, businessId, { manage = false } = {}) {
+  const id = Number(businessId);
+  const uid = Number(userId);
+
+  if (!Number.isInteger(id) || id <= 0) {
+    const err = new Error("businessId is required.");
+    err.status = 400;
+    throw err;
+  }
+
+  if (!Number.isInteger(uid) || uid <= 0) {
+    const err = new Error("Authentication required.");
+    err.status = 401;
+    throw err;
+  }
+
+  const membership = await prisma.businessMember.findUnique({
+    where: { businessId_userId: { businessId: id, userId: uid } },
+  });
+
+  if (!membership) {
+    const err = new Error("Access denied to business.");
+    err.status = 403;
+    throw err;
+  }
+
+  if (manage && !BILLING_MANAGE_ROLES.has(membership.role)) {
+    const err = new Error("Only business owners or admins can manage billing.");
+    err.status = 403;
+    throw err;
+  }
+
+  return { businessId: id, membership };
+}
+
+function sendAccessError(res, error, fallbackMessage) {
+  const status = error.status || 500;
+  if (status >= 500) {
+    console.error(fallbackMessage, error);
+    return res.status(500).json({ message: fallbackMessage });
+  }
+  return res.status(status).json({ message: error.message || fallbackMessage });
+}
 
 // GET /billing/status?businessId=:id
 async function getBillingStatus(req, res) {
@@ -13,23 +65,9 @@ async function getBillingStatus(req, res) {
     const businessId = Number(req.query.businessId);
     const userId = Number(req.user?.id);
 
-    if (!businessId) {
-      return res.status(400).json({ message: "businessId query parameter is required." });
-    }
+    await assertBillingAccess(userId, businessId, { manage: false });
 
-    const memberModel = prisma.businessMember || prisma.BusinessMember;
-    const bizModel = prisma.business || prisma.Business;
-
-    if (memberModel) {
-      const membership = await memberModel.findUnique({
-        where: { businessId_userId: { businessId, userId } },
-      });
-      if (!membership && req.user.role !== "admin") {
-        return res.status(403).json({ message: "Access denied to business." });
-      }
-    }
-
-    let business = await bizModel.findUnique({
+    let business = await prisma.business.findUnique({
       where: { id: businessId },
       select: {
         id: true,
@@ -87,6 +125,9 @@ async function getBillingStatus(req, res) {
       stripePublishableKey: process.env.STRIPE_PUBLISHABLE_KEY || "",
     });
   } catch (error) {
+    if (error.status) {
+      return sendAccessError(res, error, "Failed to load billing status.");
+    }
     console.error("Billing status error:", error);
     return res.status(500).json({ message: "Failed to load billing status." });
   }
@@ -96,9 +137,9 @@ async function getBillingStatus(req, res) {
 async function syncSubscription(req, res) {
   try {
     const businessId = Number(req.body.businessId);
-    if (!businessId) {
-      return res.status(400).json({ message: "businessId is required." });
-    }
+    const userId = Number(req.user?.id);
+
+    await assertBillingAccess(userId, businessId, { manage: true });
 
     const updated = await syncBusinessSubscription(businessId);
     return res.json({
@@ -107,11 +148,13 @@ async function syncSubscription(req, res) {
       isSubscribed: updated?.subscriptionStatus === "active" || Boolean(updated?.stripeSubscriptionId),
     });
   } catch (error) {
+    if (error.status) {
+      return sendAccessError(res, error, "Failed to sync subscription status.");
+    }
     console.error("Sync subscription error:", error);
     return res.status(500).json({ message: "Failed to sync subscription status." });
   }
 }
-
 
 // POST /billing/create-checkout-session
 async function createCheckout(req, res) {
@@ -120,12 +163,14 @@ async function createCheckout(req, res) {
     const userId = Number(req.user?.id);
     const userEmail = req.user?.email;
 
-    if (!businessId) {
-      return res.status(400).json({ message: "businessId is required." });
-    }
+    const { businessId: authorizedBusinessId } = await assertBillingAccess(
+      userId,
+      businessId,
+      { manage: true },
+    );
 
     const biz = await prisma.business.findUnique({
-      where: { id: Number(businessId) },
+      where: { id: authorizedBusinessId },
     });
 
     if (!biz) {
@@ -133,7 +178,7 @@ async function createCheckout(req, res) {
     }
 
     const session = await createCheckoutSession({
-      businessId: Number(businessId),
+      businessId: authorizedBusinessId,
       userEmail,
       businessName: biz.name,
       successUrl,
@@ -146,6 +191,9 @@ async function createCheckout(req, res) {
       sessionId: session.id,
     });
   } catch (error) {
+    if (error.status) {
+      return sendAccessError(res, error, "Failed to create Stripe Checkout session.");
+    }
     console.error("Create checkout session error:", error);
     return res.status(500).json({
       message: error.message || "Failed to create Stripe Checkout session.",
@@ -157,13 +205,16 @@ async function createCheckout(req, res) {
 async function createPortal(req, res) {
   try {
     const { businessId, returnUrl } = req.body;
+    const userId = Number(req.user?.id);
 
-    if (!businessId) {
-      return res.status(400).json({ message: "businessId is required." });
-    }
+    const { businessId: authorizedBusinessId } = await assertBillingAccess(
+      userId,
+      businessId,
+      { manage: true },
+    );
 
     const session = await createPortalSession({
-      businessId: Number(businessId),
+      businessId: authorizedBusinessId,
       returnUrl,
     });
 
@@ -172,6 +223,9 @@ async function createPortal(req, res) {
       url: session.url,
     });
   } catch (error) {
+    if (error.status) {
+      return sendAccessError(res, error, "Failed to create Stripe Customer Portal session.");
+    }
     console.error("Create portal session error:", error);
     return res.status(500).json({
       message: error.message || "Failed to create Stripe Customer Portal session.",
@@ -197,12 +251,31 @@ async function handleWebhook(req, res) {
 async function verifySession(req, res) {
   try {
     const { sessionId } = req.body;
+    const userId = Number(req.user?.id);
+
     if (!sessionId) {
       return res.status(400).json({ message: "sessionId is required." });
     }
 
-    const { verifyCheckoutSession } = require("./stripe.service");
-    const business = await verifyCheckoutSession(sessionId);
+    const ctx = await getCheckoutSessionContext(sessionId);
+    if (!ctx?.businessId) {
+      return res.status(400).json({
+        message: "Checkout session is not linked to a business.",
+      });
+    }
+
+    // Authorize against the business embedded in the Stripe session — never from session ID alone.
+    await assertBillingAccess(userId, ctx.businessId, { manage: true });
+
+    if (!ctx.isComplete) {
+      return res.json({
+        success: true,
+        verified: false,
+        business: null,
+      });
+    }
+
+    const business = await activateBusinessFromCheckoutSession(ctx.session, ctx.businessId);
 
     return res.json({
       success: true,
@@ -210,6 +283,9 @@ async function verifySession(req, res) {
       business,
     });
   } catch (error) {
+    if (error.status) {
+      return sendAccessError(res, error, "Failed to verify Stripe session.");
+    }
     console.error("Verify session error:", error);
     return res.status(500).json({ message: "Failed to verify Stripe session." });
   }
@@ -223,4 +299,3 @@ module.exports = {
   syncSubscription,
   handleWebhook,
 };
-
