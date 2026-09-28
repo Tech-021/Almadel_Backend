@@ -19,6 +19,8 @@ Derived from the current routes:
 | Product list | `GET /products` | Returns every product. No page parameter. |
 | Product search | `GET /products/search?q=` | Stops at 50 rows. |
 | Product lookup | `GET /products/barcode/:barcode` | |
+| Product import | `POST /products/import` | `{ products: [{ barcode, name, category, costPrice, sellingPrice, stock, ... }] }` |
+| Product export | `GET /products/export` | Full-catalog CSV download (not paginated) |
 | Stock add | `POST /stock/add` | `barcode`, `quantity`, `note` |
 | Sale decrement | `POST /sales/checkout` | `items[{ productId, quantity }]`, `paymentMethod`, `discountType` |
 | Customer create | `POST /customers` | `name`, `mobile`, `email?` |
@@ -88,6 +90,7 @@ npm run stress:stock
 npm run stress:customers
 npm run stress:finance
 npm run stress:reports
+npm run stress:import-export
 npm run stress:reads
 npm run stress:mixed
 npm run stress:all
@@ -98,6 +101,7 @@ npm run stress:seed:products
 npm run stress:seed:stock
 npm run stress:seed:customers
 npm run stress:seed:finance
+npm run stress:seed:import-export
 npm run stress:seed:realistic
 
 npm run stress:report
@@ -105,19 +109,31 @@ npm run stress:compare -- stress/results/<run-a> stress/results/<run-b>
 npm run stress:cleanup
 ```
 
-`stress:all` runs business, team, products, stock, customers, finance, reports, reads, then mixed. It does not start the seed scripts.
+`stress:all` runs business, team, products, stock, customers, finance, reports, import-export, reads, then mixed. It does not start the seed scripts.
 
 Recommended order for the newer UI areas:
 
 ```bash
 npm run stress:seed:customers
 npm run stress:seed:finance
+npm run stress:seed:import-export
 npm run stress:customers -- --profile standard
 npm run stress:finance -- --profile standard
 npm run stress:reports -- --profile standard
+npm run stress:import-export -- --profile standard
 npm run stress:db
 npm run stress:combine
 ```
+
+### Import / export fixtures
+
+`npm run stress:seed:import-export` writes reusable payloads under `stress/fixtures/import-export/`:
+
+- `import-{50|100|500|1000|5000}.json` — body for `POST /products/import`
+- `import-{size}.csv` — same rows in export CSV shape (for frontend/manual checks)
+- `manifest.json` — sizes, byte counts, worst-case business id
+
+It also ensures the worst-case tenant has `STRESS_PRODUCTS` catalog rows so `GET /products/export` has something large to download. Override sizes with `STRESS_IMPORT_SIZES=50,100,500`.
 
 ## Gap suites (high concurrency, history, images, lists, frontend)
 
