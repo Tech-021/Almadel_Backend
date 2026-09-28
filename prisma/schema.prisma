@@ -248,7 +248,7 @@ model Sale {
   id             Int        @id @default(autoincrement())
   businessId     Int?
   business       Business?  @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  invoiceNumber  String     @unique
+  invoiceNumber  String
   subtotal       Float
   discountType   String     @default("none")
   discountValue  Float      @default(0)
@@ -268,6 +268,7 @@ model Sale {
   items          SaleItem[]
   payments       Payment[]
 
+  @@unique([businessId, invoiceNumber])
   @@index([businessId])
   @@index([branchId])
   @@map("sales")
