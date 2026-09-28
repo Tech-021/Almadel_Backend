@@ -12,6 +12,82 @@ function getStripeClient() {
 /**
  * Creates a Stripe Checkout Session for a single flat subscription plan.
  */
+/**
+ * Checkout for new owners — business is provisioned when the session completes.
+ */
+async function createOnboardingCheckoutSession({ userId, userEmail, businessName, successUrl, cancelUrl }) {
+  const stripe = getStripeClient();
+  if (!stripe) {
+    throw new Error("STRIPE_SECRET_KEY is not configured in backend environment.");
+  }
+
+  const uid = Number(userId);
+  if (!Number.isInteger(uid) || uid <= 0) {
+    throw new Error("userId is required.");
+  }
+
+  const customer = await stripe.customers.create({
+    email: userEmail || undefined,
+    name: businessName || undefined,
+    metadata: {
+      onboardingUserId: String(uid),
+    },
+  });
+
+  const priceId = process.env.STRIPE_PRICE_ID;
+  let lineItems = [];
+
+  if (priceId) {
+    lineItems = [{ price: priceId, quantity: 1 }];
+  } else {
+    const currency = (process.env.STRIPE_CURRENCY || "usd").toLowerCase();
+    const amount = Number(process.env.STRIPE_AMOUNT || 2900);
+    lineItems = [
+      {
+        price_data: {
+          currency,
+          product_data: {
+            name: "Almadel Pro Subscription",
+            description: "Full access to POS, Financial Accounts, Khata, Inventory, and Reports",
+          },
+          unit_amount: amount,
+          recurring: {
+            interval: "month",
+          },
+        },
+        quantity: 1,
+      },
+    ];
+  }
+
+  const session = await stripe.checkout.sessions.create({
+    mode: "subscription",
+    payment_method_types: ["card"],
+    customer: customer.id,
+    client_reference_id: `onboarding-${uid}`,
+    line_items: lineItems,
+    metadata: {
+      onboardingUserId: String(uid),
+    },
+    subscription_data: {
+      trial_period_days: 30,
+      metadata: {
+        onboardingUserId: String(uid),
+      },
+    },
+    success_url: successUrl
+      ? (successUrl.includes("{CHECKOUT_SESSION_ID}")
+          ? successUrl
+          : `${successUrl}${successUrl.includes("?") ? "&" : "?"}session_id={CHECKOUT_SESSION_ID}`)
+      : `${process.env.FRONTEND_URL || "http://localhost:3000"}/dashboard?payment=success&session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url:
+      cancelUrl ||
+      `${process.env.FRONTEND_URL || "http://localhost:3000"}/setup-business?payment=canceled`,
+  });
+
+  return session;
+}
+
 async function createCheckoutSession({ businessId, userEmail, businessName, successUrl, cancelUrl }) {
   const stripe = getStripeClient();
   if (!stripe) {
@@ -135,13 +211,20 @@ async function getCheckoutSessionContext(sessionId) {
     return null;
   }
 
-  const businessId = Number(session.client_reference_id || session.metadata?.businessId) || null;
+  const ref = String(session.client_reference_id || "");
+  let businessId = Number(session.metadata?.businessId) || null;
+  let onboardingUserId = Number(session.metadata?.onboardingUserId) || null;
+
+  if (!businessId && ref.startsWith("onboarding-")) {
+    onboardingUserId = Number(ref.slice("onboarding-".length)) || onboardingUserId;
+  }
+
   const isComplete =
     session.status === "complete" ||
     session.payment_status === "paid" ||
     session.payment_status === "no_payment_required";
 
-  return { session, businessId, isComplete };
+  return { session, businessId: businessId || null, onboardingUserId: onboardingUserId || null, isComplete };
 }
 
 /**
@@ -328,6 +411,17 @@ async function handleWebhookEvent(rawBody, signature) {
   switch (event.type) {
     case "checkout.session.completed": {
       const session = dataObject;
+      const { fulfillOnboardingFromCheckoutSession } = require("../business/onboarding.service");
+      const onboardingUserId = Number(session.metadata?.onboardingUserId) ||
+        (String(session.client_reference_id || "").startsWith("onboarding-")
+          ? Number(String(session.client_reference_id).slice("onboarding-".length))
+          : null);
+
+      if (onboardingUserId) {
+        await fulfillOnboardingFromCheckoutSession(session, onboardingUserId);
+        break;
+      }
+
       const businessId = Number(session.client_reference_id || session.metadata?.businessId);
       if (businessId) {
         await prisma.business.update({
@@ -427,6 +521,7 @@ async function handleWebhookEvent(rawBody, signature) {
 module.exports = {
   getStripeClient,
   createCheckoutSession,
+  createOnboardingCheckoutSession,
   getCheckoutSessionContext,
   activateBusinessFromCheckoutSession,
   verifyCheckoutSession,

@@ -2,9 +2,20 @@ const { randomBytes } = require("node:crypto");
 
 const { toPositiveInteger } = require("../../utils/numbers");
 const { productAccessWhere } = require("../products/product-access");
+const { resolveBusinessBranchId } = require("../branches/branch-access");
 
 const DISCOUNT_TYPES = new Set(["none", "fixed", "percentage"]);
 const PAYMENT_METHODS = new Set(["cash", "online"]);
+
+class DuplicateOfflineSaleError extends Error {
+  constructor(invoiceNumber, businessId) {
+    super("Offline sale invoice already exists.");
+    this.name = "DuplicateOfflineSaleError";
+    this.code = "DUPLICATE_OFFLINE_SALE";
+    this.invoiceNumber = invoiceNumber;
+    this.businessId = businessId;
+  }
+}
 
 function roundMoney(value) {
   return Math.round((value + Number.EPSILON) * 100) / 100;
@@ -95,9 +106,32 @@ function createInvoiceNumber() {
   return `ALM-${date}-${suffix}`;
 }
 
+async function findExistingOfflineSale(tx, businessId, offlineInvoiceNumber) {
+  if (!offlineInvoiceNumber || !businessId) {
+    return null;
+  }
+
+  return tx.sale.findFirst({
+    where: { businessId, invoiceNumber: String(offlineInvoiceNumber) },
+    include: { items: true, user: true },
+  });
+}
+
 async function createSale(tx, userOrReq, rawItems, rawDetails) {
   const businessId = userOrReq?.businessId;
   const userId = userOrReq?.id || userOrReq?.user?.id;
+  const offlineInvoiceNumber = rawDetails?.offlineInvoiceNumber
+    ? String(rawDetails.offlineInvoiceNumber)
+    : null;
+
+  // Idempotency first — never mutate stock if this offline invoice already exists.
+  if (offlineInvoiceNumber) {
+    const existing = await findExistingOfflineSale(tx, businessId, offlineInvoiceNumber);
+    if (existing) {
+      return existing;
+    }
+  }
+
   const details = normalizeCheckoutDetails(rawDetails);
   const saleItems = [];
 
@@ -132,10 +166,10 @@ async function createSale(tx, userOrReq, rawItems, rawDetails) {
 
     const price = roundMoney(product.sellingPrice || product.price);
     const itemDiscountType = String(
-      item.discountType !== undefined ? item.discountType : (product.discountType || "none")
+      item.discountType !== undefined ? item.discountType : (product.discountType || "none"),
     ).toLowerCase();
     const rawDiscountVal = Number(
-      item.discountValue !== undefined ? item.discountValue : (product.discountValue || 0)
+      item.discountValue !== undefined ? item.discountValue : (product.discountValue || 0),
     );
     const itemDiscountValue = Number.isFinite(rawDiscountVal) && rawDiscountVal >= 0 ? rawDiscountVal : 0;
 
@@ -162,18 +196,10 @@ async function createSale(tx, userOrReq, rawItems, rawDetails) {
       discountAmount: itemDiscountAmount,
       total: lineTotal,
     });
-
-    const stockUpdate = await tx.product.updateMany({
-      data: { stock: { decrement: quantity } },
-      where: { id: product.id, stock: { gte: quantity } },
-    });
-    if (stockUpdate.count !== 1) {
-      throw new Error(`Not enough stock for ${product.name}.`);
-    }
   }
 
   const grossSubtotal = roundMoney(
-    saleItems.reduce((sum, item) => sum + (item.price * item.quantity), 0),
+    saleItems.reduce((sum, item) => sum + item.price * item.quantity, 0),
   );
   const totalItemDiscounts = roundMoney(
     saleItems.reduce((sum, item) => sum + (item.discountAmount || 0), 0),
@@ -215,49 +241,44 @@ async function createSale(tx, userOrReq, rawItems, rawDetails) {
     details.discountValue,
   );
 
-  // Idempotency check for offline sync
-  if (rawDetails?.offlineInvoiceNumber) {
-    const existing = await tx.sale.findFirst({
-      where: { businessId, invoiceNumber: String(rawDetails.offlineInvoiceNumber) },
+  // Decrement stock only after idempotency passes and the cart is validated.
+  for (const line of saleItems) {
+    const stockUpdate = await tx.product.updateMany({
+      data: { stock: { decrement: line.quantity } },
+      where: { id: line.productId, stock: { gte: line.quantity } },
+    });
+    if (stockUpdate.count !== 1) {
+      throw new Error(`Not enough stock for ${line.name}.`);
+    }
+  }
+
+  const branchId = await resolveBusinessBranchId(tx, businessId, rawDetails?.branchId);
+
+  let sale;
+  try {
+    sale = await tx.sale.create({
+      data: {
+        ...details,
+        ...totals,
+        businessId,
+        branchId,
+        customerId,
+        invoiceNumber: offlineInvoiceNumber || createInvoiceNumber(),
+        items: { create: saleItems },
+        subtotal: grossSubtotal,
+        totalItems,
+        userId: userId || null,
+        createdAt: rawDetails?.offlineCreatedAt ? new Date(rawDetails.offlineCreatedAt) : undefined,
+      },
       include: { items: true, user: true },
     });
-    if (existing) {
-      return existing;
+  } catch (error) {
+    if (error.code === "P2002" && offlineInvoiceNumber) {
+      // Concurrent duplicate: abort this transaction (rolls back stock) and let caller return existing sale.
+      throw new DuplicateOfflineSaleError(offlineInvoiceNumber, businessId);
     }
+    throw error;
   }
-
-  // Branch assignment (MVP default to primary branch, or incoming branchId)
-  let branchId = rawDetails?.branchId ? Number(rawDetails.branchId) : null;
-  if (!branchId && businessId && tx.branch) {
-    try {
-      const mainBranch = await tx.branch.findFirst({
-        where: { businessId, isMain: true },
-        select: { id: true },
-      });
-      if (mainBranch) {
-        branchId = mainBranch.id;
-      }
-    } catch (_) {
-      // Branch lookup fallback
-    }
-  }
-
-  const sale = await tx.sale.create({
-    data: {
-      ...details,
-      ...totals,
-      businessId,
-      branchId: branchId || undefined,
-      customerId,
-      invoiceNumber: rawDetails?.offlineInvoiceNumber ? String(rawDetails.offlineInvoiceNumber) : createInvoiceNumber(),
-      items: { create: saleItems },
-      subtotal: grossSubtotal,
-      totalItems,
-      userId: userId || null,
-      createdAt: rawDetails?.offlineCreatedAt ? new Date(rawDetails.offlineCreatedAt) : undefined,
-    },
-    include: { items: true, user: true },
-  });
 
   if (customerId) {
     await tx.customer.update({
@@ -275,17 +296,42 @@ async function createSale(tx, userOrReq, rawItems, rawDetails) {
     const accountName = details.paymentMethod === "cash" ? "Cash in hand" : "Online / Wallet";
     const account = await tx.account.upsert({
       where: { businessId_name: { businessId, name: accountName } },
-      update: {}, create: { businessId, name: accountName, type: details.paymentMethod === "cash" ? "cash" : "online" },
+      update: {},
+      create: { businessId, name: accountName, type: details.paymentMethod === "cash" ? "cash" : "online" },
     });
     const payment = await tx.payment.create({
-      data: { businessId, accountId: account.id, saleId: sale.id, customerId, amount: totals.totalAmount, type: "sale", method: details.paymentMethod, createdById: userId || null },
+      data: {
+        businessId,
+        accountId: account.id,
+        saleId: sale.id,
+        customerId,
+        amount: totals.totalAmount,
+        type: "sale",
+        method: details.paymentMethod,
+        createdById: userId || null,
+      },
     });
     await tx.ledgerTransaction.create({
-      data: { businessId, accountId: account.id, paymentId: payment.id, type: "sale", direction: "credit", amount: totals.totalAmount, reference: sale.invoiceNumber, createdById: userId || null },
+      data: {
+        businessId,
+        accountId: account.id,
+        paymentId: payment.id,
+        type: "sale",
+        direction: "credit",
+        amount: totals.totalAmount,
+        reference: sale.invoiceNumber,
+        createdById: userId || null,
+      },
     });
   }
 
   return sale;
 }
 
-module.exports = { calculateTotals, createSale, normalizeCheckoutDetails };
+module.exports = {
+  calculateTotals,
+  createSale,
+  normalizeCheckoutDetails,
+  DuplicateOfflineSaleError,
+  findExistingOfflineSale,
+};

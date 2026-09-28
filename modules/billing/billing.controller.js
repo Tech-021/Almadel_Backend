@@ -1,12 +1,17 @@
 const { prisma } = require("../../db");
 const {
   createCheckoutSession,
+  createOnboardingCheckoutSession,
   createPortalSession,
   handleWebhookEvent,
   syncBusinessSubscription,
   getCheckoutSessionContext,
   activateBusinessFromCheckoutSession,
 } = require("./stripe.service");
+const {
+  fulfillOnboardingFromCheckoutSession,
+  getOnboardingDraft,
+} = require("../business/onboarding.service");
 
 const BILLING_MANAGE_ROLES = new Set(["owner", "admin"]);
 
@@ -156,6 +161,50 @@ async function syncSubscription(req, res) {
   }
 }
 
+// POST /billing/onboarding-checkout — first-time owner activation (no business yet)
+async function createOnboardingCheckout(req, res) {
+  try {
+    const { successUrl, cancelUrl } = req.body;
+    const userId = Number(req.user?.id);
+    const userEmail = req.user?.email;
+
+    const membership = await prisma.businessMember.findUnique({ where: { userId } });
+    if (membership) {
+      return res.status(400).json({
+        message: "Your store is already active. Use billing settings to manage your plan.",
+      });
+    }
+
+    const draft = await getOnboardingDraft(userId);
+    if (!draft) {
+      return res.status(400).json({
+        message: "Submit your business details before starting checkout.",
+      });
+    }
+
+    const businessName = draft.payload?.name ? String(draft.payload.name) : "Your Store";
+
+    const session = await createOnboardingCheckoutSession({
+      userId,
+      userEmail,
+      businessName,
+      successUrl,
+      cancelUrl,
+    });
+
+    return res.json({
+      success: true,
+      url: session.url,
+      sessionId: session.id,
+    });
+  } catch (error) {
+    console.error("Create onboarding checkout session error:", error);
+    return res.status(500).json({
+      message: error.message || "Failed to create Stripe Checkout session.",
+    });
+  }
+}
+
 // POST /billing/create-checkout-session
 async function createCheckout(req, res) {
   try {
@@ -266,13 +315,41 @@ async function verifySession(req, res) {
     }
 
     const ctx = await getCheckoutSessionContext(sessionId);
-    if (!ctx?.businessId) {
+    if (!ctx) {
+      return res.status(400).json({ message: "Invalid checkout session." });
+    }
+
+    if (ctx.onboardingUserId) {
+      if (Number(ctx.onboardingUserId) !== userId) {
+        return res.status(403).json({ message: "Checkout session does not belong to this account." });
+      }
+
+      if (!ctx.isComplete) {
+        return res.json({
+          success: true,
+          verified: false,
+          business: null,
+          onboarding: true,
+        });
+      }
+
+      const business = await fulfillOnboardingFromCheckoutSession(ctx.session, userId);
+
+      return res.json({
+        success: true,
+        verified: Boolean(business),
+        business,
+        onboarding: true,
+        workspaceMode: business?.workspaceMode ?? "pos",
+      });
+    }
+
+    if (!ctx.businessId) {
       return res.status(400).json({
         message: "Checkout session is not linked to a business.",
       });
     }
 
-    // Authorize against the business embedded in the Stripe session — never from session ID alone.
     await assertBillingAccess(userId, ctx.businessId, { manage: true });
 
     if (!ctx.isComplete) {
@@ -301,6 +378,7 @@ async function verifySession(req, res) {
 
 module.exports = {
   getBillingStatus,
+  createOnboardingCheckout,
   createCheckout,
   createPortal,
   verifySession,

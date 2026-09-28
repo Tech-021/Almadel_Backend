@@ -2,6 +2,7 @@ const { prisma } = require("../../db");
 const { toPositiveInteger } = require("../../utils/numbers");
 const { productAccessWhere } = require("../products/product-access");
 const { emitBusinessEvent } = require("../realtime/socket");
+const { resolveBusinessBranchId } = require("../branches/branch-access");
 
 async function receiveOne(req, res) {
   try {
@@ -47,22 +48,13 @@ async function addStock(req, res) {
         where: { id: product.id },
       });
 
-      let branchId = req.body.branchId ? Number(req.body.branchId) : null;
-      if (!branchId && req.businessId && tx.branch) {
-        try {
-          const mainBranch = await tx.branch.findFirst({
-            where: { businessId: req.businessId, isMain: true },
-            select: { id: true },
-          });
-          if (mainBranch) branchId = mainBranch.id;
-        } catch (_) {}
-      }
+      const branchId = await resolveBusinessBranchId(tx, req.businessId, req.body.branchId);
 
       await tx.stockLog.create({
         data: {
           barcode: product.barcode,
           businessId: req.businessId,
-          branchId: branchId || undefined,
+          branchId,
           newStock: updated.stock,
           note: note || "Stock added",
           previousStock: product.stock,

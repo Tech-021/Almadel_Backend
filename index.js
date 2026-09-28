@@ -5,6 +5,7 @@ const http = require("http");
 
 const { createApp } = require("./app");
 const { prisma } = require("./db");
+const { assertJwtSecretConfigured } = require("./modules/auth/token.service");
 const { registerSocketHandlers } = require("./modules/realtime/socket");
 
 const port = Number(process.env.API_PORT ?? 4000);
@@ -15,6 +16,8 @@ const BCRYPT_WARMUP_HASH =
   "$2b$10$dd8VjgLGcM5PyVsow0oVkejuRB/FdT80KQV7t240GJDqW1FEsc/Bu";
 
 async function startServer() {
+  assertJwtSecretConfigured();
+
   await prisma.$queryRaw`SELECT 1`;
   await bcrypt.compare("warmup", BCRYPT_WARMUP_HASH);
   await registerSocketHandlers(httpServer);

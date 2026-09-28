@@ -1,0 +1,190 @@
+const { prisma } = require("../../db");
+const { provisionBusinessForOwner } = require("./business-provision.service");
+const { getStripeClient } = require("../billing/stripe.service");
+
+function parseOnboardingUserIdFromSession(session) {
+  const fromMeta = Number(session?.metadata?.onboardingUserId);
+  if (Number.isInteger(fromMeta) && fromMeta > 0) {
+    return fromMeta;
+  }
+
+  const ref = String(session?.client_reference_id || "");
+  if (ref.startsWith("onboarding-")) {
+    const id = Number(ref.slice("onboarding-".length));
+    if (Number.isInteger(id) && id > 0) {
+      return id;
+    }
+  }
+
+  return null;
+}
+
+async function assertUserCanStartOnboarding(userId) {
+  const uid = Number(userId);
+  const existingOwnerBiz = await prisma.business.findUnique({
+    where: { ownerId: uid },
+  });
+  if (existingOwnerBiz) {
+    const err = new Error(
+      "You already have a registered business with this account. Each account is strictly limited to one business.",
+    );
+    err.status = 400;
+    err.business = existingOwnerBiz;
+    throw err;
+  }
+
+  const existingMembership = await prisma.businessMember.findUnique({
+    where: { userId: uid },
+  });
+  if (existingMembership) {
+    const err = new Error(
+      "You already belong to a registered business. Each account is strictly limited to one business.",
+    );
+    err.status = 400;
+    throw err;
+  }
+}
+
+async function saveOnboardingDraft(userId, payload, workspaceMode) {
+  await assertUserCanStartOnboarding(userId);
+
+  const mode =
+    workspaceMode === "financial" || workspaceMode === "pos" ? workspaceMode : undefined;
+
+  return prisma.businessOnboardingDraft.upsert({
+    where: { userId: Number(userId) },
+    create: {
+      userId: Number(userId),
+      payload,
+      workspaceMode: mode || "pos",
+    },
+    update: {
+      payload,
+      ...(mode ? { workspaceMode: mode } : {}),
+    },
+  });
+}
+
+async function updateOnboardingWorkspaceMode(userId, workspaceMode) {
+  if (workspaceMode !== "financial" && workspaceMode !== "pos") {
+    const err = new Error("workspaceMode must be pos or financial.");
+    err.status = 400;
+    throw err;
+  }
+
+  const draft = await prisma.businessOnboardingDraft.findUnique({
+    where: { userId: Number(userId) },
+  });
+  if (!draft) {
+    const err = new Error("Complete business details before choosing a workspace.");
+    err.status = 400;
+    throw err;
+  }
+
+  return prisma.businessOnboardingDraft.update({
+    where: { userId: Number(userId) },
+    data: { workspaceMode },
+  });
+}
+
+async function getOnboardingDraft(userId) {
+  return prisma.businessOnboardingDraft.findUnique({
+    where: { userId: Number(userId) },
+  });
+}
+
+/**
+ * After Stripe checkout completes: create business, owner membership, billing linkage.
+ */
+async function fulfillOnboardingFromCheckoutSession(session, expectedUserId) {
+  const onboardingUserId = parseOnboardingUserIdFromSession(session);
+  if (!onboardingUserId) {
+    return null;
+  }
+
+  if (
+    expectedUserId != null &&
+    Number(expectedUserId) !== Number(onboardingUserId)
+  ) {
+    const err = new Error("Checkout session does not belong to this account.");
+    err.status = 403;
+    throw err;
+  }
+
+  const isComplete =
+    session.status === "complete" ||
+    session.payment_status === "paid" ||
+    session.payment_status === "no_payment_required";
+
+  if (!isComplete) {
+    return null;
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: onboardingUserId },
+    select: { id: true, email: true, fullName: true },
+  });
+  if (!user) {
+    const err = new Error("Account not found for onboarding session.");
+    err.status = 404;
+    throw err;
+  }
+
+  const draft = await prisma.businessOnboardingDraft.findUnique({
+    where: { userId: onboardingUserId },
+  });
+
+  let business = await prisma.businessMember
+    .findUnique({ where: { userId: onboardingUserId }, include: { business: true } })
+    .then((m) => m?.business ?? null);
+
+  if (!business) {
+    if (!draft) {
+      const err = new Error("Onboarding draft not found. Please submit business details again.");
+      err.status = 400;
+      throw err;
+    }
+
+    business = await provisionBusinessForOwner(
+      onboardingUserId,
+      draft.payload,
+      draft.workspaceMode,
+      user,
+    );
+  }
+
+  business = await prisma.business.update({
+    where: { id: business.id },
+    data: {
+      subscriptionStatus: "trialing",
+      stripeCustomerId: session.customer ? String(session.customer) : undefined,
+      stripeSubscriptionId: session.subscription ? String(session.subscription) : undefined,
+    },
+  });
+
+  await prisma.businessOnboardingDraft.deleteMany({
+    where: { userId: onboardingUserId },
+  }).catch(() => {});
+
+  const stripe = getStripeClient();
+  if (stripe && session.subscription) {
+    try {
+      await stripe.subscriptions.update(String(session.subscription), {
+        metadata: { businessId: String(business.id) },
+      });
+    } catch (e) {
+      console.warn("Stripe subscription metadata update notice:", e.message);
+    }
+  }
+
+  return business;
+}
+
+module.exports = {
+  assertUserCanStartOnboarding,
+  fulfillOnboardingFromCheckoutSession,
+  getOnboardingDraft,
+  parseOnboardingUserIdFromSession,
+  saveOnboardingDraft,
+  updateOnboardingWorkspaceMode,
+};

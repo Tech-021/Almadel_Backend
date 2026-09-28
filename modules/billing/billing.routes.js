@@ -2,6 +2,7 @@ const express = require("express");
 const { requireAuth } = require("../../middleware/auth");
 const {
   getBillingStatus,
+  createOnboardingCheckout,
   createCheckout,
   createPortal,
   verifySession,
@@ -16,6 +17,7 @@ billingRouter.post("/webhook", handleWebhook);
 
 // Protected endpoints
 billingRouter.get("/status", requireAuth, getBillingStatus);
+billingRouter.post("/onboarding-checkout", requireAuth, createOnboardingCheckout);
 billingRouter.post("/create-checkout-session", requireAuth, createCheckout);
 billingRouter.post("/create-portal-session", requireAuth, createPortal);
 billingRouter.post("/verify-session", requireAuth, verifySession);

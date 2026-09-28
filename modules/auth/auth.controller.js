@@ -44,7 +44,7 @@ async function signUpOwner(req, res) {
 
     const passwordHash = await bcrypt.hash(password, PASSWORD_HASH_ROUNDS);
     const user = await prisma.user.create({
-      data: { email, fullName, passwordHash, role: "admin" },
+      data: { email, fullName, passwordHash, role: "pending" },
     });
 
     return res.status(201).json({
