@@ -2,6 +2,7 @@ const { randomBytes } = require("node:crypto");
 
 const { toPositiveInteger } = require("../../utils/numbers");
 const { productAccessWhere } = require("../products/product-access");
+const { resolveBusinessBranchId } = require("../branches/branch-access");
 
 const DISCOUNT_TYPES = new Set(["none", "fixed", "percentage"]);
 const PAYMENT_METHODS = new Set(["cash", "online"]);
@@ -114,24 +115,6 @@ async function findExistingOfflineSale(tx, businessId, offlineInvoiceNumber) {
     where: { businessId, invoiceNumber: String(offlineInvoiceNumber) },
     include: { items: true, user: true },
   });
-}
-
-async function resolveBranchId(tx, businessId, rawDetails) {
-  let branchId = rawDetails?.branchId ? Number(rawDetails.branchId) : null;
-  if (!branchId && businessId && tx.branch) {
-    try {
-      const mainBranch = await tx.branch.findFirst({
-        where: { businessId, isMain: true },
-        select: { id: true },
-      });
-      if (mainBranch) {
-        branchId = mainBranch.id;
-      }
-    } catch {
-      // Branch lookup fallback
-    }
-  }
-  return branchId || undefined;
 }
 
 async function createSale(tx, userOrReq, rawItems, rawDetails) {
@@ -269,7 +252,7 @@ async function createSale(tx, userOrReq, rawItems, rawDetails) {
     }
   }
 
-  const branchId = await resolveBranchId(tx, businessId, rawDetails);
+  const branchId = await resolveBusinessBranchId(tx, businessId, rawDetails?.branchId);
 
   let sale;
   try {
