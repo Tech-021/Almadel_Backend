@@ -13,6 +13,36 @@ function requireScopedBusinessId(req, res) {
   return businessId;
 }
 
+function resolveLogActor(req) {
+  const authUser = req.user;
+  if (!authUser?.id) {
+    return null;
+  }
+
+  const membershipRole = req.businessRole;
+  let userRole = "staff";
+  if (membershipRole === "owner" || membershipRole === "admin") {
+    userRole = "admin";
+  } else if (membershipRole === "accountant") {
+    userRole = "accountant";
+  } else if (membershipRole === "staff") {
+    userRole = "staff";
+  }
+
+  const userName =
+    String(authUser.fullName || authUser.name || "").trim() ||
+    String(authUser.email || "").trim() ||
+    "Unknown user";
+  const userEmail = String(authUser.email || "").trim();
+
+  return {
+    userId: Number(authUser.id),
+    userName,
+    userEmail,
+    userRole,
+  };
+}
+
 // POST /logs - Record new activity event (scoped to the caller's business)
 async function createLog(req, res) {
   try {
@@ -20,6 +50,7 @@ async function createLog(req, res) {
     if (!businessId) return;
 
     const { action, category, details, target, meta } = req.body;
+    // Ignore any client-supplied userName, userEmail, userRole, userId (AUD-F10).
 
     if (!action || !category || !details) {
       return res.status(400).json({
@@ -28,12 +59,15 @@ async function createLog(req, res) {
       });
     }
 
-    // Derive actor from the authenticated session — never trust client-supplied identity.
-    const authUser = req.user;
-    const userName = authUser?.fullName || authUser?.name || "System Operator";
-    const userEmail = authUser?.email || "system@almadel.com";
-    const userRole = req.businessRole || authUser?.role || "staff";
-    const userId = authUser?.id ? Number(authUser.id) : null;
+    const actor = resolveLogActor(req);
+    if (!actor) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required to record activity.",
+      });
+    }
+
+    const { userId, userName, userEmail, userRole } = actor;
 
     const log = await prisma.activityLog.create({
       data: {
