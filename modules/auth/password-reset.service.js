@@ -10,9 +10,22 @@ function hashResetToken(token) {
   return crypto.createHash("sha256").update(token).digest("hex");
 }
 
+function resolvePasswordResetBaseUrl() {
+  const explicit = process.env.PASSWORD_RESET_URL?.trim();
+  if (explicit) {
+    return explicit;
+  }
+
+  const frontend = process.env.FRONTEND_URL?.trim();
+  if (frontend) {
+    return `${frontend.replace(/\/$/, "")}/reset-password`;
+  }
+
+  return "http://localhost:3000/reset-password";
+}
+
 function passwordResetUrl(token) {
-  const baseUrl =
-    process.env.PASSWORD_RESET_URL?.trim() || "myapp://reset-password";
+  const baseUrl = resolvePasswordResetBaseUrl();
   const url = new URL(baseUrl);
   url.searchParams.set("token", token);
   return url.toString();
