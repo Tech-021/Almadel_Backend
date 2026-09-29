@@ -9,6 +9,7 @@ const {
 
 const {
   forgotPassword,
+  getMe,
   resetPassword,
   signIn,
   signUpStaff,
@@ -23,6 +24,7 @@ authRouter.post("/owner/sign-up", signUpStaff);
 authRouter.post("/sign-in", signInIpLimiter, signInEmailLimiter, signIn);
 authRouter.post("/forgot-password", ...forgotPasswordLimiters, forgotPassword);
 authRouter.post("/reset-password", ...resetPasswordLimiters, resetPassword);
+authRouter.get("/me", requireAuth, getMe);
 authRouter.patch("/me", requireAuth, updateMe);
 
 module.exports = { authRouter };

@@ -192,6 +192,17 @@ async function resetPassword(req, res) {
   }
 }
 
+async function getMe(req, res) {
+  return res.json({
+    user: publicUser({
+      id: req.user.id,
+      email: req.user.email,
+      fullName: req.user.fullName,
+      role: req.user.role,
+    }),
+  });
+}
+
 async function updateMe(req, res) {
   const fullName = req.body.fullName === undefined ? undefined : String(req.body.fullName).trim();
   const email = req.body.email === undefined ? undefined : normalizeEmail(req.body.email);
@@ -238,4 +249,12 @@ function normalizeEmail(value) {
   return String(value ?? "").trim().toLowerCase();
 }
 
-module.exports = { forgotPassword, resetPassword, signIn, signUpStaff, signUpOwner, updateMe };
+module.exports = {
+  forgotPassword,
+  getMe,
+  resetPassword,
+  signIn,
+  signUpStaff,
+  signUpOwner,
+  updateMe,
+};
