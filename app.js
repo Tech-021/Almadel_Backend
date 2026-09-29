@@ -20,12 +20,15 @@ const { reportsRouter } = require("./modules/reports/reports.routes");
 const { billingRouter } = require("./modules/billing/billing.routes");
 const { categoriesRouter } = require("./modules/categories/categories.routes");
 const { createCorsOriginCallback } = require("./utils/cors-origins");
+const { requestLogMiddleware } = require("./utils/logger");
 
 function createApp() {
   const app = express();
 
   app.disable("x-powered-by");
   app.set("trust proxy", 1);
+
+  app.use(requestLogMiddleware);
 
   app.use(
     cors({
