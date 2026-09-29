@@ -2,6 +2,7 @@ const logsRoutes = require("../logs/logs.routes");
 const express = require("express");
 
 const { requireAdmin, requireAuth, requireBusiness } = require("../../middleware/auth");
+const { staffCreateIpLimiter } = require("../../middleware/auth-rate-limit");
 const {
   createStaff,
   deleteStaff,
@@ -13,7 +14,7 @@ const adminRouter = express.Router();
 
 adminRouter.use(requireAuth, requireBusiness, requireAdmin);
 adminRouter.get("/staff", listStaff);
-adminRouter.post("/staff", createStaff);
+adminRouter.post("/staff", staffCreateIpLimiter, createStaff);
 adminRouter.patch("/staff/:id", updateStaff);
 adminRouter.delete("/staff/:id", deleteStaff);
 

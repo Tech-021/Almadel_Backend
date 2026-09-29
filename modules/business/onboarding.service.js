@@ -166,10 +166,17 @@ async function fulfillOnboardingFromCheckoutSession(session, expectedUserId) {
     where: { userId: onboardingUserId },
   }).catch(() => {});
 
+  // Only touch Stripe for real subscription IDs (never stress/fake placeholders).
   const stripe = getStripeClient();
-  if (stripe && session.subscription) {
+  const subId = session.subscription ? String(session.subscription) : "";
+  const isRealStripeSub =
+    /^sub_[A-Za-z0-9]+$/.test(subId) &&
+    !subId.startsWith("sub_stress_") &&
+    !subId.startsWith("sub_live_load_") &&
+    !subId.startsWith("sub_test_fake");
+  if (stripe && isRealStripeSub) {
     try {
-      await stripe.subscriptions.update(String(session.subscription), {
+      await stripe.subscriptions.update(subId, {
         metadata: { businessId: String(business.id) },
       });
     } catch (e) {

@@ -149,8 +149,25 @@ async function cashAndNonCashMovementForDay(client, businessId, day, end) {
 }
 
 async function listAccounts(req, res) {
-  const accounts = await prisma.account.findMany({ where: { businessId: req.businessId }, include: { transactions: { select: { direction: true, amount: true } } }, orderBy: { name: "asc" } });
-  const result = accounts.map((a) => ({ ...a, transactions: undefined, balance: a.openingBalance + a.transactions.reduce((x, t) => x + (t.direction === "credit" ? t.amount : -t.amount), 0) }));
+  const businessId = req.businessId;
+  const [accounts, balanceRows] = await Promise.all([
+    prisma.account.findMany({
+      where: { businessId },
+      orderBy: { name: "asc" },
+    }),
+    prisma.$queryRaw`
+      SELECT "accountId",
+        COALESCE(SUM(CASE WHEN direction = 'credit' THEN amount ELSE -amount END), 0)::float AS net
+      FROM ledger_transactions
+      WHERE "businessId" = ${businessId}
+      GROUP BY "accountId"
+    `,
+  ]);
+  const netByAccount = new Map(balanceRows.map((r) => [Number(r.accountId), Number(r.net || 0)]));
+  const result = accounts.map((a) => ({
+    ...a,
+    balance: a.openingBalance + (netByAccount.get(a.id) || 0),
+  }));
   res.json({ accounts: result, totalAvailable: result.reduce((x, a) => x + a.balance, 0) });
 }
 async function createAccount(req, res) {

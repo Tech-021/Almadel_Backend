@@ -163,7 +163,7 @@ async function getOnboardingStatus(req, res) {
   }
 }
 
-function formatBusinessSubscription(biz) {
+function formatBusinessSubscription(biz, { slim = false } = {}) {
   if (!biz) return biz;
   const hasStripeSub = Boolean(biz.stripeSubscriptionId);
   const isSubscribed = biz.subscriptionStatus === "active" || (hasStripeSub && biz.subscriptionStatus !== "canceled");
@@ -176,6 +176,22 @@ function formatBusinessSubscription(biz) {
   let daysRemaining = 0;
   if (biz.trialEndsAt) {
     daysRemaining = Math.max(0, Math.ceil((new Date(biz.trialEndsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
+  }
+  if (slim) {
+    return {
+      id: biz.id,
+      name: biz.name,
+      businessType: biz.businessType,
+      mobileNumber: biz.mobileNumber,
+      workspaceMode: biz.workspaceMode,
+      subscriptionStatus: biz.subscriptionStatus,
+      trialEndsAt: biz.trialEndsAt,
+      ownerId: biz.ownerId,
+      isTrial,
+      isSubscribed,
+      isTrialExpired: trialExpired,
+      trialDaysRemaining: daysRemaining,
+    };
   }
   return {
     ...biz,
@@ -197,12 +213,27 @@ async function getMyBusinesses(req, res) {
       return res.json({ success: true, businesses: [] });
     }
 
-    // Single Business Per Admin Rule:
-    // Query memberships for this user and return ONLY the primary single business
+    // One-business-per-user: return at most one slim membership (no nested collections).
     const memberships = await memberModel.findMany({
       where: { userId },
-      include: { business: true },
+      select: {
+        role: true,
+        business: {
+          select: {
+            id: true,
+            name: true,
+            businessType: true,
+            mobileNumber: true,
+            workspaceMode: true,
+            subscriptionStatus: true,
+            trialEndsAt: true,
+            ownerId: true,
+            stripeSubscriptionId: true,
+          },
+        },
+      },
       orderBy: { createdAt: "desc" },
+      take: 5,
     });
 
     if (!memberships.length) {
@@ -217,7 +248,7 @@ async function getMyBusinesses(req, res) {
 
     const businesses = [
       {
-        ...formatBusinessSubscription(primary.business),
+        ...formatBusinessSubscription(primary.business, { slim: true }),
         membershipRole: primary.role,
       },
     ];

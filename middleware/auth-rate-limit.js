@@ -92,6 +92,11 @@ function createResetTokenLimiter() {
 const signInIpLimiter = createIpLimiter("AUTH_SIGNIN_MAX_PER_IP", 30);
 const signInEmailLimiter = createEmailLimiter("AUTH_SIGNIN_MAX_PER_EMAIL", 10);
 
+const signUpIpLimiter = createIpLimiter("AUTH_SIGNUP_MAX_PER_IP", 20);
+const signUpEmailLimiter = createEmailLimiter("AUTH_SIGNUP_MAX_PER_EMAIL", 5);
+
+const staffCreateIpLimiter = createIpLimiter("AUTH_STAFF_CREATE_MAX_PER_IP", 30);
+
 const forgotPasswordIpLimiter = createIpLimiter("AUTH_FORGOT_PASSWORD_MAX_PER_IP", 15);
 const forgotPasswordEmailLimiter = createEmailLimiter(
   "AUTH_FORGOT_PASSWORD_MAX_PER_EMAIL",
@@ -111,9 +116,15 @@ const resetPasswordLimiters = [
   resetPasswordTokenLimiter,
 ];
 
+const signUpLimiters = [signUpIpLimiter, signUpEmailLimiter];
+
 module.exports = {
   forgotPasswordLimiters,
   resetPasswordLimiters,
   signInIpLimiter,
   signInEmailLimiter,
+  signUpIpLimiter,
+  signUpEmailLimiter,
+  signUpLimiters,
+  staffCreateIpLimiter,
 };

@@ -174,6 +174,7 @@ model Product {
   @@index([businessId])
   @@index([businessId, name])
   @@index([businessId, category])
+  @@index([businessId, createdAt(sort: Desc)])
   @@index([name])
   @@index([category])
   @@map("products")
@@ -215,6 +216,7 @@ model StockLog {
   user          User?     @relation(fields: [userId], references: [id])
 
   @@index([businessId])
+  @@index([businessId, createdAt(sort: Desc)])
   @@index([branchId])
   @@map("stock_logs")
 }
@@ -239,6 +241,7 @@ model Customer {
 
   @@unique([businessId, mobile])
   @@index([businessId])
+  @@index([businessId, name])
   @@map("customers")
 }
 
@@ -285,6 +288,7 @@ model Sale {
 
   @@unique([businessId, invoiceNumber])
   @@index([businessId])
+  @@index([businessId, createdAt(sort: Desc)])
   @@index([branchId])
   @@map("sales")
 }
@@ -309,6 +313,7 @@ model ActivityLog {
   meta       Json?     @default("{}")
 
   @@index([businessId])
+  @@index([businessId, timestamp(sort: Desc)])
   @@index([timestamp(sort: Desc)])
   @@index([category])
   @@index([userEmail])

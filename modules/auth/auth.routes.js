@@ -5,6 +5,7 @@ const {
   resetPasswordLimiters,
   signInIpLimiter,
   signInEmailLimiter,
+  signUpLimiters,
 } = require("../../middleware/auth-rate-limit");
 
 const {
@@ -18,9 +19,9 @@ const {
 
 const authRouter = express.Router();
 
-authRouter.post("/staff/sign-up", signUpStaff);
-authRouter.post("/sign-up", signUpStaff);
-authRouter.post("/owner/sign-up", signUpStaff);
+authRouter.post("/staff/sign-up", ...signUpLimiters, signUpStaff);
+authRouter.post("/sign-up", ...signUpLimiters, signUpStaff);
+authRouter.post("/owner/sign-up", ...signUpLimiters, signUpStaff);
 authRouter.post("/sign-in", signInIpLimiter, signInEmailLimiter, signIn);
 authRouter.post("/forgot-password", ...forgotPasswordLimiters, forgotPassword);
 authRouter.post("/reset-password", ...resetPasswordLimiters, resetPassword);

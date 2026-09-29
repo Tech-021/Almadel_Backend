@@ -58,31 +58,33 @@ async function assertStaffMutationAllowed(member, businessId, actorUserId) {
 
 async function listStaff(req, res) {
   const businessId = req.businessId;
+  const { parsePagination, paginationMeta } = require("../../utils/pagination");
+  const { page, limit, skip } = parsePagination(req.query, {
+    defaultLimit: Number(process.env.STAFF_LIST_DEFAULT_LIMIT || 50),
+    maxLimit: Number(process.env.STAFF_LIST_MAX_LIMIT || 100),
+  });
 
-  // Staff page also has no pagination; 10k members freezes the UI. Cap the list for display.
-  const DEFAULT_LIMIT = Number(process.env.STAFF_LIST_DEFAULT_LIMIT || 200);
-  const MAX_LIMIT = Number(process.env.STAFF_LIST_MAX_LIMIT || 10000);
-  const requested = req.query.limit;
-  const limit =
-    requested === undefined || requested === ""
-      ? DEFAULT_LIMIT
-      : Math.min(Math.max(Number(requested) || DEFAULT_LIMIT, 1), MAX_LIMIT);
+  const memberWhere = { businessId, role: { in: ["staff", "accountant"] } };
 
-  const members = await prisma.businessMember.findMany({
-    where: { businessId, role: { in: ["staff", "accountant"] } },
-    include: {
-      user: {
-        select: {
-          email: true,
-          fullName: true,
-          id: true,
-          role: true,
+  const [members, total] = await Promise.all([
+    prisma.businessMember.findMany({
+      where: memberWhere,
+      include: {
+        user: {
+          select: {
+            email: true,
+            fullName: true,
+            id: true,
+            role: true,
+          },
         },
       },
-    },
-    orderBy: { createdAt: "asc" },
-    take: limit,
-  });
+      orderBy: [{ createdAt: "asc" }, { userId: "asc" }],
+      skip,
+      take: limit,
+    }),
+    prisma.businessMember.count({ where: memberWhere }),
+  ]);
 
   const staffUsers = members.map((m) => ({
     ...m.user,
@@ -119,6 +121,7 @@ async function listStaff(req, res) {
   const productsByUser = new Map(productCounts.map((p) => [p.createdByUserId, p._count.id]));
   const stockLogsByUser = new Map(stockLogCounts.map((s) => [s.userId, s._count.id]));
 
+  const pagination = paginationMeta(page, limit, total);
   res.json({
     staff: staffUsers.map((user) => {
       const saleStat = salesByUser.get(user.id);
@@ -136,6 +139,7 @@ async function listStaff(req, res) {
         user: userResponse(user),
       };
     }),
+    pagination,
   });
 }
 
@@ -187,17 +191,17 @@ async function createStaff(req, res) {
       const response = userResponse({ ...existingUser, role });
       emitBusinessEvent(businessId, "staff.created", response);
 
-      try {
-        await sendStaffInviteEmail({
+      setImmediate(() => {
+        sendStaffInviteEmail({
           email,
           fullName: fullName || existingUser.fullName,
           role,
           businessName,
           loginUrl,
+        }).catch((mailError) => {
+          console.error("Failed to send staff invite email:", mailError.message);
         });
-      } catch (mailError) {
-        console.error("Failed to send staff invite email:", mailError.message);
-      }
+      });
 
       return res.status(201).json({
         ...response,
@@ -228,19 +232,19 @@ async function createStaff(req, res) {
     const response = userResponse(newUser);
     emitBusinessEvent(businessId, "staff.created", response);
 
-    // Send credentials email
-    try {
-      await sendCredentialsEmail({
+    // Never block the HTTP response on SMTP
+    setImmediate(() => {
+      sendCredentialsEmail({
         email,
         fullName,
         role,
         password,
         businessName,
         loginUrl,
+      }).catch((mailError) => {
+        console.error("Failed to send credentials email:", mailError.message);
       });
-    } catch (mailError) {
-      console.error("Failed to send credentials email:", mailError.message);
-    }
+    });
 
     return res.status(201).json(response);
   } catch (error) {
@@ -315,24 +319,27 @@ async function updateStaff(req, res) {
 
     const user = await prisma.user.update({ data, where: { id } });
 
-    // If password was updated, send new credentials email
+    // If password was updated, send new credentials email (async — don't block response)
     if (password) {
-      try {
-        const business = await prisma.business.findUnique({
-          where: { id: businessId },
-          select: { name: true },
-        });
-        await sendCredentialsEmail({
-          email: user.email,
-          fullName: user.fullName,
-          role: role || member.role,
-          password,
-          businessName: business?.name || "Your Store",
-          loginUrl: `${process.env.FRONTEND_URL || "http://localhost:3000"}/login`,
-        });
-      } catch (mailError) {
-        console.error("Failed to send updated credentials email:", mailError.message);
-      }
+      const loginUrl = `${process.env.FRONTEND_URL || "http://localhost:3000"}/login`;
+      const mailRole = role || member.role;
+      setImmediate(() => {
+        prisma.business
+          .findUnique({ where: { id: businessId }, select: { name: true } })
+          .then((business) =>
+            sendCredentialsEmail({
+              email: user.email,
+              fullName: user.fullName,
+              role: mailRole,
+              password,
+              businessName: business?.name || "Your Store",
+              loginUrl,
+            }),
+          )
+          .catch((mailError) => {
+            console.error("Failed to send updated credentials email:", mailError.message);
+          });
+      });
     }
 
     const response = userResponse({ ...user, role: role || member.role });
