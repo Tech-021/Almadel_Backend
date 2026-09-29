@@ -16,6 +16,62 @@ async function addLedger(tx, data) {
   return tx.ledgerTransaction.create({ data: { ...data, amount: n(data.amount) } });
 }
 
+async function getCashAccountIds(client, businessId) {
+  const accounts = await client.account.findMany({
+    where: {
+      businessId,
+      isActive: true,
+      type: { equals: "cash", mode: "insensitive" },
+    },
+    select: { id: true },
+  });
+  return accounts.map((a) => a.id);
+}
+
+async function sumLedgerNetForDay(client, businessId, day, end, accountFilter) {
+  const where = {
+    businessId,
+    occurredAt: { gte: day, lte: end },
+    ...accountFilter,
+  };
+
+  const [credits, debits] = await Promise.all([
+    client.ledgerTransaction.aggregate({
+      where: { ...where, direction: "credit" },
+      _sum: { amount: true },
+    }),
+    client.ledgerTransaction.aggregate({
+      where: { ...where, direction: "debit" },
+      _sum: { amount: true },
+    }),
+  ]);
+
+  const creditTotal = credits._sum.amount || 0;
+  const debitTotal = debits._sum.amount || 0;
+  return {
+    credits: creditTotal,
+    debits: debitTotal,
+    net: creditTotal - debitTotal,
+  };
+}
+
+async function cashAndNonCashMovementForDay(client, businessId, day, end) {
+  const cashAccountIds = await getCashAccountIds(client, businessId);
+
+  const cashFilter =
+    cashAccountIds.length > 0 ? { accountId: { in: cashAccountIds } } : { accountId: { in: [] } };
+
+  const nonCashFilter =
+    cashAccountIds.length > 0 ? { accountId: { notIn: cashAccountIds } } : {};
+
+  const [cashMovement, nonCashMovement] = await Promise.all([
+    sumLedgerNetForDay(client, businessId, day, end, cashFilter),
+    sumLedgerNetForDay(client, businessId, day, end, nonCashFilter),
+  ]);
+
+  return { cashAccountIds, cashMovement, nonCashMovement };
+}
+
 async function listAccounts(req, res) {
   const accounts = await prisma.account.findMany({ where: { businessId: req.businessId }, include: { transactions: { select: { direction: true, amount: true } } }, orderBy: { name: "asc" } });
   const result = accounts.map((a) => ({ ...a, transactions: undefined, balance: a.openingBalance + a.transactions.reduce((x, t) => x + (t.direction === "credit" ? t.amount : -t.amount), 0) }));
@@ -68,8 +124,113 @@ async function updateExpense(req, res) { const id = n(req.params.id); const exis
 async function deleteExpense(req, res) { const id = n(req.params.id); const existing = await prisma.expense.findFirst({ where: { id, businessId: req.businessId } }); if (!existing) return res.status(404).json({ message: "Expense not found." }); try { await prisma.expense.delete({ where: { id } }); res.json({ deleted: true }); } catch { res.status(400).json({ message: "Could not delete expense." }); } }
 async function listPayments(req, res) { const page = Math.max(1, n(req.query.page) || 1); const limit = Math.min(100, Math.max(1, n(req.query.limit) || 25)); const where = { businessId: req.businessId, occurredAt: dateRange(req) }; const [payments, total] = await Promise.all([prisma.payment.findMany({ where, include: { account: { select: { name: true } }, customer: { select: { name: true, mobile: true } }, supplier: { select: { name: true, mobile: true } }, createdBy: { select: { fullName: true, email: true } } }, orderBy: { occurredAt: "desc" }, skip: (page - 1) * limit, take: limit }), prisma.payment.count({ where })]); res.json({ payments, total, page, limit }); }
 async function createPayment(req, res) { const amount = n(req.body.amount); const type = req.body.type === "supplier" ? "supplier" : "customer"; if (!validAmount(amount)) return res.status(400).json({ message: "Amount must be greater than zero." }); try { const payment = await prisma.$transaction(async (tx) => { await accountFor(tx, req.businessId, req.body.accountId); const relation = type === "customer" ? { customerId: n(req.body.partyId) } : { supplierId: n(req.body.partyId) }; const party = type === "customer" ? await tx.customer.findFirst({ where: { id: relation.customerId, businessId: req.businessId } }) : await tx.supplier.findFirst({ where: { id: relation.supplierId, businessId: req.businessId } }); if (!party) throw new Error("Party not found for this business."); const p = await tx.payment.create({ data: { businessId: req.businessId, accountId: n(req.body.accountId), ...relation, amount, type, method: String(req.body.method || "cash"), reference: req.body.reference ? String(req.body.reference) : null, createdById: n(req.user.id) } }); await addLedger(tx, { businessId: req.businessId, accountId: n(req.body.accountId), paymentId: p.id, type: `${type}_payment`, direction: type === "customer" ? "credit" : "debit", amount, reference: p.reference, createdById: n(req.user.id) }); if (type === "customer") await tx.customer.update({ where: { id: party.id }, data: { currentBalance: { decrement: amount } } }); else await tx.supplier.update({ where: { id: party.id }, data: { currentBalance: { decrement: amount } } }); return p; }); res.status(201).json({ payment }); } catch (e) { res.status(400).json({ message: e.message || "Could not record payment." }); } }
-async function getDailyClosing(req, res) { const date = req.query.date || new Date().toISOString().slice(0, 10); const day = new Date(`${date}T00:00:00.000`); if (Number.isNaN(day.getTime())) return res.status(400).json({ message: "Invalid business date." }); const end = new Date(`${date}T23:59:59.999`); const [closing, sales, ledger] = await Promise.all([prisma.dailyClosing.findUnique({ where: { businessId_businessDate: { businessId: req.businessId, businessDate: day } }, include: { closedBy: { select: { fullName: true, email: true } } } }), prisma.sale.aggregate({ where: { businessId: req.businessId, createdAt: { gte: day, lte: end } }, _count: { id: true }, _sum: { subtotal: true, discountAmount: true, totalAmount: true } }), prisma.ledgerTransaction.findMany({ where: { businessId: req.businessId, occurredAt: { gte: day, lte: end } } })]); const movement = ledger.reduce((x, t) => x + (t.direction === "credit" ? t.amount : -t.amount), 0); const openingCash = closing?.openingCash || 0; const expectedCash = openingCash + movement; res.json({ date, closing, summary: { bills: sales._count.id, grossSales: sales._sum.subtotal || 0, discounts: sales._sum.discountAmount || 0, netSales: sales._sum.totalAmount || 0, openingCash, movement, expectedCash, difference: closing?.countedCash == null ? null : closing.countedCash - expectedCash } }); }
-async function closeDaily(req, res) { const date = String(req.body.date || new Date().toISOString().slice(0, 10)); const countedCash = n(req.body.countedCash); if (!Number.isFinite(countedCash) || countedCash < 0) return res.status(400).json({ message: "Counted cash must be a valid non-negative amount." }); const day = new Date(`${date}T00:00:00.000`); const end = new Date(`${date}T23:59:59.999`); try { const result = await prisma.$transaction(async (tx) => { const existing = await tx.dailyClosing.findUnique({ where: { businessId_businessDate: { businessId: req.businessId, businessDate: day } } }); if (existing?.status === "closed") throw new Error("This day is already closed."); const business = await tx.business.findUnique({ where: { id: req.businessId }, select: { openingCashBalance: true } }); const movement = await tx.ledgerTransaction.aggregate({ where: { businessId: req.businessId, occurredAt: { gte: day, lte: end } }, _sum: { amount: true } }); const credits = await tx.ledgerTransaction.aggregate({ where: { businessId: req.businessId, occurredAt: { gte: day, lte: end }, direction: "credit" }, _sum: { amount: true } }); const debits = await tx.ledgerTransaction.aggregate({ where: { businessId: req.businessId, occurredAt: { gte: day, lte: end }, direction: "debit" }, _sum: { amount: true } }); const openingCash = existing?.openingCash || business?.openingCashBalance || 0; const expectedCash = openingCash + (credits._sum.amount || 0) - (debits._sum.amount || 0); return tx.dailyClosing.upsert({ where: { businessId_businessDate: { businessId: req.businessId, businessDate: day } }, update: { status: "closed", expectedCash, countedCash, difference: countedCash - expectedCash, note: req.body.note ? String(req.body.note) : null, closedById: n(req.user.id), closedAt: new Date() }, create: { businessId: req.businessId, businessDate: day, openingCash, expectedCash, countedCash, difference: countedCash - expectedCash, note: req.body.note ? String(req.body.note) : null, closedById: n(req.user.id), closedAt: new Date(), status: "closed" } }); }); res.json({ closing: result }); } catch (e) { res.status(400).json({ message: e.message || "Could not close day." }); } }
+async function getDailyClosing(req, res) {
+  const date = req.query.date || new Date().toISOString().slice(0, 10);
+  const day = new Date(`${date}T00:00:00.000`);
+  if (Number.isNaN(day.getTime())) {
+    return res.status(400).json({ message: "Invalid business date." });
+  }
+  const end = new Date(`${date}T23:59:59.999`);
+
+  const [closing, sales, business, movements] = await Promise.all([
+    prisma.dailyClosing.findUnique({
+      where: { businessId_businessDate: { businessId: req.businessId, businessDate: day } },
+      include: { closedBy: { select: { fullName: true, email: true } } },
+    }),
+    prisma.sale.aggregate({
+      where: { businessId: req.businessId, createdAt: { gte: day, lte: end } },
+      _count: { id: true },
+      _sum: { subtotal: true, discountAmount: true, totalAmount: true },
+    }),
+    prisma.business.findUnique({
+      where: { id: req.businessId },
+      select: { openingCashBalance: true },
+    }),
+    cashAndNonCashMovementForDay(prisma, req.businessId, day, end),
+  ]);
+
+  const openingCash = closing?.openingCash ?? business?.openingCashBalance ?? 0;
+  const cashMovement = movements.cashMovement.net;
+  const expectedCash = openingCash + cashMovement;
+
+  res.json({
+    date,
+    closing,
+    summary: {
+      bills: sales._count.id,
+      grossSales: sales._sum.subtotal || 0,
+      discounts: sales._sum.discountAmount || 0,
+      netSales: sales._sum.totalAmount || 0,
+      openingCash,
+      movement: cashMovement,
+      cashMovement,
+      nonCashMovement: movements.nonCashMovement.net,
+      cashAccountIds: movements.cashAccountIds,
+      expectedCash,
+      difference: closing?.countedCash == null ? null : closing.countedCash - expectedCash,
+    },
+  });
+}
+
+async function closeDaily(req, res) {
+  const date = String(req.body.date || new Date().toISOString().slice(0, 10));
+  const countedCash = n(req.body.countedCash);
+  if (!Number.isFinite(countedCash) || countedCash < 0) {
+    return res.status(400).json({ message: "Counted cash must be a valid non-negative amount." });
+  }
+
+  const day = new Date(`${date}T00:00:00.000`);
+  const end = new Date(`${date}T23:59:59.999`);
+
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      const existing = await tx.dailyClosing.findUnique({
+        where: { businessId_businessDate: { businessId: req.businessId, businessDate: day } },
+      });
+      if (existing?.status === "closed") {
+        throw new Error("This day is already closed.");
+      }
+
+      const business = await tx.business.findUnique({
+        where: { id: req.businessId },
+        select: { openingCashBalance: true },
+      });
+
+      const { cashMovement } = await cashAndNonCashMovementForDay(tx, req.businessId, day, end);
+      const openingCash = existing?.openingCash ?? business?.openingCashBalance ?? 0;
+      const expectedCash = openingCash + cashMovement.net;
+
+      return tx.dailyClosing.upsert({
+        where: { businessId_businessDate: { businessId: req.businessId, businessDate: day } },
+        update: {
+          status: "closed",
+          expectedCash,
+          countedCash,
+          difference: countedCash - expectedCash,
+          note: req.body.note ? String(req.body.note) : null,
+          closedById: n(req.user.id),
+          closedAt: new Date(),
+        },
+        create: {
+          businessId: req.businessId,
+          businessDate: day,
+          openingCash,
+          expectedCash,
+          countedCash,
+          difference: countedCash - expectedCash,
+          note: req.body.note ? String(req.body.note) : null,
+          closedById: n(req.user.id),
+          closedAt: new Date(),
+          status: "closed",
+        },
+      });
+    });
+
+    res.json({ closing: result });
+  } catch (e) {
+    res.status(400).json({ message: e.message || "Could not close day." });
+  }
+}
 async function reopenDaily(req, res) { const date = String(req.body.date || ""); const day = new Date(`${date}T00:00:00.000`); if (!date || Number.isNaN(day.getTime())) return res.status(400).json({ message: "A valid business date is required." }); try { const closing = await prisma.dailyClosing.update({ where: { businessId_businessDate: { businessId: req.businessId, businessDate: day } }, data: { status: "reopened", reopenedAt: new Date() } }); res.json({ closing }); } catch { res.status(404).json({ message: "Daily closing not found." }); } }
 async function reportSummary(req, res) { const range = dateRange(req); const businessId = req.businessId; const [sales, expenses, customer, supplier] = await Promise.all([prisma.sale.aggregate({ where: { businessId, createdAt: range }, _count: { id: true }, _sum: { totalAmount: true, discountAmount: true } }), prisma.expense.aggregate({ where: { businessId, occurredAt: range }, _sum: { amount: true } }), prisma.customer.aggregate({ where: { businessId }, _count: { id: true }, _sum: { currentBalance: true } }), prisma.supplier.aggregate({ where: { businessId }, _count: { id: true }, _sum: { currentBalance: true } })]); res.json({ sales: { count: sales._count.id, total: sales._sum.totalAmount || 0, discounts: sales._sum.discountAmount || 0 }, expenses: expenses._sum.amount || 0, customers: { count: customer._count.id, receivable: customer._sum.currentBalance || 0 }, suppliers: { count: supplier._count.id, payable: supplier._sum.currentBalance || 0 } }); }
 module.exports = { listAccounts, createAccount, updateAccount, deleteAccount, listTransactions, createTransaction, listExpenses, createExpense, updateExpense, deleteExpense, listPayments, createPayment, getDailyClosing, closeDaily, reopenDaily, reportSummary };
