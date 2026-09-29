@@ -350,6 +350,8 @@ model LedgerTransaction {
   createdBy User? @relation("LedgerCreator", fields: [createdById], references: [id], onDelete: SetNull)
   paymentId Int?
   payment Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  expenseId Int? @unique
+  expense Expense? @relation(fields: [expenseId], references: [id], onDelete: Cascade)
   @@index([businessId, occurredAt])
   @@index([accountId, occurredAt])
   @@map("ledger_transactions")
@@ -369,6 +371,7 @@ model Expense {
   createdBy User? @relation("ExpenseCreator", fields: [createdById], references: [id], onDelete: SetNull)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  ledgerTransaction LedgerTransaction?
   @@index([businessId, occurredAt])
   @@map("expenses")
 }

@@ -225,9 +225,107 @@ async function listExpenses(req, res) {
   ]);
   res.json({ expenses, total, page, limit });
 }
-async function createExpense(req, res) { const amount = n(req.body.amount); const category = String(req.body.category || "").trim(); if (!validAmount(amount) || !category) return res.status(400).json({ message: "Category and a valid amount are required." }); try { const expense = await prisma.$transaction(async (tx) => { await accountFor(tx, req.businessId, req.body.accountId); const e = await tx.expense.create({ data: { businessId: req.businessId, accountId: n(req.body.accountId), amount, category, description: req.body.description ? String(req.body.description) : null, occurredAt: req.body.occurredAt ? new Date(req.body.occurredAt) : undefined, createdById: n(req.user.id) } }); await addLedger(tx, { businessId: req.businessId, accountId: n(req.body.accountId), type: "expense", direction: "debit", amount, note: category, createdById: n(req.user.id) }); return e; }); res.status(201).json({ expense }); } catch (e) { res.status(400).json({ message: e.message || "Could not create expense." }); } }
-async function updateExpense(req, res) { const id = n(req.params.id); const existing = await prisma.expense.findFirst({ where: { id, businessId: req.businessId } }); if (!existing) return res.status(404).json({ message: "Expense not found." }); const data = {}; if (req.body.category !== undefined) data.category = String(req.body.category).trim(); if (req.body.description !== undefined) data.description = String(req.body.description); try { const expense = await prisma.expense.update({ where: { id }, data }); res.json({ expense }); } catch { res.status(400).json({ message: "Could not update expense." }); } }
-async function deleteExpense(req, res) { const id = n(req.params.id); const existing = await prisma.expense.findFirst({ where: { id, businessId: req.businessId } }); if (!existing) return res.status(404).json({ message: "Expense not found." }); try { await prisma.expense.delete({ where: { id } }); res.json({ deleted: true }); } catch { res.status(400).json({ message: "Could not delete expense." }); } }
+async function createExpense(req, res) {
+  const amount = n(req.body.amount);
+  const category = String(req.body.category || "").trim();
+  if (!validAmount(amount) || !category) {
+    return res.status(400).json({ message: "Category and a valid amount are required." });
+  }
+
+  try {
+    const expense = await prisma.$transaction(async (tx) => {
+      await accountFor(tx, req.businessId, req.body.accountId);
+      const occurredAt = req.body.occurredAt ? new Date(req.body.occurredAt) : undefined;
+      const e = await tx.expense.create({
+        data: {
+          businessId: req.businessId,
+          accountId: n(req.body.accountId),
+          amount,
+          category,
+          description: req.body.description ? String(req.body.description) : null,
+          occurredAt,
+          createdById: n(req.user.id),
+        },
+      });
+
+      await addLedger(tx, {
+        businessId: req.businessId,
+        accountId: n(req.body.accountId),
+        expenseId: e.id,
+        type: "expense",
+        direction: "debit",
+        amount,
+        note: category,
+        occurredAt: e.occurredAt,
+        createdById: n(req.user.id),
+      });
+
+      return e;
+    });
+
+    res.status(201).json({ expense });
+  } catch (e) {
+    res.status(400).json({ message: e.message || "Could not create expense." });
+  }
+}
+
+async function updateExpense(req, res) {
+  const id = n(req.params.id);
+  const existing = await prisma.expense.findFirst({ where: { id, businessId: req.businessId } });
+  if (!existing) return res.status(404).json({ message: "Expense not found." });
+  const data = {};
+  if (req.body.category !== undefined) data.category = String(req.body.category).trim();
+  if (req.body.description !== undefined) data.description = String(req.body.description);
+  try {
+    const expense = await prisma.expense.update({ where: { id }, data });
+    res.json({ expense });
+  } catch {
+    res.status(400).json({ message: "Could not update expense." });
+  }
+}
+
+async function deleteLegacyExpenseLedger(tx, businessId, expense) {
+  const orphan = await tx.ledgerTransaction.findFirst({
+    where: {
+      businessId,
+      expenseId: null,
+      type: "expense",
+      direction: "debit",
+      accountId: expense.accountId,
+      amount: expense.amount,
+      note: expense.category,
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  if (orphan) {
+    await tx.ledgerTransaction.delete({ where: { id: orphan.id } });
+  }
+}
+
+async function deleteExpense(req, res) {
+  const id = n(req.params.id);
+  const existing = await prisma.expense.findFirst({ where: { id, businessId: req.businessId } });
+  if (!existing) return res.status(404).json({ message: "Expense not found." });
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      const removed = await tx.ledgerTransaction.deleteMany({
+        where: { businessId: req.businessId, expenseId: id },
+      });
+
+      if (removed.count === 0) {
+        await deleteLegacyExpenseLedger(tx, req.businessId, existing);
+      }
+
+      await tx.expense.delete({ where: { id } });
+    });
+
+    res.json({ deleted: true });
+  } catch {
+    res.status(400).json({ message: "Could not delete expense." });
+  }
+}
 async function listPayments(req, res) {
   const occurredAt = requireFinanceDateRange(req, res);
   if (!occurredAt) return;
