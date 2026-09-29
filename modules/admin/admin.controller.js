@@ -3,7 +3,7 @@ const bcrypt = require("bcryptjs");
 const { prisma } = require("../../db");
 const { userResponse } = require("../../utils/serializers");
 const { emitBusinessEvent } = require("../realtime/socket");
-const { sendCredentialsEmail } = require("../auth/email.service");
+const { sendCredentialsEmail, sendStaffInviteEmail } = require("../auth/email.service");
 
 const PASSWORD_HASH_ROUNDS = Number(process.env.PASSWORD_HASH_ROUNDS ?? 10);
 
@@ -115,14 +115,6 @@ async function createStaff(req, res) {
       });
     }
 
-    if (password.length < 8) {
-      return res.status(400).json({
-        message: "Password must contain at least 8 characters.",
-      });
-    }
-
-    const passwordHash = await bcrypt.hash(password, PASSWORD_HASH_ROUNDS);
-
     const business = await prisma.business.findUnique({
       where: { id: businessId },
       select: { name: true },
@@ -130,46 +122,60 @@ async function createStaff(req, res) {
     const businessName = business?.name || "Your Store";
     const loginUrl = `${process.env.FRONTEND_URL || "http://localhost:3000"}/login`;
 
-    let user = await prisma.user.findUnique({ where: { email } });
+    const existingUser = await prisma.user.findUnique({ where: { email } });
 
-    if (user) {
+    if (existingUser) {
       const existingMember = await prisma.businessMember.findUnique({
-        where: { businessId_userId: { businessId, userId: user.id } },
+        where: { businessId_userId: { businessId, userId: existingUser.id } },
       });
       if (existingMember) {
         return res.status(409).json({ message: "Member is already added to this business." });
       }
 
-      await prisma.businessMember.create({
-        data: { businessId, userId: user.id, role },
+      const otherMembership = await prisma.businessMember.findUnique({
+        where: { userId: existingUser.id },
       });
-
-      if (password) {
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { passwordHash, authVersion: { increment: 1 } },
+      if (otherMembership) {
+        return res.status(409).json({
+          message:
+            "This email already belongs to another business. Each account can only belong to one business.",
         });
       }
 
-      const response = userResponse({ ...user, role });
+      await prisma.businessMember.create({
+        data: { businessId, userId: existingUser.id, role },
+      });
+
+      const response = userResponse({ ...existingUser, role });
       emitBusinessEvent(businessId, "staff.created", response);
 
-      // Send credentials email
       try {
-        await sendCredentialsEmail({
+        await sendStaffInviteEmail({
           email,
-          fullName: fullName || user.fullName,
+          fullName: fullName || existingUser.fullName,
           role,
-          password,
           businessName,
           loginUrl,
         });
       } catch (mailError) {
-        console.error("Failed to send credentials email:", mailError.message);
+        console.error("Failed to send staff invite email:", mailError.message);
       }
 
-      return res.status(201).json(response);
+      return res.status(201).json({
+        ...response,
+        invitedExistingAccount: true,
+        message:
+          "Existing user added to your team. Their password was not changed; they can sign in with their current password.",
+      });
     }
+
+    if (password.length < 8) {
+      return res.status(400).json({
+        message: "Password must contain at least 8 characters.",
+      });
+    }
+
+    const passwordHash = await bcrypt.hash(password, PASSWORD_HASH_ROUNDS);
 
     const newUser = await prisma.$transaction(async (tx) => {
       const created = await tx.user.create({
