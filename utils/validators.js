@@ -96,6 +96,46 @@ function validateNumber(value, options = {}) {
   return { valid: true, error: null };
 }
 
+/** Parses money fields; empty → 0. Rejects NaN, ±Infinity, and negatives. */
+function parseNonNegativeMoney(value, fieldLabel, { emptyAsZero = true } = {}) {
+  if (
+    emptyAsZero &&
+    (value === undefined || value === null || String(value).trim() === "")
+  ) {
+    return { ok: true, value: 0 };
+  }
+
+  const num = Number(value);
+  if (!Number.isFinite(num) || num < 0) {
+    return {
+      ok: false,
+      error: `${fieldLabel} must be a non-negative finite number.`,
+    };
+  }
+
+  return { ok: true, value: num };
+}
+
+/** Validates `openingBalance` on each row; returns parsed rows or first error with 1-based index. */
+function validateOpeningBalanceRows(rows, entityLabel) {
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return { ok: true, parsed: [] };
+  }
+
+  const parsed = [];
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    const label = `${entityLabel} row ${i + 1} opening balance`;
+    const balance = parseNonNegativeMoney(row?.openingBalance, label);
+    if (!balance.ok) {
+      return { ok: false, error: balance.error };
+    }
+    parsed.push({ row, openingBalance: balance.value });
+  }
+
+  return { ok: true, parsed };
+}
+
 module.exports = {
   PHONE_REGEX,
   EMAIL_REGEX,
@@ -105,4 +145,6 @@ module.exports = {
   validateEmail,
   validateText,
   validateNumber,
+  parseNonNegativeMoney,
+  validateOpeningBalanceRows,
 };

@@ -1,6 +1,12 @@
 const db = require("../../db");
 const prisma = db.prisma || db;
-const { validatePhone, validateEmail, validateText, validateNumber } = require("../../utils/validators");
+const {
+  validatePhone,
+  validateEmail,
+  validateText,
+  validateNumber,
+  validateOpeningBalanceRows,
+} = require("../../utils/validators");
 const {
   assertBusinessManagementAccess,
   assertBusinessMemberAccess,
@@ -414,6 +420,16 @@ async function completeFinancialSetup(req, res) {
       }
     }
 
+    const customerRows = validateOpeningBalanceRows(customers, "Customer");
+    if (!customerRows.ok) {
+      return res.status(400).json({ message: customerRows.error });
+    }
+
+    const supplierRows = validateOpeningBalanceRows(suppliers, "Supplier");
+    if (!supplierRows.ok) {
+      return res.status(400).json({ message: supplierRows.error });
+    }
+
     await prisma.$transaction(async (tx) => {
       const txBiz = tx.business || tx.Business;
       const txCust = tx.customer || tx.Customer;
@@ -446,11 +462,10 @@ async function completeFinancialSetup(req, res) {
       });
 
       // 2. Section 5: Add initial customers if provided
-      if (Array.isArray(customers) && customers.length > 0 && txCust) {
-        for (const c of customers) {
+      if (customerRows.parsed.length > 0 && txCust) {
+        for (const { row: c, openingBalance: cBal } of customerRows.parsed) {
           const cName = String(c.name || "").trim();
           const cMobile = String(c.mobile || "").trim();
-          const cBal = Number(c.openingBalance) || 0;
           if (cName && cMobile) {
             const existing = await txCust.findUnique({
               where: { businessId_mobile: { businessId, mobile: cMobile } },
@@ -471,12 +486,11 @@ async function completeFinancialSetup(req, res) {
       }
 
       // 3. Section 5: Add initial suppliers if provided
-      if (Array.isArray(suppliers) && suppliers.length > 0 && txSupp) {
-        for (const s of suppliers) {
+      if (supplierRows.parsed.length > 0 && txSupp) {
+        for (const { row: s, openingBalance: sBal } of supplierRows.parsed) {
           const sName = String(s.name || "").trim();
           const sMobile = String(s.mobile || "").trim() || null;
           const sEmail = String(s.email || "").trim() || null;
-          const sBal = Number(s.openingBalance) || 0;
           if (sName) {
             await txSupp.create({
               data: {
