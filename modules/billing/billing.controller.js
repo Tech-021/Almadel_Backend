@@ -376,6 +376,60 @@ async function verifySession(req, res) {
   }
 }
 
+/**
+ * Stress-only: simulate a completed Stripe onboarding checkout and provision the business.
+ * Enabled only when NODE_ENV=stress and STRESS_TEST=true.
+ */
+async function stressCompleteOnboarding(req, res) {
+  if (process.env.NODE_ENV !== "stress" || process.env.STRESS_TEST !== "true") {
+    return res.status(404).json({ message: "Not found." });
+  }
+
+  try {
+    const userId = Number(req.user?.id);
+    if (!Number.isInteger(userId) || userId <= 0) {
+      return res.status(401).json({ message: "Authentication required." });
+    }
+
+    const draft = await getOnboardingDraft(userId);
+    if (!draft) {
+      return res.status(400).json({
+        message: "Submit your business details before completing onboarding.",
+      });
+    }
+
+    const fakeSession = {
+      id: `cs_stress_${userId}_${Date.now()}`,
+      status: "complete",
+      payment_status: "paid",
+      customer: `cus_stress_${userId}`,
+      subscription: `sub_stress_${userId}`,
+      client_reference_id: `onboarding-${userId}`,
+      metadata: { onboardingUserId: String(userId) },
+    };
+
+    const business = await fulfillOnboardingFromCheckoutSession(fakeSession, userId);
+    if (!business) {
+      return res.status(400).json({ message: "Could not activate business from stress checkout." });
+    }
+
+    return res.status(201).json({
+      success: true,
+      verified: true,
+      onboarding: true,
+      business,
+      workspaceMode: business.workspaceMode ?? "pos",
+      userRole: "owner",
+    });
+  } catch (error) {
+    if (error.status) {
+      return res.status(error.status).json({ message: error.message });
+    }
+    console.error("Stress complete onboarding error:", error);
+    return res.status(500).json({ message: "Failed to complete stress onboarding." });
+  }
+}
+
 module.exports = {
   getBillingStatus,
   createOnboardingCheckout,
@@ -384,4 +438,5 @@ module.exports = {
   verifySession,
   syncSubscription,
   handleWebhook,
+  stressCompleteOnboarding,
 };
