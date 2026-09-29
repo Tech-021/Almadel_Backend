@@ -18,6 +18,44 @@ function isValidEmail(value) {
   return Boolean(email && email.includes("@"));
 }
 
+/** Blocks mutating/removing the business owner or the acting user via staff APIs. */
+async function assertStaffMutationAllowed(member, businessId, actorUserId) {
+  if (!member) {
+    return { ok: false, status: 404, message: "Member account not found in this business." };
+  }
+
+  if (member.role === "owner") {
+    return {
+      ok: false,
+      status: 403,
+      message: "The business owner cannot be modified or removed from staff management.",
+    };
+  }
+
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    select: { ownerId: true },
+  });
+
+  if (business && Number(business.ownerId) === Number(member.userId)) {
+    return {
+      ok: false,
+      status: 403,
+      message: "The business owner cannot be modified or removed.",
+    };
+  }
+
+  if (Number(actorUserId) === Number(member.userId)) {
+    return {
+      ok: false,
+      status: 403,
+      message: "You cannot modify or remove your own account from this screen.",
+    };
+  }
+
+  return { ok: true };
+}
+
 async function listStaff(req, res) {
   const businessId = req.businessId;
 
@@ -229,8 +267,9 @@ async function updateStaff(req, res) {
       include: { user: true },
     });
 
-    if (!member) {
-      return res.status(404).json({ message: "Member account not found in this business." });
+    const guard = await assertStaffMutationAllowed(member, businessId, req.user?.id);
+    if (!guard.ok) {
+      return res.status(guard.status).json({ message: guard.message });
     }
 
     const data = {};
@@ -327,21 +366,14 @@ async function deleteStaff(req, res) {
       where: { businessId_userId: { businessId, userId: id } },
     });
 
-    if (!member) {
-      return res.status(404).json({ message: "Staff account not found in this business." });
+    const guard = await assertStaffMutationAllowed(member, businessId, req.user?.id);
+    if (!guard.ok) {
+      return res.status(guard.status).json({ message: guard.message });
     }
 
     await prisma.businessMember.delete({
       where: { businessId_userId: { businessId, userId: id } },
     });
-
-    const remainingMemberships = await prisma.businessMember.count({
-      where: { userId: id },
-    });
-
-    if (remainingMemberships === 0) {
-      await prisma.user.delete({ where: { id } }).catch(() => null);
-    }
 
     emitBusinessEvent(businessId, "staff.deleted", { id });
     return res.json({ deleted: true });

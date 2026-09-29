@@ -85,7 +85,7 @@ model Business {
   currentPeriodEnd    DateTime?
   cancelAtPeriodEnd   Boolean          @default(false)
   ownerId             Int              @unique
-  owner               User             @relation("BusinessOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  owner               User             @relation("BusinessOwner", fields: [ownerId], references: [id], onDelete: Restrict)
   createdAt           DateTime         @default(now())
   updatedAt           DateTime         @updatedAt
   members             BusinessMember[]
