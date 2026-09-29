@@ -60,14 +60,8 @@ function requireAdmin(req, res, next) {
 }
 
 function requireFinanceAccess(req, res, next) {
-  const userRole = req.user?.role;
   const bizRole = req.businessRole;
-  if (
-    bizRole === "owner" ||
-    bizRole === "admin" ||
-    bizRole === "accountant" ||
-    userRole === "accountant"
-  ) {
+  if (bizRole === "owner" || bizRole === "admin" || bizRole === "accountant") {
     return next();
   }
 
@@ -100,10 +94,16 @@ async function requireBusiness(req, res, next) {
         },
       },
     });
+
+    // Fail closed: client sent x-business-id but user is not a member (forged / stale / cross-tenant).
+    if (!member) {
+      return res.status(403).json({
+        message: "Invalid or unauthorized business context.",
+      });
+    }
   }
 
-  // If header businessId is missing or doesn't belong to this user (e.g. stale localStorage),
-  // fallback to the user's primary/first business
+  // If header businessId is missing, fallback to the user's primary/first business
   if (!member) {
     const primary = await prisma.businessMember.findFirst({
       where: { userId },
@@ -144,8 +144,8 @@ function requireBusinessOwnerOrAdmin(req, res, next) {
 
 /**
  * Optional business context with membership validation.
- * Unlike the previous version, a forged x-business-id without membership is ignored
- * (falls back to the user's primary business) and never trusted blindly.
+ * Do not mount on mutating tenant routes. Forged x-business-id is ignored (falls back to primary).
+ * @deprecated Prefer requireBusiness on all tenant-scoped handlers.
  */
 async function optionalBusiness(req, res, next) {
   if (!req.user || !req.user.id) return next();

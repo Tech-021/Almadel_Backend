@@ -13,7 +13,7 @@ const router = express.Router();
 router.use(requireAuth, requireBusiness);
 
 router.post("/", createLog);
-router.get("/", getLogs);
+router.get("/", requireBusinessOwnerOrAdmin, getLogs);
 router.delete("/", requireBusinessOwnerOrAdmin, clearLogs);
 
 module.exports = router;

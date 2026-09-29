@@ -1,5 +1,5 @@
 const express = require("express");
-const { requireAuth, requireBusiness } = require("../../middleware/auth");
+const { requireAuth, requireBusiness, requireFinanceAccess } = require("../../middleware/auth");
 const {
   getSalesReport,
   getProductReport,
@@ -8,7 +8,7 @@ const {
 
 const router = express.Router();
 
-router.use(requireAuth, requireBusiness);
+router.use(requireAuth, requireBusiness, requireFinanceAccess);
 
 router.get("/sales", getSalesReport);
 router.get("/products", getProductReport);
