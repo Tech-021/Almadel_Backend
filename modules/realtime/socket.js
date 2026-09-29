@@ -3,18 +3,9 @@ const { createAdapter } = require("@socket.io/redis-adapter");
 const { createClient } = require("redis");
 const { prisma } = require("../../db");
 const { verifyAccessToken } = require("../auth/token.service");
+const { isAllowedCorsOrigin } = require("../../utils/cors-origins");
 
 let ioInstance = null;
-
-function isAllowedOrigin(origin) {
-  if (!origin) return true;
-  const defaults = ["http://localhost:3000", "http://localhost:3001", "http://127.0.0.1:3000"];
-  const custom = (process.env.CORS_ORIGINS || "").split(",").map((value) => value.trim()).filter(Boolean);
-  return (
-    [...defaults, ...custom, process.env.FRONTEND_URL].filter(Boolean).includes(origin) ||
-    origin.endsWith(".vercel.app")
-  );
-}
 
 async function authenticateSocket(socket, next) {
   try {
@@ -54,7 +45,10 @@ async function joinBusiness(socket, businessId) {
 
 async function registerSocketHandlers(httpServer) {
   const io = new Server(httpServer, {
-    cors: { credentials: true, origin: (origin, callback) => callback(null, isAllowedOrigin(origin)) },
+    cors: {
+      credentials: true,
+      origin: (origin, callback) => callback(null, isAllowedCorsOrigin(origin)),
+    },
     maxHttpBufferSize: 1e6,
     pingInterval: 25_000,
     pingTimeout: 20_000,
