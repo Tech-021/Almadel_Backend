@@ -492,6 +492,32 @@ async function completeFinancialSetup(req, res) {
         },
       });
 
+      // Keep operational cash account openingBalance coherent with business config
+      // only when the account has no ledger history yet (do not rewrite historical openings).
+      const cashAccount = await tx.account.findUnique({
+        where: { businessId_name: { businessId, name: "Cash in hand" } },
+      });
+      if (!cashAccount) {
+        await tx.account.create({
+          data: {
+            businessId,
+            name: "Cash in hand",
+            type: "cash",
+            openingBalance: cashNum,
+          },
+        });
+      } else {
+        const ledgerCount = await tx.ledgerTransaction.count({
+          where: { businessId, accountId: cashAccount.id },
+        });
+        if (ledgerCount === 0) {
+          await tx.account.update({
+            where: { id: cashAccount.id },
+            data: { openingBalance: cashNum },
+          });
+        }
+      }
+
       // 2. Section 5: Add initial customers if provided
       if (customerRows.parsed.length > 0 && txCust) {
         for (const { row: c, openingBalance: cBal } of customerRows.parsed) {

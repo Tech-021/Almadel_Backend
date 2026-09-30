@@ -1,8 +1,24 @@
 const { randomBytes } = require("node:crypto");
 
 const { toPositiveInteger } = require("../../utils/numbers");
+const {
+  roundMoney,
+  mulMoney,
+  pctOf,
+  minMoney,
+  maxMoney,
+  toMoneyDecimal,
+  toMoneyNumber,
+  money,
+} = require("../../utils/money");
+const {
+  DomainError,
+  INSUFFICIENT_STOCK,
+} = require("../../utils/domain-errors");
 const { productAccessWhere } = require("../products/product-access");
 const { resolveBusinessBranchId } = require("../branches/branch-access");
+const { assertRegisterOpenForCheckout } = require("../finance/register.service");
+const { applyStockChange } = require("../stock/stock.service");
 
 const DISCOUNT_TYPES = new Set(["none", "fixed", "percentage"]);
 const PAYMENT_METHODS = new Set(["cash", "online"]);
@@ -17,15 +33,11 @@ class DuplicateOfflineSaleError extends Error {
   }
 }
 
-function roundMoney(value) {
-  return Math.round((value + Number.EPSILON) * 100) / 100;
-}
-
 function normalizeCheckoutDetails(body) {
   const customerName = String(body.customerName ?? "").trim();
   const customerMobile = String(body.customerMobile ?? "").trim();
   const discountType = String(body.discountType ?? "none").toLowerCase();
-  const discountValue = Number(body.discountValue ?? 0);
+  const discountValue = money(body.discountValue ?? 0);
   const paymentMethod = String(body.paymentMethod ?? "cash").toLowerCase();
 
   if (!DISCOUNT_TYPES.has(discountType)) {
@@ -34,10 +46,10 @@ function normalizeCheckoutDetails(body) {
   if (!PAYMENT_METHODS.has(paymentMethod)) {
     throw new Error("Select a valid payment method.");
   }
-  if (!Number.isFinite(discountValue) || discountValue < 0) {
+  if (discountValue.lt(0)) {
     throw new Error("Discount must be zero or greater.");
   }
-  if (discountType === "percentage" && discountValue > 100) {
+  if (discountType === "percentage" && discountValue.gt(100)) {
     throw new Error("Percentage discount cannot exceed 100%.");
   }
   if (customerName.length > 100) {
@@ -51,52 +63,60 @@ function normalizeCheckoutDetails(body) {
     customerMobile: customerMobile || null,
     customerName: customerName || null,
     discountType,
-    discountValue: discountType === "none" ? 0 : roundMoney(discountValue),
+    discountValue: discountType === "none" ? toMoneyDecimal(0) : roundMoney(discountValue),
     paymentMethod,
   };
 }
 
 function calculateTotals(grossSubtotal, cartDiscountTypeOrItemDiscount, cartDiscountValueOrType, maybeDiscountValue) {
-  if (typeof cartDiscountTypeOrItemDiscount === "number") {
-    const itemDiscountAmount = cartDiscountTypeOrItemDiscount;
-    const cartDiscountType = String(cartDiscountValueOrType || "none").toLowerCase();
-    const cartDiscountValue = Number(maybeDiscountValue || 0);
+  const gross = money(grossSubtotal);
 
-    let cartDiscount = 0;
-    const netBeforeCartDiscount = Math.max(0, grossSubtotal - itemDiscountAmount);
+  // Overload A (checkout): (gross, itemDiscountAmount, cartDiscountType, cartDiscountValue)
+  // Overload B (legacy): (gross, discountType, discountValue)
+  const usesItemDiscountPath =
+    arguments.length >= 4 ||
+    typeof cartDiscountTypeOrItemDiscount !== "string";
+
+  if (usesItemDiscountPath) {
+    const itemDiscountAmount = money(cartDiscountTypeOrItemDiscount);
+    const cartDiscountType = String(cartDiscountValueOrType || "none").toLowerCase();
+    const cartDiscountValue = money(maybeDiscountValue || 0);
+
+    let cartDiscount = money(0);
+    const netBeforeCartDiscount = maxMoney(0, money(gross).sub(itemDiscountAmount));
 
     if (cartDiscountType === "fixed") {
-      if (cartDiscountValue > netBeforeCartDiscount) {
+      if (cartDiscountValue.gt(netBeforeCartDiscount)) {
         throw new Error("Fixed discount cannot exceed the cart total.");
       }
       cartDiscount = cartDiscountValue;
     } else if (cartDiscountType === "percentage") {
-      cartDiscount = netBeforeCartDiscount * (cartDiscountValue / 100);
+      cartDiscount = pctOf(netBeforeCartDiscount, cartDiscountValue);
     }
 
-    const totalDiscountAmount = roundMoney(itemDiscountAmount + cartDiscount);
+    const totalDiscountAmount = roundMoney(itemDiscountAmount.add(cartDiscount));
     return {
       discountAmount: totalDiscountAmount,
-      totalAmount: roundMoney(Math.max(0, grossSubtotal - totalDiscountAmount)),
+      totalAmount: roundMoney(maxMoney(0, money(gross).sub(totalDiscountAmount))),
     };
   }
 
   const discountType = String(cartDiscountTypeOrItemDiscount || "none").toLowerCase();
-  const discountValue = Number(cartDiscountValueOrType || 0);
-  let discountAmount = 0;
+  const discountValue = money(cartDiscountValueOrType || 0);
+  let discountAmount = money(0);
 
   if (discountType === "fixed") {
-    if (discountValue > grossSubtotal) {
+    if (discountValue.gt(gross)) {
       throw new Error("Fixed discount cannot exceed the subtotal.");
     }
     discountAmount = discountValue;
   } else if (discountType === "percentage") {
-    discountAmount = grossSubtotal * (discountValue / 100);
+    discountAmount = pctOf(gross, discountValue);
   }
 
   return {
     discountAmount: roundMoney(discountAmount),
-    totalAmount: roundMoney(Math.max(0, grossSubtotal - discountAmount)),
+    totalAmount: roundMoney(maxMoney(0, money(gross).sub(discountAmount))),
   };
 }
 
@@ -117,12 +137,44 @@ async function findExistingOfflineSale(tx, businessId, offlineInvoiceNumber) {
   });
 }
 
+async function ensureSaleAccount(tx, businessId, paymentMethod) {
+  const accountName = paymentMethod === "cash" ? "Cash in hand" : "Online / Wallet";
+  const accountType = paymentMethod === "cash" ? "cash" : "online";
+
+  const existing = await tx.account.findUnique({
+    where: { businessId_name: { businessId, name: accountName } },
+  });
+  if (existing) return existing;
+
+  let openingBalance = toMoneyDecimal(0);
+  if (paymentMethod === "cash") {
+    const business = await tx.business.findUnique({
+      where: { id: businessId },
+      select: { openingCashBalance: true },
+    });
+    openingBalance = toMoneyDecimal(business?.openingCashBalance ?? 0);
+  }
+
+  return tx.account.create({
+    data: {
+      businessId,
+      name: accountName,
+      type: accountType,
+      openingBalance,
+    },
+  });
+}
+
 async function createSale(tx, userOrReq, rawItems, rawDetails) {
   const businessId = userOrReq?.businessId;
   const userId = userOrReq?.id || userOrReq?.user?.id;
   const offlineInvoiceNumber = rawDetails?.offlineInvoiceNumber
     ? String(rawDetails.offlineInvoiceNumber)
     : null;
+
+  if (!businessId) {
+    throw new DomainError("INVALID_TENANT_RESOURCE", "Business context is required.", 400);
+  }
 
   // Idempotency first — never mutate stock if this offline invoice already exists.
   if (offlineInvoiceNumber) {
@@ -131,6 +183,10 @@ async function createSale(tx, userOrReq, rawItems, rawDetails) {
       return existing;
     }
   }
+
+  // Contends with closeDaily via row lock on daily_closings.
+  const saleAt = rawDetails?.offlineCreatedAt ? new Date(rawDetails.offlineCreatedAt) : new Date();
+  await assertRegisterOpenForCheckout(tx, businessId, saleAt);
 
   const details = normalizeCheckoutDetails(rawDetails);
   const saleItems = [];
@@ -161,48 +217,52 @@ async function createSale(tx, userOrReq, rawItems, rawDetails) {
       throw new Error(`Product not found: ${barcode || productId || "Unknown item"}`);
     }
     if (product.stock < quantity) {
-      throw new Error(`Not enough stock for ${product.name} (Available: ${product.stock}, Requested: ${quantity}).`);
+      throw new DomainError(
+        INSUFFICIENT_STOCK,
+        `Not enough stock for ${product.name} (Available: ${product.stock}, Requested: ${quantity}).`,
+        409,
+      );
     }
 
     const price = roundMoney(product.sellingPrice || product.price);
     const itemDiscountType = String(
       item.discountType !== undefined ? item.discountType : (product.discountType || "none"),
     ).toLowerCase();
-    const rawDiscountVal = Number(
+    const rawDiscountVal = money(
       item.discountValue !== undefined ? item.discountValue : (product.discountValue || 0),
     );
-    const itemDiscountValue = Number.isFinite(rawDiscountVal) && rawDiscountVal >= 0 ? rawDiscountVal : 0;
+    const itemDiscountValue = rawDiscountVal.gte(0) ? rawDiscountVal : money(0);
 
-    let itemDiscountAmount = 0;
-    const baseLineTotal = roundMoney(price * quantity);
+    let itemDiscountAmount = money(0);
+    const baseLineTotal = mulMoney(price, quantity);
 
-    if (itemDiscountType === "fixed" && itemDiscountValue > 0) {
-      itemDiscountAmount = roundMoney(Math.min(baseLineTotal, itemDiscountValue * quantity));
-    } else if (itemDiscountType === "percentage" && itemDiscountValue > 0) {
-      const pct = Math.min(100, Math.max(0, itemDiscountValue));
-      itemDiscountAmount = roundMoney(baseLineTotal * (pct / 100));
+    if (itemDiscountType === "fixed" && itemDiscountValue.gt(0)) {
+      itemDiscountAmount = minMoney(baseLineTotal, mulMoney(itemDiscountValue, quantity));
+    } else if (itemDiscountType === "percentage" && itemDiscountValue.gt(0)) {
+      const pct = minMoney(100, maxMoney(0, itemDiscountValue));
+      itemDiscountAmount = pctOf(baseLineTotal, pct);
     }
 
-    const lineTotal = roundMoney(Math.max(0, baseLineTotal - itemDiscountAmount));
+    const lineTotal = roundMoney(maxMoney(0, money(baseLineTotal).sub(itemDiscountAmount)));
 
     saleItems.push({
       barcode: product.barcode || "",
       name: product.name,
-      price,
+      price: toMoneyDecimal(price),
       productId: product.id,
       quantity,
       discountType: itemDiscountType,
-      discountValue: itemDiscountValue,
-      discountAmount: itemDiscountAmount,
-      total: lineTotal,
+      discountValue: toMoneyDecimal(itemDiscountValue),
+      discountAmount: toMoneyDecimal(itemDiscountAmount),
+      total: toMoneyDecimal(lineTotal),
     });
   }
 
   const grossSubtotal = roundMoney(
-    saleItems.reduce((sum, item) => sum + item.price * item.quantity, 0),
+    saleItems.reduce((sum, item) => money(sum).add(mulMoney(item.price, item.quantity)), money(0)),
   );
   const totalItemDiscounts = roundMoney(
-    saleItems.reduce((sum, item) => sum + (item.discountAmount || 0), 0),
+    saleItems.reduce((sum, item) => money(sum).add(money(item.discountAmount || 0)), money(0)),
   );
 
   let customerId = null;
@@ -223,7 +283,8 @@ async function createSale(tx, userOrReq, rawItems, rawDetails) {
   }
   const totalItems = saleItems.reduce((sum, item) => sum + item.quantity, 0);
 
-  const hasAnyDiscounts = totalItemDiscounts > 0 || (details.discountType !== "none" && details.discountValue > 0);
+  const hasAnyDiscounts =
+    totalItemDiscounts.gt(0) || (details.discountType !== "none" && money(details.discountValue).gt(0));
   if (hasAnyDiscounts) {
     const biz = await tx.business.findUnique({
       where: { id: businessId },
@@ -241,31 +302,50 @@ async function createSale(tx, userOrReq, rawItems, rawDetails) {
     details.discountValue,
   );
 
-  // Decrement stock only after idempotency passes and the cart is validated.
-  for (const line of saleItems) {
-    const stockUpdate = await tx.product.updateMany({
-      data: { stock: { decrement: line.quantity } },
-      where: { id: line.productId, stock: { gte: line.quantity } },
-    });
-    if (stockUpdate.count !== 1) {
-      throw new Error(`Not enough stock for ${line.name}.`);
-    }
-  }
-
   const branchId = await resolveBusinessBranchId(tx, businessId, rawDetails?.branchId);
+
+  // Decrement stock + write logs before sale create so failures roll back together.
+  for (const line of saleItems) {
+    await applyStockChange(tx, {
+      businessId,
+      productId: line.productId,
+      quantityDelta: -line.quantity,
+      note: `SALE`,
+      userId: userId || null,
+      branchId,
+      barcode: line.barcode,
+    });
+  }
 
   let sale;
   try {
     sale = await tx.sale.create({
       data: {
-        ...details,
-        ...totals,
+        customerMobile: details.customerMobile,
+        customerName: details.customerName,
+        discountType: details.discountType,
+        discountValue: toMoneyDecimal(details.discountValue),
+        paymentMethod: details.paymentMethod,
+        discountAmount: toMoneyDecimal(totals.discountAmount),
+        totalAmount: toMoneyDecimal(totals.totalAmount),
         businessId,
         branchId,
         customerId,
         invoiceNumber: offlineInvoiceNumber || createInvoiceNumber(),
-        items: { create: saleItems },
-        subtotal: grossSubtotal,
+        items: {
+          create: saleItems.map((line) => ({
+            barcode: line.barcode,
+            name: line.name,
+            price: line.price,
+            productId: line.productId,
+            quantity: line.quantity,
+            discountType: line.discountType,
+            discountValue: line.discountValue,
+            discountAmount: line.discountAmount,
+            total: line.total,
+          })),
+        },
+        subtotal: toMoneyDecimal(grossSubtotal),
         totalItems,
         userId: userId || null,
         createdAt: rawDetails?.offlineCreatedAt ? new Date(rawDetails.offlineCreatedAt) : undefined,
@@ -274,56 +354,83 @@ async function createSale(tx, userOrReq, rawItems, rawDetails) {
     });
   } catch (error) {
     if (error.code === "P2002" && offlineInvoiceNumber) {
-      // Concurrent duplicate: abort this transaction (rolls back stock) and let caller return existing sale.
       throw new DuplicateOfflineSaleError(offlineInvoiceNumber, businessId);
     }
-    throw error;
+    // Online invoice collision — retry once with a new number
+    if (error.code === "P2002" && !offlineInvoiceNumber) {
+      sale = await tx.sale.create({
+        data: {
+          customerMobile: details.customerMobile,
+          customerName: details.customerName,
+          discountType: details.discountType,
+          discountValue: toMoneyDecimal(details.discountValue),
+          paymentMethod: details.paymentMethod,
+          discountAmount: toMoneyDecimal(totals.discountAmount),
+          totalAmount: toMoneyDecimal(totals.totalAmount),
+          businessId,
+          branchId,
+          customerId,
+          invoiceNumber: createInvoiceNumber(),
+          items: {
+            create: saleItems.map((line) => ({
+              barcode: line.barcode,
+              name: line.name,
+              price: line.price,
+              productId: line.productId,
+              quantity: line.quantity,
+              discountType: line.discountType,
+              discountValue: line.discountValue,
+              discountAmount: line.discountAmount,
+              total: line.total,
+            })),
+          },
+          subtotal: toMoneyDecimal(grossSubtotal),
+          totalItems,
+          userId: userId || null,
+        },
+        include: { items: true, user: true },
+      });
+    } else {
+      throw error;
+    }
   }
 
   if (customerId) {
     await tx.customer.update({
       where: { id: customerId },
       data: {
-        totalSpent: { increment: totals.totalAmount },
+        totalSpent: { increment: toMoneyDecimal(totals.totalAmount) },
         visitCount: { increment: 1 },
         lastVisit: new Date(),
-        ...(details.paymentMethod === "credit" ? { currentBalance: { increment: totals.totalAmount } } : {}),
       },
     });
   }
 
-  if (details.paymentMethod !== "credit") {
-    const accountName = details.paymentMethod === "cash" ? "Cash in hand" : "Online / Wallet";
-    const account = await tx.account.upsert({
-      where: { businessId_name: { businessId, name: accountName } },
-      update: {},
-      create: { businessId, name: accountName, type: details.paymentMethod === "cash" ? "cash" : "online" },
-    });
-    const payment = await tx.payment.create({
-      data: {
-        businessId,
-        accountId: account.id,
-        saleId: sale.id,
-        customerId,
-        amount: totals.totalAmount,
-        type: "sale",
-        method: details.paymentMethod,
-        createdById: userId || null,
-      },
-    });
-    await tx.ledgerTransaction.create({
-      data: {
-        businessId,
-        accountId: account.id,
-        paymentId: payment.id,
-        type: "sale",
-        direction: "credit",
-        amount: totals.totalAmount,
-        reference: sale.invoiceNumber,
-        createdById: userId || null,
-      },
-    });
-  }
+  const account = await ensureSaleAccount(tx, businessId, details.paymentMethod);
+  const payment = await tx.payment.create({
+    data: {
+      businessId,
+      accountId: account.id,
+      saleId: sale.id,
+      customerId,
+      amount: toMoneyDecimal(totals.totalAmount),
+      type: "sale",
+      method: details.paymentMethod,
+      createdById: userId || null,
+    },
+  });
+  await tx.ledgerTransaction.create({
+    data: {
+      businessId,
+      accountId: account.id,
+      paymentId: payment.id,
+      type: "sale",
+      direction: "credit",
+      amount: toMoneyDecimal(totals.totalAmount),
+      reference: sale.invoiceNumber,
+      createdById: userId || null,
+    },
+  });
 
   return sale;
 }
@@ -334,4 +441,6 @@ module.exports = {
   normalizeCheckoutDetails,
   DuplicateOfflineSaleError,
   findExistingOfflineSale,
+  // keep roundMoney export compatibility for callers/tests
+  roundMoney: (v) => toMoneyNumber(roundMoney(v)),
 };

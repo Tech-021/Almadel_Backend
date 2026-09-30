@@ -602,27 +602,47 @@ async function deleteProduct(req, res) {
       return res.status(404).json({ message: "Product not found." });
     }
 
-    const saleItemCount = await prisma.saleItem.count({
-      where: { productId: id },
-    });
+    try {
+      await prisma.$transaction(async (tx) => {
+        const saleItemCount = await tx.saleItem.count({
+          where: { productId: id },
+        });
 
-    if (saleItemCount > 0) {
-      return res.status(409).json({
-        message:
-          "This product has sale history. Keep it for reports instead of deleting.",
+        if (saleItemCount > 0) {
+          const err = new Error(
+            "This product has sale history. Keep it for reports instead of deleting.",
+          );
+          err.code = "PRODUCT_HAS_SALE_HISTORY";
+          err.status = 409;
+          throw err;
+        }
+
+        await tx.stockLog.deleteMany({ where: { productId: id, businessId: req.businessId } });
+        await tx.product.delete({ where: { id } });
       });
+    } catch (inner) {
+      if (inner.code === "PRODUCT_HAS_SALE_HISTORY" || inner.code === "P2003") {
+        return res.status(409).json({
+          message:
+            "This product has sale history. Keep it for reports instead of deleting.",
+          code: "PRODUCT_HAS_SALE_HISTORY",
+        });
+      }
+      throw inner;
     }
-
-    await prisma.$transaction([
-      prisma.stockLog.deleteMany({ where: { productId: id } }),
-      prisma.product.delete({ where: { id } }),
-    ]);
 
     emitBusinessEvent(req.businessId, "product.deleted", { id });
     return res.json({ deleted: true });
   } catch (error) {
     if (error.code === "P2025") {
       return res.status(404).json({ message: "Product not found." });
+    }
+    if (error.code === "PRODUCT_HAS_SALE_HISTORY" || error.code === "P2003") {
+      return res.status(409).json({
+        message:
+          "This product has sale history. Keep it for reports instead of deleting.",
+        code: "PRODUCT_HAS_SALE_HISTORY",
+      });
     }
 
     console.error("Delete product error:", error);

@@ -1,37 +1,37 @@
 const { prisma } = require("../../db");
+const { toMoneyDecimal } = require("../../utils/money");
 
 /**
- * Creates Business + owner membership + default branch from onboarding draft payload.
+ * Creates Business + owner membership + default branch + cash account from onboarding draft.
  * Idempotent if the user already has a membership.
+ * Accepts optional `client` (Prisma transaction client).
  */
-async function provisionBusinessForOwner(userId, payload, workspaceMode, userMeta = {}) {
+async function provisionBusinessForOwner(
+  userId,
+  payload,
+  workspaceMode,
+  userMeta = {},
+  options = {},
+) {
   const uid = Number(userId);
   if (!Number.isInteger(uid) || uid <= 0) {
     throw new Error("Invalid user.");
   }
 
-  const existingMember = await prisma.businessMember.findUnique({
-    where: { userId: uid },
-    include: { business: true },
-  });
-  if (existingMember?.business) {
-    return existingMember.business;
-  }
-
-  const name = String(payload.name ?? "").trim();
-  const mobileNumber = String(payload.mobileNumber ?? "").trim();
-  const openingBalanceNum = Number(payload.openingCashBalance) || 0;
-  const startDate = payload.accountingStartDate
-    ? new Date(payload.accountingStartDate)
-    : new Date();
-  const mode = workspaceMode === "financial" ? "financial" : "pos";
-
-  return prisma.$transaction(async (tx) => {
+  const run = async (tx) => {
     const memberAgain = await tx.businessMember.findUnique({ where: { userId: uid } });
     if (memberAgain) {
       const biz = await tx.business.findUnique({ where: { id: memberAgain.businessId } });
       if (biz) return biz;
     }
+
+    const name = String(payload.name ?? "").trim();
+    const mobileNumber = String(payload.mobileNumber ?? "").trim();
+    const openingBalanceNum = toMoneyDecimal(payload.openingCashBalance || 0);
+    const startDate = payload.accountingStartDate
+      ? new Date(payload.accountingStartDate)
+      : new Date();
+    const mode = workspaceMode === "financial" ? "financial" : "pos";
 
     const newBiz = await tx.business.create({
       data: {
@@ -48,9 +48,15 @@ async function provisionBusinessForOwner(userId, payload, workspaceMode, userMet
         accountingStartDate: startDate,
         openingCashBalance: openingBalanceNum,
         workspaceMode: mode,
-        subscriptionStatus: "trialing",
+        subscriptionStatus: options.subscriptionStatus || "trialing",
         trialEndsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         ownerId: uid,
+        ...(options.stripeCustomerId
+          ? { stripeCustomerId: String(options.stripeCustomerId) }
+          : {}),
+        ...(options.stripeSubscriptionId
+          ? { stripeSubscriptionId: String(options.stripeSubscriptionId) }
+          : {}),
       },
     });
 
@@ -82,6 +88,16 @@ async function provisionBusinessForOwner(userId, payload, workspaceMode, userMet
       console.warn("Branch creation notice:", branchErr.message);
     }
 
+    // Source of truth for operational opening cash: Cash in hand account.
+    await tx.account.create({
+      data: {
+        businessId: newBiz.id,
+        name: "Cash in hand",
+        type: "cash",
+        openingBalance: openingBalanceNum,
+      },
+    });
+
     try {
       await tx.activityLog.create({
         data: {
@@ -93,7 +109,7 @@ async function provisionBusinessForOwner(userId, payload, workspaceMode, userMet
           meta: {
             businessType: newBiz.businessType,
             businessCategory: newBiz.businessCategory,
-            openingCashBalance: openingBalanceNum,
+            openingCashBalance: Number(openingBalanceNum.toFixed(2)),
           },
           userId: uid,
           userName: userMeta.fullName || userMeta.name || "Owner",
@@ -106,7 +122,21 @@ async function provisionBusinessForOwner(userId, payload, workspaceMode, userMet
     }
 
     return newBiz;
+  };
+
+  if (options.client) {
+    return run(options.client);
+  }
+
+  const existingMember = await prisma.businessMember.findUnique({
+    where: { userId: uid },
+    include: { business: true },
   });
+  if (existingMember?.business) {
+    return existingMember.business;
+  }
+
+  return prisma.$transaction(async (tx) => run(tx));
 }
 
 module.exports = { provisionBusinessForOwner };

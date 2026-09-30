@@ -164,6 +164,26 @@ npm run stress:db
 
 This checks Atomicity, Consistency, Isolation, and Durability, times the large-tenant queries (products, staff, owner businesses), and records table/index stats.
 
+Dedicated ACID-only suite (all application tables, no query benchmarks):
+
+```bash
+npm run stress:db:acid -- --profile standard
+```
+
+Report path: `stress/results/stress-db-acid-<timestamp>/report.md`.
+
+API/service-layer ACID concurrency (checkout, payments, close, stock, categories):
+
+```bash
+npm run stress:db:acid-api -- --profile standard
+```
+
+Money precision unit tests:
+
+```bash
+npm run test:integrity
+```
+
 ### Database scalability curve (approved standard path)
 
 To measure how latency changes as data grows, run checkpoint scaling. Prefer `--fresh` so the curve starts clean:
