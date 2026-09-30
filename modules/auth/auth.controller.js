@@ -10,6 +10,7 @@ const {
 } = require("./password-reset.service");
 const { createAccessToken } = require("./token.service");
 const { formatBusinessSubscription } = require("../business/business.controller");
+const { validatePassword } = require("../../utils/validators");
 
 const GENERIC_RESET_RESPONSE = {
   message:
@@ -40,6 +41,11 @@ async function signUpOwner(req, res) {
       return res.status(400).json({
         message: "Name, email, and password are required.",
       });
+    }
+
+    const passwordCheck = validatePassword(password);
+    if (!passwordCheck.valid) {
+      return res.status(400).json({ message: passwordCheck.error });
     }
 
     const passwordHash = await bcrypt.hash(password, PASSWORD_HASH_ROUNDS);
@@ -156,10 +162,9 @@ async function resetPassword(req, res) {
       });
     }
 
-    if (password.length < 8) {
-      return res.status(400).json({
-        message: "Password must contain at least 8 characters.",
-      });
+    const passwordCheck = validatePassword(password);
+    if (!passwordCheck.valid) {
+      return res.status(400).json({ message: passwordCheck.error });
     }
 
     const resetToken = await prisma.passwordResetToken.findUnique({

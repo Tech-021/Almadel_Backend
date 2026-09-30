@@ -4,6 +4,7 @@ const { prisma } = require("../../db");
 const { userResponse } = require("../../utils/serializers");
 const { emitBusinessEvent } = require("../realtime/socket");
 const { sendCredentialsEmail, sendStaffInviteEmail } = require("../auth/email.service");
+const { validatePassword } = require("../../utils/validators");
 
 const PASSWORD_HASH_ROUNDS = Number(process.env.PASSWORD_HASH_ROUNDS ?? 10);
 
@@ -211,10 +212,9 @@ async function createStaff(req, res) {
       });
     }
 
-    if (password.length < 8) {
-      return res.status(400).json({
-        message: "Password must contain at least 8 characters.",
-      });
+    const passwordCheck = validatePassword(password);
+    if (!passwordCheck.valid) {
+      return res.status(400).json({ message: passwordCheck.error });
     }
 
     const passwordHash = await bcrypt.hash(password, PASSWORD_HASH_ROUNDS);
@@ -303,10 +303,9 @@ async function updateStaff(req, res) {
     }
 
     if (password) {
-      if (password.length < 8) {
-        return res.status(400).json({
-          message: "Password must contain at least 8 characters.",
-        });
+      const passwordCheck = validatePassword(password);
+      if (!passwordCheck.valid) {
+        return res.status(400).json({ message: passwordCheck.error });
       }
 
       data.authVersion = { increment: 1 };
