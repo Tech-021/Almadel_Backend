@@ -8,7 +8,12 @@ const {
   subMoney,
 } = require("../../utils/money");
 const { DomainError, toHttpError, REGISTER_CLOSED } = require("../../utils/domain-errors");
-const { createPartyPayment, accountFor: accountForTx } = require("./payment.service");
+const {
+  createPartyPayment,
+  accountFor: accountForTx,
+  markPaymentIdempotency,
+} = require("./payment.service");
+const { invalidateBusinessCaches } = require("../../utils/cache-invalidate");
 
 const n = (v) => Number(v);
 
@@ -327,6 +332,7 @@ async function createExpense(req, res) {
       return e;
     });
 
+    invalidateBusinessCaches(req.businessId);
     res.status(201).json({ expense: { ...expense, amount: toMoneyNumber(expense.amount) } });
   } catch (e) {
     const mapped = toHttpError(e);
@@ -422,6 +428,8 @@ async function createPayment(req, res) {
     return res.status(400).json({ message: "Amount must be greater than zero." });
   }
 
+  const idempotencyKey = req.body.idempotencyKey || req.body.clientRequestId || null;
+
   try {
     const payment = await prisma.$transaction(async (tx) =>
       createPartyPayment(tx, {
@@ -433,10 +441,14 @@ async function createPayment(req, res) {
         amount,
         method: req.body.method || "cash",
         reference: req.body.reference || null,
-        idempotencyKey: req.body.idempotencyKey || req.body.clientRequestId || null,
+        idempotencyKey,
       }),
     );
 
+    if (idempotencyKey) {
+      markPaymentIdempotency(req.businessId, String(idempotencyKey).trim(), payment.id).catch(() => {});
+    }
+    invalidateBusinessCaches(req.businessId);
     return res.status(201).json({
       payment: {
         ...payment,

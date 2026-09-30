@@ -1,9 +1,10 @@
 const { Server } = require("socket.io");
 const { createAdapter } = require("@socket.io/redis-adapter");
-const { createClient } = require("redis");
 const { prisma } = require("../../db");
 const { verifyAccessToken } = require("../auth/token.service");
 const { isAllowedCorsOrigin } = require("../../utils/cors-origins");
+const { isRedisEnabled, createPubSubClients } = require("../../utils/redis");
+const { logger } = require("../../utils/logger");
 
 let ioInstance = null;
 
@@ -64,24 +65,20 @@ async function registerSocketHandlers(httpServer) {
     });
   });
 
-  if (process.env.REDIS_URL && process.env.ENABLE_REDIS === "true") {
+  if (isRedisEnabled()) {
     try {
-      const pubClient = createClient({
-        url: process.env.REDIS_URL,
-        socket: { connectTimeout: 1500, reconnectStrategy: false },
-      });
-      const subClient = pubClient.duplicate();
-      pubClient.on("error", (error) => console.warn("Socket.IO Redis publisher warning:", error.message));
-      subClient.on("error", (error) => console.warn("Socket.IO Redis subscriber warning:", error.message));
-      await Promise.race([
-        Promise.all([pubClient.connect(), subClient.connect()]),
-        new Promise((_, reject) => setTimeout(() => reject(new Error("Redis connection timeout")), 2000)),
-      ]);
-      io.adapter(createAdapter(pubClient, subClient));
-      console.log("Socket.IO Redis adapter enabled");
+      const pair = await createPubSubClients();
+      if (pair) {
+        io.adapter(createAdapter(pair.pubClient, pair.subClient));
+        logger.info("Socket.IO Redis adapter enabled");
+      } else {
+        logger.info("Redis optional adapter skipped (using in-memory): client unavailable");
+      }
     } catch (err) {
-      console.log("Redis optional adapter skipped (using in-memory):", err.message);
+      logger.info("Redis optional adapter skipped (using in-memory):", err.message);
     }
+  } else {
+    logger.info("Socket.IO using in-memory adapter (ENABLE_REDIS not true)");
   }
 
   io.use(authenticateSocket);

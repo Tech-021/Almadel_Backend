@@ -4,6 +4,8 @@ const path = require("path");
 const { loadStressEnv, assertStressEnvironment, assertConnectedStressDatabase } = require("./lib/safety");
 loadStressEnv();
 assertStressEnvironment();
+// Keep stress runners off Redis even if a later dotenv load re-enables it.
+process.env.ENABLE_REDIS = "false";
 
 const { ensureDir, loadConfig, ROOT } = require("./lib/config");
 const { appSnapshot, gitRevision, postgresSnapshot } = require("./lib/monitor");
@@ -80,6 +82,12 @@ async function main() {
     fs.writeFileSync(path.join(dir, "report.md"), `# Failed\n\n${report.fatal}\n`);
     throw error;
   } finally {
+    try {
+      const { _resetRedisForTests } = require("../utils/redis");
+      await _resetRedisForTests();
+    } catch {
+      // ignore
+    }
     await prisma.$disconnect();
   }
 }

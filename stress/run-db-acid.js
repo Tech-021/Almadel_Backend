@@ -4,6 +4,7 @@ const path = require("path");
 const { loadStressEnv, assertStressEnvironment, assertConnectedStressDatabase } = require("./lib/safety");
 loadStressEnv();
 assertStressEnvironment();
+process.env.ENABLE_REDIS = "false";
 
 const { ensureDir, loadConfig, ROOT } = require("./lib/config");
 const { appSnapshot, gitRevision, postgresSnapshot } = require("./lib/monitor");

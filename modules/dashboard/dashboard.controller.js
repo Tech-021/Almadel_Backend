@@ -14,7 +14,7 @@ async function getAdminDashboard(req, res) {
   const { startOfDay, endOfDay } = getTodayRange();
   const businessId = req.businessId;
   const cacheKey = `dashboard:admin:${businessId}`;
-  const cached = cacheGet(cacheKey);
+  const cached = await cacheGet(cacheKey);
   if (cached) {
     res.setHeader("X-Cache", "HIT");
     return res.json(cached);
@@ -170,7 +170,8 @@ async function getAdminDashboard(req, res) {
     },
   };
 
-  cacheSet(cacheKey, payload, 20000);
+  const dashTtl = Number(process.env.REDIS_CACHE_TTL_DASHBOARD_MS) || 20000;
+  await cacheSet(cacheKey, payload, dashTtl);
   res.setHeader("X-Cache", "MISS");
   res.json(payload);
 }
@@ -180,7 +181,7 @@ async function getMyDashboard(req, res) {
   const { startOfDay, endOfDay } = getTodayRange();
   const businessId = req.businessId;
   const cacheKey = `dashboard:my:${businessId}:${req.user.id}`;
-  const cached = cacheGet(cacheKey);
+  const cached = await cacheGet(cacheKey);
   if (cached) {
     res.setHeader("X-Cache", "HIT");
     return res.json(cached);
@@ -283,7 +284,8 @@ async function getMyDashboard(req, res) {
     },
   };
 
-  cacheSet(cacheKey, payload, 20000);
+  const dashTtl = Number(process.env.REDIS_CACHE_TTL_DASHBOARD_MS) || 20000;
+  await cacheSet(cacheKey, payload, dashTtl);
   res.setHeader("X-Cache", "MISS");
   res.json(payload);
 }

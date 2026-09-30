@@ -7,6 +7,7 @@ const {
 } = require("./checkout.service");
 const { emitBusinessEvent } = require("../realtime/socket");
 const { toHttpError } = require("../../utils/domain-errors");
+const { invalidateBusinessCaches } = require("../../utils/cache-invalidate");
 
 async function checkout(req, res) {
   try {
@@ -20,6 +21,7 @@ async function checkout(req, res) {
       createSale(tx, { ...req.user, businessId: req.businessId }, items, req.body),
     );
 
+    invalidateBusinessCaches(req.businessId);
     emitBusinessEvent(req.businessId, "sale.created", invoiceResponse(sale));
     return res.status(201).json(invoiceResponse(sale));
   } catch (error) {

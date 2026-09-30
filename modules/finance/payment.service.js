@@ -9,6 +9,27 @@ const {
   toMoneyDecimal,
   toMoneyNumber,
 } = require("../../utils/money");
+const { redisGetJson, redisSetJson, isRedisEnabled } = require("../../utils/redis");
+
+const IDEM_TTL_SECONDS = 24 * 60 * 60;
+
+function paymentIdempotencyRedisKey(businessId, key) {
+  return `idem:payment:${businessId}:${key}`;
+}
+
+async function peekPaymentIdempotency(businessId, key) {
+  if (!isRedisEnabled() || !key) return null;
+  return redisGetJson(paymentIdempotencyRedisKey(businessId, key));
+}
+
+async function markPaymentIdempotency(businessId, key, paymentId) {
+  if (!isRedisEnabled() || !key || !paymentId) return false;
+  return redisSetJson(
+    paymentIdempotencyRedisKey(businessId, key),
+    { paymentId: Number(paymentId) },
+    IDEM_TTL_SECONDS,
+  );
+}
 
 async function accountFor(tx, businessId, accountId) {
   const account = await tx.account.findFirst({
@@ -49,6 +70,25 @@ async function createPartyPayment(tx, {
 
   const idemRef = idempotencyKey ? String(idempotencyKey).trim() : null;
   if (idemRef) {
+    // Redis is an early hint only — Postgres remains authoritative.
+    const redisHint = await peekPaymentIdempotency(businessId, idemRef);
+    if (redisHint?.paymentId) {
+      const fromRedis = await tx.payment.findFirst({
+        where: { id: Number(redisHint.paymentId), businessId },
+        include: { ledgerTransactions: true },
+      });
+      if (fromRedis) {
+        const err = new DomainError(
+          PAYMENT_ALREADY_PROCESSED,
+          "This payment was already processed.",
+          200,
+          { payment: fromRedis },
+        );
+        err.payment = fromRedis;
+        throw err;
+      }
+    }
+
     const existing = await tx.payment.findFirst({
       where: {
         businessId,
@@ -151,4 +191,6 @@ async function createPartyPayment(tx, {
 module.exports = {
   accountFor,
   createPartyPayment,
+  peekPaymentIdempotency,
+  markPaymentIdempotency,
 };

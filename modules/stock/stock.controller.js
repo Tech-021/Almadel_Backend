@@ -4,6 +4,7 @@ const { productAccessWhere } = require("../products/product-access");
 const { emitBusinessEvent } = require("../realtime/socket");
 const { receiveStock } = require("./stock.service");
 const { toHttpError } = require("../../utils/domain-errors");
+const { invalidateBusinessCaches } = require("../../utils/cache-invalidate");
 
 async function mutateStock(req, res, quantity, note) {
   try {
@@ -30,6 +31,7 @@ async function mutateStock(req, res, quantity, note) {
       return updated;
     });
 
+    invalidateBusinessCaches(req.businessId);
     emitBusinessEvent(req.businessId, "stock.updated", updatedProduct);
     return res.json(updatedProduct);
   } catch (error) {

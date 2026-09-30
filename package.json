@@ -22,6 +22,7 @@
     "stress:db:acid-api": "node stress/run-db-acid-api.js",
     "stress:db:scale": "node stress/run-db-scale.js",
     "test:integrity": "node --test tests/integrity/**/*.test.js",
+    "test:redis": "node --test tests/integrity/redis-cache.test.js",
     "stress:gaps": "node stress/run-gaps.js",
     "stress:combine": "node stress/combine-reports.js",
     "stress:seed:businesses": "node stress/seed/seed-businesses.js",

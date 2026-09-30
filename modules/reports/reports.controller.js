@@ -174,7 +174,7 @@ async function getProductReport(req, res) {
   const { from, to } = parseReportRange(req.query, { defaultDays: 30, maxDays: 366 });
   const TOP_N = Math.min(100, Math.max(10, Number(req.query.top) || 50));
   const cacheKey = `report:products:${businessId}:${from.toISOString()}:${to.toISOString()}:${TOP_N}`;
-  const cached = cacheGet(cacheKey);
+  const cached = await cacheGet(cacheKey);
   if (cached) {
     res.setHeader("X-Cache", "HIT");
     return res.json(cached);
@@ -358,7 +358,8 @@ async function getProductReport(req, res) {
     meta: { durationMs: Math.round(performance.now() - startedAt), top: TOP_N },
   };
 
-  cacheSet(cacheKey, payload, 45000);
+  const reportTtl = Number(process.env.REDIS_CACHE_TTL_REPORTS_MS) || 45000;
+  await cacheSet(cacheKey, payload, reportTtl);
   res.setHeader("X-Cache", "MISS");
   res.json(payload);
 }
@@ -368,7 +369,7 @@ async function getStockReport(req, res) {
   const startedAt = performance.now();
   const businessId = req.businessId;
   const cacheKey = `report:stock:${businessId}`;
-  const cached = cacheGet(cacheKey);
+  const cached = await cacheGet(cacheKey);
   if (cached) {
     res.setHeader("X-Cache", "HIT");
     return res.json(cached);
@@ -458,7 +459,8 @@ async function getStockReport(req, res) {
     meta: { durationMs: Math.round(performance.now() - startedAt), listCap: LIST_CAP },
   };
 
-  cacheSet(cacheKey, payload, 45000);
+  const reportTtl = Number(process.env.REDIS_CACHE_TTL_REPORTS_MS) || 45000;
+  await cacheSet(cacheKey, payload, reportTtl);
   res.setHeader("X-Cache", "MISS");
   res.json(payload);
 }
