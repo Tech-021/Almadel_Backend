@@ -12,6 +12,8 @@ if (!fs.existsSync(uploadsDir)) {
 const allowedMimeTypes = new Set([
   "image/gif",
   "image/jpeg",
+  "image/jpg",
+  "image/pjpeg",
   "image/png",
   "image/webp",
 ]);
@@ -19,6 +21,8 @@ const allowedMimeTypes = new Set([
 const extensionByMimeType = {
   "image/gif": ".gif",
   "image/jpeg": ".jpg",
+  "image/jpg": ".jpg",
+  "image/pjpeg": ".jpg",
   "image/png": ".png",
   "image/webp": ".webp",
 };
@@ -29,7 +33,9 @@ const upload = multer({
     fileSize: 5 * 1024 * 1024,
   },
   fileFilter(_req, file, callback) {
-    if (!allowedMimeTypes.has(file.mimetype)) {
+    const ext = path.extname(file.originalname ?? "").toLowerCase();
+    const extOk = [".jpg", ".jpeg", ".jfif", ".png", ".webp", ".gif"].includes(ext);
+    if (!allowedMimeTypes.has(file.mimetype) && !extOk) {
       callback(new Error("Only JPG, PNG, WEBP, or GIF images are allowed."));
       return;
     }
