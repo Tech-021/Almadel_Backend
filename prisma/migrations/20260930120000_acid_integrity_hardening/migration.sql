@@ -47,6 +47,9 @@ ALTER TABLE "businesses"
 
 -- Products
 ALTER TABLE "products"
+  ADD COLUMN IF NOT EXISTS "discountValue" DOUBLE PRECISION NOT NULL DEFAULT 0;
+
+ALTER TABLE "products"
   ALTER COLUMN "businessId" SET NOT NULL,
   ALTER COLUMN "costPrice" TYPE DECIMAL(14,2) USING ROUND("costPrice"::numeric, 2),
   ALTER COLUMN "price" TYPE DECIMAL(14,2) USING ROUND("price"::numeric, 2),
@@ -59,6 +62,10 @@ ALTER TABLE "products"
   ADD CONSTRAINT "products_stock_non_negative" CHECK ("stock" >= 0);
 
 -- Sale items: money + Restrict product FK + indexes
+ALTER TABLE "sale_items"
+  ADD COLUMN IF NOT EXISTS "discountValue" DOUBLE PRECISION NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS "discountAmount" DOUBLE PRECISION NOT NULL DEFAULT 0;
+
 ALTER TABLE "sale_items"
   ALTER COLUMN "price" TYPE DECIMAL(14,2) USING ROUND("price"::numeric, 2),
   ALTER COLUMN "discountValue" TYPE DECIMAL(14,2) USING ROUND(COALESCE("discountValue", 0)::numeric, 2),
