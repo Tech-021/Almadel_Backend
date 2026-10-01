@@ -317,8 +317,8 @@ function dbMarkdown(report) {
   }
 
   sections.push("## Notes");
-  sections.push("- Atomicity: a multi-statement transaction that throws must leave no partial stock or stock_log change.");
-  sections.push("- Consistency: unique email/barcode constraints and conditional stock updates must reject invalid states.");
+  sections.push("- Atomicity: multi-statement transactions that throw must leave no partial writes (stock/stock_log, sale/sale_item/stock, expense+ledger, payment+ledger, onboarding draft).");
+  sections.push("- Consistency: unique email/barcode/invoice/draft/expenseId constraints, owner delete restrict, and conditional stock updates must reject invalid states.");
   sections.push("- Isolation: concurrent decrements on one row must leave stock equal to initial minus successful updates.");
   sections.push("- Durability: a committed insert must be readable afterward.");
   sections.push("- Query times are Prisma/SQL timings against the seeded volume. API path overhead is measured separately.");

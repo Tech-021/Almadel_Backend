@@ -6,6 +6,8 @@ const {
   findExistingOfflineSale,
 } = require("./checkout.service");
 const { emitBusinessEvent } = require("../realtime/socket");
+const { toHttpError } = require("../../utils/domain-errors");
+const { invalidateBusinessCaches } = require("../../utils/cache-invalidate");
 
 async function checkout(req, res) {
   try {
@@ -19,6 +21,7 @@ async function checkout(req, res) {
       createSale(tx, { ...req.user, businessId: req.businessId }, items, req.body),
     );
 
+    invalidateBusinessCaches(req.businessId);
     emitBusinessEvent(req.businessId, "sale.created", invoiceResponse(sale));
     return res.status(201).json(invoiceResponse(sale));
   } catch (error) {
@@ -29,8 +32,12 @@ async function checkout(req, res) {
       }
     }
 
+    const mapped = toHttpError(error);
+    if (mapped) return res.status(mapped.status).json(mapped.body);
+
     return res.status(400).json({
       message: error.message ?? "Could not complete sale.",
+      ...(error.code ? { code: error.code } : {}),
     });
   }
 }

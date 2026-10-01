@@ -105,7 +105,12 @@ async function getLogs(req, res) {
     const businessId = requireScopedBusinessId(req, res);
     if (!businessId) return;
 
-    const { category, action, search, page = 1, limit = 100 } = req.query;
+    const { category, action, search } = req.query;
+    const { parsePagination, paginationMeta } = require("../../utils/pagination");
+    const { page: pageNum, limit: limitNum, skip } = parsePagination(req.query, {
+      defaultLimit: 50,
+      maxLimit: 100,
+    });
 
     const where = {
       businessId,
@@ -138,14 +143,10 @@ async function getLogs(req, res) {
       ];
     }
 
-    const pageNum = Math.max(1, parseInt(page, 10) || 1);
-    const limitNum = Math.min(500, Math.max(1, parseInt(limit, 10) || 100));
-    const skip = (pageNum - 1) * limitNum;
-
     const [rawLogs, total] = await Promise.all([
       prisma.activityLog.findMany({
         where,
-        orderBy: { timestamp: "desc" },
+        orderBy: [{ timestamp: "desc" }, { id: "desc" }],
         skip,
         take: limitNum,
       }),
@@ -168,11 +169,13 @@ async function getLogs(req, res) {
       meta: item.meta,
     }));
 
+    const pagination = paginationMeta(pageNum, limitNum, total);
     return res.status(200).json({
       success: true,
-      total,
-      page: pageNum,
-      limit: limitNum,
+      total: pagination.total,
+      page: pagination.page,
+      limit: pagination.limit,
+      pagination,
       logs,
     });
   } catch (error) {

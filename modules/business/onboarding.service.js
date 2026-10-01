@@ -1,6 +1,7 @@
 const { prisma } = require("../../db");
 const { provisionBusinessForOwner } = require("./business-provision.service");
 const { getStripeClient } = require("../billing/stripe.service");
+const { DomainError, ONBOARDING_ALREADY_FULFILLED } = require("../../utils/domain-errors");
 
 function parseOnboardingUserIdFromSession(session) {
   const fromMeta = Number(session?.metadata?.onboardingUserId);
@@ -95,6 +96,7 @@ async function getOnboardingDraft(userId) {
 
 /**
  * After Stripe checkout completes: create business, owner membership, billing linkage.
+ * Local DB mutations run in one transaction. Stripe metadata update happens after commit.
  */
 async function fulfillOnboardingFromCheckoutSession(session, expectedUserId) {
   const onboardingUserId = parseOnboardingUserIdFromSession(session);
@@ -130,46 +132,76 @@ async function fulfillOnboardingFromCheckoutSession(session, expectedUserId) {
     throw err;
   }
 
-  const draft = await prisma.businessOnboardingDraft.findUnique({
-    where: { userId: onboardingUserId },
-  });
+  const stripeCustomerId = session.customer ? String(session.customer) : null;
+  const stripeSubscriptionId = session.subscription ? String(session.subscription) : null;
 
-  let business = await prisma.businessMember
-    .findUnique({ where: { userId: onboardingUserId }, include: { business: true } })
-    .then((m) => m?.business ?? null);
+  const business = await prisma.$transaction(async (tx) => {
+    const draft = await tx.businessOnboardingDraft.findUnique({
+      where: { userId: onboardingUserId },
+    });
 
-  if (!business) {
-    if (!draft) {
-      const err = new Error("Onboarding draft not found. Please submit business details again.");
-      err.status = 400;
-      throw err;
+    let existing = await tx.businessMember
+      .findUnique({ where: { userId: onboardingUserId }, include: { business: true } })
+      .then((m) => m?.business ?? null);
+
+    if (!existing) {
+      if (!draft) {
+        const err = new Error("Onboarding draft not found. Please submit business details again.");
+        err.status = 400;
+        throw err;
+      }
+
+      existing = await provisionBusinessForOwner(
+        onboardingUserId,
+        draft.payload,
+        draft.workspaceMode,
+        user,
+        {
+          client: tx,
+          stripeCustomerId,
+          stripeSubscriptionId,
+          subscriptionStatus: "trialing",
+        },
+      );
+    } else {
+      existing = await tx.business.update({
+        where: { id: existing.id },
+        data: {
+          subscriptionStatus: "trialing",
+          ...(stripeCustomerId ? { stripeCustomerId } : {}),
+          ...(stripeSubscriptionId ? { stripeSubscriptionId } : {}),
+        },
+      });
     }
 
-    business = await provisionBusinessForOwner(
-      onboardingUserId,
-      draft.payload,
-      draft.workspaceMode,
-      user,
-    );
-  }
+    // Ensure billing fields are set even on first provision path.
+    existing = await tx.business.update({
+      where: { id: existing.id },
+      data: {
+        subscriptionStatus: "trialing",
+        ...(stripeCustomerId ? { stripeCustomerId } : {}),
+        ...(stripeSubscriptionId ? { stripeSubscriptionId } : {}),
+      },
+    });
 
-  business = await prisma.business.update({
-    where: { id: business.id },
-    data: {
-      subscriptionStatus: "trialing",
-      stripeCustomerId: session.customer ? String(session.customer) : undefined,
-      stripeSubscriptionId: session.subscription ? String(session.subscription) : undefined,
-    },
+    await tx.businessOnboardingDraft.deleteMany({
+      where: { userId: onboardingUserId },
+    });
+
+    return existing;
   });
 
-  await prisma.businessOnboardingDraft.deleteMany({
-    where: { userId: onboardingUserId },
-  }).catch(() => {});
-
+  // External Stripe call after local commit (not held inside DB transaction).
   const stripe = getStripeClient();
-  if (stripe && session.subscription) {
+  const subId = stripeSubscriptionId || "";
+  const isRealStripeSub =
+    /^sub_[A-Za-z0-9]+$/.test(subId) &&
+    !subId.startsWith("sub_stress_") &&
+    !subId.startsWith("sub_live_load_") &&
+    !subId.startsWith("sub_test_fake");
+  if (stripe && isRealStripeSub) {
     try {
-      await stripe.subscriptions.update(String(session.subscription), {
+      await stripe.subscriptions.update(subId, {
         metadata: { businessId: String(business.id) },
       });
     } catch (e) {
@@ -187,4 +219,6 @@ module.exports = {
   parseOnboardingUserIdFromSession,
   saveOnboardingDraft,
   updateOnboardingWorkspaceMode,
+  ONBOARDING_ALREADY_FULFILLED,
+  DomainError,
 };

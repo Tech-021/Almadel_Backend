@@ -24,6 +24,7 @@ model User {
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
   passwordResetTokens PasswordResetToken[]
+  magicLinkTokens     MagicLinkToken[]
   products            Product[]            @relation("ProductCreator")
   sales               Sale[]
   stockLogs           StockLog[]
@@ -61,16 +62,16 @@ model Business {
   area                String?
   province            String?
   accountingStartDate DateTime?
-  openingCashBalance  Float            @default(0)
-  openingBankBalance  Float            @default(0)
+  openingCashBalance  Decimal          @default(0) @db.Decimal(14, 2)
+  openingBankBalance  Decimal          @default(0) @db.Decimal(14, 2)
   bankAccounts        Json?            @default("[]")
   hasCustomerUdhaar   Boolean          @default(false)
-  customerReceivable  Float            @default(0)
+  customerReceivable  Decimal          @default(0) @db.Decimal(14, 2)
   hasSupplierUdhaar   Boolean          @default(false)
-  supplierPayable     Float            @default(0)
+  supplierPayable     Decimal          @default(0) @db.Decimal(14, 2)
   manageStock         Boolean          @default(true)
   allowDiscounts      Boolean          @default(true)
-  currentStockValue   Float            @default(0)
+  currentStockValue   Decimal          @default(0) @db.Decimal(14, 2)
   taxRegistered       String?          @default("no")
   ntn                 String?
   strn                String?
@@ -146,23 +147,36 @@ model PasswordResetToken {
   @@index([userId, expiresAt])
 }
 
+model MagicLinkToken {
+  id        Int       @id @default(autoincrement())
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  userId    Int
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@map("magic_link_tokens")
+}
+
 model Product {
   id                Int        @id @default(autoincrement())
-  businessId        Int?
-  business          Business?  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  businessId        Int
+  business          Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
   barcode           String
   sku               String?
   qrCode            String?
   name              String
   category          String?
   imageUrl          String?
-  costPrice         Float      @default(0)
-  price             Float
-  sellingPrice      Float      @default(0)
+  costPrice         Decimal    @default(0) @db.Decimal(14, 2)
+  price             Decimal    @db.Decimal(14, 2)
+  sellingPrice      Decimal    @default(0) @db.Decimal(14, 2)
   stock             Int        @default(0)
   lowStockThreshold Int        @default(5)
   discountType      String     @default("none")
-  discountValue     Float      @default(0)
+  discountValue     Decimal    @default(0) @db.Decimal(14, 2)
   createdAt         DateTime   @default(now())
   updatedAt         DateTime   @updatedAt
   createdByUserId   Int?
@@ -174,6 +188,7 @@ model Product {
   @@index([businessId])
   @@index([businessId, name])
   @@index([businessId, category])
+  @@index([businessId, createdAt(sort: Desc)])
   @@index([name])
   @@index([category])
   @@map("products")
@@ -185,22 +200,24 @@ model SaleItem {
   productId      Int
   barcode        String
   name           String
-  price          Float
+  price          Decimal @db.Decimal(14, 2)
   quantity       Int
   discountType   String  @default("none")
-  discountValue  Float   @default(0)
-  discountAmount Float   @default(0)
-  total          Float
+  discountValue  Decimal @default(0) @db.Decimal(14, 2)
+  discountAmount Decimal @default(0) @db.Decimal(14, 2)
+  total          Decimal @db.Decimal(14, 2)
   sale           Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
-  product        Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product        Product @relation(fields: [productId], references: [id], onDelete: Restrict)
 
+  @@index([saleId])
+  @@index([productId])
   @@map("sale_items")
 }
 
 model StockLog {
   id            Int       @id @default(autoincrement())
-  businessId    Int?
-  business      Business? @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  businessId    Int
+  business      Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
   productId     Int
   barcode       String
   quantity      Int
@@ -215,22 +232,24 @@ model StockLog {
   user          User?     @relation(fields: [userId], references: [id])
 
   @@index([businessId])
+  @@index([businessId, createdAt(sort: Desc)])
   @@index([branchId])
+  @@index([productId])
   @@map("stock_logs")
 }
 
 model Customer {
   id           Int       @id @default(autoincrement())
-  businessId   Int?
-  business     Business? @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  businessId   Int
+  business     Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
   name         String
   mobile       String
   passwordHash String?
   email        String?
-  totalSpent     Float     @default(0)
+  totalSpent     Decimal   @default(0) @db.Decimal(14, 2)
   visitCount     Int       @default(0)
-  openingBalance Float     @default(0)
-  currentBalance Float     @default(0)
+  openingBalance Decimal   @default(0) @db.Decimal(14, 2)
+  currentBalance Decimal   @default(0) @db.Decimal(14, 2)
   lastVisit      DateTime?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
@@ -239,18 +258,19 @@ model Customer {
 
   @@unique([businessId, mobile])
   @@index([businessId])
+  @@index([businessId, name])
   @@map("customers")
 }
 
 model Supplier {
   id             Int       @id @default(autoincrement())
-  businessId     Int?
-  business       Business? @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  businessId     Int
+  business       Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
   name           String
   mobile         String?
   email          String?
-  openingBalance Float     @default(0)
-  currentBalance Float     @default(0)
+  openingBalance Decimal   @default(0) @db.Decimal(14, 2)
+  currentBalance Decimal   @default(0) @db.Decimal(14, 2)
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
   payments       Payment[]
@@ -261,14 +281,14 @@ model Supplier {
 
 model Sale {
   id             Int        @id @default(autoincrement())
-  businessId     Int?
-  business       Business?  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  businessId     Int
+  business       Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
   invoiceNumber  String
-  subtotal       Float
+  subtotal       Decimal    @db.Decimal(14, 2)
   discountType   String     @default("none")
-  discountValue  Float      @default(0)
-  discountAmount Float      @default(0)
-  totalAmount    Float
+  discountValue  Decimal    @default(0) @db.Decimal(14, 2)
+  discountAmount Decimal    @default(0) @db.Decimal(14, 2)
+  totalAmount    Decimal    @db.Decimal(14, 2)
   totalItems     Int
   paymentMethod  String     @default("cash")
   customerName   String?
@@ -285,14 +305,15 @@ model Sale {
 
   @@unique([businessId, invoiceNumber])
   @@index([businessId])
+  @@index([businessId, createdAt(sort: Desc)])
   @@index([branchId])
   @@map("sales")
 }
 
 model ActivityLog {
   id         Int       @id @default(autoincrement())
-  businessId Int?
-  business   Business? @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  businessId Int
+  business   Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
   timestamp  DateTime  @default(now())
   
   // User info
@@ -309,6 +330,7 @@ model ActivityLog {
   meta       Json?     @default("{}")
 
   @@index([businessId])
+  @@index([businessId, timestamp(sort: Desc)])
   @@index([timestamp(sort: Desc)])
   @@index([category])
   @@index([userEmail])
@@ -321,7 +343,7 @@ model Account {
   business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
   name String
   type String @default("cash")
-  openingBalance Float @default(0)
+  openingBalance Decimal @default(0) @db.Decimal(14, 2)
   isActive Boolean @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -341,14 +363,14 @@ model LedgerTransaction {
   account Account @relation(fields: [accountId], references: [id], onDelete: Restrict)
   type String
   direction String
-  amount Float
+  amount Decimal @db.Decimal(14, 2)
   reference String?
   note String?
   occurredAt DateTime @default(now())
   createdAt DateTime @default(now())
   createdById Int?
   createdBy User? @relation("LedgerCreator", fields: [createdById], references: [id], onDelete: SetNull)
-  paymentId Int?
+  paymentId Int? @unique
   payment Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
   expenseId Int? @unique
   expense Expense? @relation(fields: [expenseId], references: [id], onDelete: Cascade)
@@ -363,7 +385,7 @@ model Expense {
   business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
   accountId Int
   account Account @relation(fields: [accountId], references: [id], onDelete: Restrict)
-  amount Float
+  amount Decimal @db.Decimal(14, 2)
   category String
   description String?
   occurredAt DateTime @default(now())
@@ -388,7 +410,7 @@ model Payment {
   supplier Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
   saleId Int?
   sale Sale? @relation(fields: [saleId], references: [id], onDelete: SetNull)
-  amount Float
+  amount Decimal @db.Decimal(14, 2)
   type String
   method String
   reference String?
@@ -399,6 +421,9 @@ model Payment {
   createdAt DateTime @default(now())
   ledgerTransactions LedgerTransaction[]
   @@index([businessId, occurredAt])
+  @@index([customerId])
+  @@index([supplierId])
+  @@index([saleId])
   @@map("payments")
 }
 
@@ -408,10 +433,10 @@ model DailyClosing {
   business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
   businessDate DateTime @db.Date
   status String @default("open")
-  openingCash Float @default(0)
-  expectedCash Float @default(0)
-  countedCash Float?
-  difference Float?
+  openingCash Decimal @default(0) @db.Decimal(14, 2)
+  expectedCash Decimal @default(0) @db.Decimal(14, 2)
+  countedCash Decimal? @db.Decimal(14, 2)
+  difference Decimal? @db.Decimal(14, 2)
   note String?
   closedById Int?
   closedBy User? @relation("ClosingCreator", fields: [closedById], references: [id], onDelete: SetNull)
@@ -444,4 +469,3 @@ model Branch {
   @@index([businessId])
   @@map("branches")
 }
-

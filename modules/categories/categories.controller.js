@@ -130,17 +130,17 @@ async function updateCategory(req, res) {
       data.name = cleanName;
     }
 
-    // If name changed, update all products with this category
-    if (cleanName !== existing.name) {
-      await prisma.product.updateMany({
-        where: { businessId, category: existing.name },
-        data: { category: cleanName },
+    const updated = await prisma.$transaction(async (tx) => {
+      if (cleanName !== existing.name) {
+        await tx.product.updateMany({
+          where: { businessId, category: existing.name },
+          data: { category: cleanName },
+        });
+      }
+      return tx.category.update({
+        where: { id: categoryId },
+        data,
       });
-    }
-
-    const updated = await prisma.category.update({
-      where: { id: categoryId },
-      data,
     });
 
     return res.json(updated);
@@ -168,15 +168,14 @@ async function deleteCategory(req, res) {
       return res.status(404).json({ message: "Category not found." });
     }
 
-    // Unassign category from all products in this business
-    await prisma.product.updateMany({
-      where: { businessId, category: existing.name },
-      data: { category: null },
-    });
-
-    // Delete category record
-    await prisma.category.delete({
-      where: { id: categoryId },
+    await prisma.$transaction(async (tx) => {
+      await tx.product.updateMany({
+        where: { businessId, category: existing.name },
+        data: { category: null },
+      });
+      await tx.category.delete({
+        where: { id: categoryId },
+      });
     });
 
     return res.json({ deleted: true, name: existing.name });

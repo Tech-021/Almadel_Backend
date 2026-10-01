@@ -1,3 +1,5 @@
+const { toMoneyNumber } = require("./money");
+
 function saleResponse(sale) {
   return {
     customer_mobile: sale.customerMobile,
@@ -5,7 +7,7 @@ function saleResponse(sale) {
     id: sale.id,
     invoice_number: sale.invoiceNumber,
     payment_method: sale.paymentMethod,
-    total_amount: sale.totalAmount,
+    total_amount: toMoneyNumber(sale.totalAmount),
     total_items: sale.totalItems,
     created_at: sale.createdAt,
   };
@@ -18,21 +20,21 @@ function invoiceResponse(sale) {
     createdAt: sale.createdAt,
     customerMobile: sale.customerMobile,
     customerName: sale.customerName,
-    discountAmount: sale.discountAmount,
+    discountAmount: toMoneyNumber(sale.discountAmount),
     discountType: sale.discountType,
-    discountValue: sale.discountValue,
+    discountValue: toMoneyNumber(sale.discountValue),
     id: sale.id,
     invoiceNumber: sale.invoiceNumber,
     items: (sale.items ?? []).map((item) => ({
       barcode: item.barcode,
       name: item.name,
-      price: item.price,
+      price: toMoneyNumber(item.price),
       quantity: item.quantity,
-      total: item.total,
+      total: toMoneyNumber(item.total),
     })),
     paymentMethod: sale.paymentMethod,
-    subtotal: sale.subtotal,
-    totalAmount: sale.totalAmount,
+    subtotal: toMoneyNumber(sale.subtotal),
+    totalAmount: toMoneyNumber(sale.totalAmount),
     totalItems: sale.totalItems,
   };
 }
@@ -43,10 +45,10 @@ function customerResponse(customer) {
     name: customer.name,
     mobile: customer.mobile,
     email: customer.email,
-    totalSpent: customer.totalSpent,
+    totalSpent: toMoneyNumber(customer.totalSpent),
     visitCount: customer.visitCount,
-    openingBalance: customer.openingBalance ?? 0,
-    currentBalance: customer.currentBalance ?? 0,
+    openingBalance: toMoneyNumber(customer.openingBalance ?? 0),
+    currentBalance: toMoneyNumber(customer.currentBalance ?? 0),
     lastVisit: customer.lastVisit,
     createdAt: customer.createdAt,
   };

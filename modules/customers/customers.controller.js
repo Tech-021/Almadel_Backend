@@ -1,6 +1,7 @@
 const { prisma } = require("../../db");
 const { customerResponse } = require("../../utils/serializers");
 const { validatePhone, validateEmail, validateText } = require("../../utils/validators");
+const { parsePagination, paginationMeta } = require("../../utils/pagination");
 const { randomBytes, createHash } = require("node:crypto");
 
 function hashPassword(password) {
@@ -8,9 +9,8 @@ function hashPassword(password) {
 }
 
 async function getCustomers(req, res) {
-  const hasPagination = req.query.page !== undefined || req.query.limit !== undefined;
-  const page = Math.max(1, Number(req.query.page) || 1);
-  const limit = req.query.limit === "all" ? undefined : Math.min(200, Math.max(1, Number(req.query.limit) || 25));
+  // Always paginate. ?legacy=1 returns a bare array (deprecated).
+  const { page, limit, skip } = parsePagination(req.query, { defaultLimit: 50, maxLimit: 100 });
   const search = String(req.query.q || req.query.search || "").trim();
   const where = {
     businessId: req.businessId,
@@ -28,17 +28,26 @@ async function getCustomers(req, res) {
   const [customers, total] = await Promise.all([
     prisma.customer.findMany({
       where,
-      orderBy: { createdAt: "desc" },
-      ...(hasPagination && limit ? { skip: (page - 1) * limit, take: limit } : {}),
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      skip,
+      take: limit,
     }),
     prisma.customer.count({ where }),
   ]);
 
+  const mapped = customers.map(customerResponse);
+  if (String(req.query.legacy || "") === "1") {
+    return res.json(mapped);
+  }
+
+  const pagination = paginationMeta(page, limit, total);
   res.json({
-    customers: customers.map(customerResponse),
-    total,
-    page: hasPagination ? page : 1,
-    limit: limit || total,
+    customers: mapped,
+    pagination,
+    // Backward-compatible top-level fields
+    total: pagination.total,
+    page: pagination.page,
+    limit: pagination.limit,
   });
 }
 
@@ -55,25 +64,34 @@ async function getCustomerHistory(req, res) {
     return res.status(404).json({ message: "Customer not found." });
   }
 
-  const sales = await prisma.sale.findMany({
-    where: {
-      businessId: req.businessId,
-      OR: [
-        { customerId },
-        ...(customer.mobile ? [{ customerMobile: customer.mobile }] : []),
-      ],
-    },
-    include: {
-      items: true,
-      user: { select: { fullName: true, email: true } },
-    },
-    orderBy: { createdAt: "desc" },
-  });
+  const { page, limit, skip } = parsePagination(req.query, { defaultLimit: 50, maxLimit: 100 });
+  const saleWhere = {
+    businessId: req.businessId,
+    OR: [
+      { customerId },
+      ...(customer.mobile ? [{ customerMobile: customer.mobile }] : []),
+    ],
+  };
+
+  const [sales, total] = await Promise.all([
+    prisma.sale.findMany({
+      where: saleWhere,
+      include: {
+        items: true,
+        user: { select: { fullName: true, email: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      skip,
+      take: limit,
+    }),
+    prisma.sale.count({ where: saleWhere }),
+  ]);
 
   const { invoiceResponse } = require("../../utils/serializers");
   return res.json({
     customer: customerResponse(customer),
     sales: sales.map(invoiceResponse),
+    pagination: paginationMeta(page, limit, total),
   });
 }
 

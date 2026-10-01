@@ -1,19 +1,32 @@
 const bcrypt = require("bcryptjs");
 
 const { prisma } = require("../../db");
-const { sendPasswordResetEmail } = require("./email.service");
+const { sendPasswordResetEmail, sendMagicLinkEmail } = require("./email.service");
 const {
   createResetToken,
   hashResetToken,
   passwordResetUrl,
   resetTokenExpiry,
 } = require("./password-reset.service");
+const {
+  claimMagicLinkToken,
+  createMagicLinkToken,
+  hashMagicLinkToken,
+  magicLinkExpiry,
+  magicLinkUrl,
+  MagicLinkError,
+} = require("./magic-link.service");
 const { createAccessToken } = require("./token.service");
 const { formatBusinessSubscription } = require("../business/business.controller");
+const { validatePassword } = require("../../utils/validators");
 
 const GENERIC_RESET_RESPONSE = {
   message:
     "If an account exists for this email, password reset instructions have been sent.",
+};
+const GENERIC_MAGIC_LINK_RESPONSE = {
+  message:
+    "If an account exists for this email, a sign-in link has been sent.",
 };
 const PASSWORD_HASH_ROUNDS = Number(process.env.PASSWORD_HASH_ROUNDS ?? 10);
 
@@ -42,6 +55,11 @@ async function signUpOwner(req, res) {
       });
     }
 
+    const passwordCheck = validatePassword(password);
+    if (!passwordCheck.valid) {
+      return res.status(400).json({ message: passwordCheck.error });
+    }
+
     const passwordHash = await bcrypt.hash(password, PASSWORD_HASH_ROUNDS);
     const user = await prisma.user.create({
       data: { email, fullName, passwordHash, role: "pending" },
@@ -67,7 +85,6 @@ async function signIn(req, res) {
   try {
     const email = normalizeEmail(req.body.email);
     const password = String(req.body.password ?? "");
-    const requestedRole = req.body.role;
     const user = await prisma.user.findUnique({
       where: { email },
       include: {
@@ -145,6 +162,99 @@ async function forgotPassword(req, res) {
   }
 }
 
+async function requestMagicLink(req, res) {
+  try {
+    const email = normalizeEmail(req.body.email);
+
+    if (!email || !email.includes("@")) {
+      return res.status(400).json({
+        message: "Please enter a valid email address.",
+      });
+    }
+
+    const user = await prisma.user.findUnique({ where: { email } });
+
+    if (!user) {
+      return res.json(GENERIC_MAGIC_LINK_RESPONSE);
+    }
+
+    const token = createMagicLinkToken();
+    const magicLinkRecord = await prisma.magicLinkToken.create({
+      data: {
+        expiresAt: magicLinkExpiry(),
+        tokenHash: hashMagicLinkToken(token),
+        userId: user.id,
+      },
+    });
+
+    try {
+      await sendMagicLinkEmail({
+        email: user.email,
+        fullName: user.fullName,
+        magicLinkUrl: magicLinkUrl(token),
+      });
+    } catch (emailError) {
+      await prisma.magicLinkToken.delete({ where: { id: magicLinkRecord.id } });
+      console.error("Magic link email error:", emailError);
+    }
+
+    return res.json(GENERIC_MAGIC_LINK_RESPONSE);
+  } catch (error) {
+    console.error("Magic link request error:", error);
+    return res.status(500).json({
+      message: "Could not send sign-in link.",
+    });
+  }
+}
+
+function businessesForUser(user) {
+  return (user.businessMemberships || []).map((m) => ({
+    ...formatBusinessSubscription(m.business),
+    role: m.role,
+    membershipRole: m.role,
+  }));
+}
+
+async function verifyMagicLink(req, res) {
+  try {
+    const token = String(req.body.token ?? "").trim();
+
+    if (!token) {
+      return res.status(400).json({
+        message: "This sign-in link is invalid.",
+      });
+    }
+
+    const user = await claimMagicLinkToken(token);
+    if (!user) {
+      return res.status(400).json({
+        message: "This sign-in link is invalid or has expired.",
+      });
+    }
+
+    const businesses = businessesForUser(user);
+
+    return res.json({
+      token: createAccessToken(user),
+      user: publicUser(user),
+      businesses,
+      hasBusiness: businesses.length > 0,
+      activeBusinessId: businesses[0]?.id || null,
+    });
+  } catch (error) {
+    if (error instanceof MagicLinkError) {
+      return res.status(400).json({
+        message: "This sign-in link is invalid or has expired.",
+      });
+    }
+
+    console.error("Magic link verify error:", error);
+    return res.status(400).json({
+      message: "Could not sign in with this link.",
+    });
+  }
+}
+
 async function resetPassword(req, res) {
   try {
     const token = String(req.body.token ?? "").trim();
@@ -156,10 +266,9 @@ async function resetPassword(req, res) {
       });
     }
 
-    if (password.length < 8) {
-      return res.status(400).json({
-        message: "Password must contain at least 8 characters.",
-      });
+    const passwordCheck = validatePassword(password);
+    if (!passwordCheck.valid) {
+      return res.status(400).json({ message: passwordCheck.error });
     }
 
     const resetToken = await prisma.passwordResetToken.findUnique({
@@ -252,9 +361,11 @@ function normalizeEmail(value) {
 module.exports = {
   forgotPassword,
   getMe,
+  requestMagicLink,
   resetPassword,
   signIn,
   signUpStaff,
   signUpOwner,
   updateMe,
+  verifyMagicLink,
 };

@@ -55,7 +55,7 @@ function combineGapReports(outDir, reports) {
   }
   lines.push("## 4. What is now proven");
   lines.push("");
-  lines.push("- Concurrent user behavior was measured at hundreds of simultaneous clients against key read and mixed endpoints.");
+  lines.push("- Concurrent user behavior was measured at high simultaneous client counts against key read and mixed endpoints.");
   lines.push("- Dashboard/sales behavior was measured after seeding a multi-week-style sale and activity history.");
   lines.push("- Product catalogs with uploaded images were exercised, including list payload size.");
   lines.push("- Large-tenant list endpoints were measured for latency and response size under concurrent reads.");
@@ -104,16 +104,19 @@ async function main() {
 
   const reports = [];
 
+  const suiteFilter =
+    config.args?.suite && config.args.suite !== "all" ? String(config.args.suite) : null;
+
   const jobs = [
     {
       key: "high-concurrency",
-      title: "Hundreds of concurrent users",
+      title: "High concurrent users",
       purpose:
-        "Measure absolute request-handling capacity at hundreds of concurrent clients. This closes the earlier gap where only lower concurrency baselines existed.",
+        "Measure absolute request-handling capacity at high concurrent clients. This closes the earlier gap where only lower concurrency baselines existed.",
       whatWasTested:
-        "Concurrent GET traffic against health, products, staff, dashboard, and business list, plus mixed search/stock bursts at 100 / 200 / 300 concurrent users (or until stop thresholds).",
+        "Concurrent GET traffic against health, products, staff, dashboard, and business list, plus mixed search/stock bursts at the configured concurrency levels (default 100 / 200 / 300; override with STRESS_HIGH_CONCURRENCY_LEVELS).",
       explain:
-        "If p95 or errors climb sharply between 100 and 300 concurrent users, that is the practical concurrency ceiling for those endpoints on this server size. Inventory and list endpoints that return large payloads usually degrade first.",
+        "If p95 or errors climb sharply as concurrency rises, that is the practical concurrency ceiling for those endpoints on this server size. Inventory and list endpoints that return large payloads usually degrade first.",
       bottomLineExtra: "This is request scalability under many simultaneous clients, not database row-growth scalability.",
       run: () => runHighConcurrencySuite(config),
     },
@@ -150,7 +153,7 @@ async function main() {
         "Concurrent reads of products, staff, my-businesses, dashboard, and paginated sales against the large stress tenant.",
       explain:
         "Endpoints without pagination return more bytes as the tenant grows. This suite makes that risk visible with latency and byte measurements your lead can compare.",
-      bottomLineExtra: "Sales listing is paginated; products and staff lists currently are not.",
+      bottomLineExtra: "Products, staff, and customers lists are paginated by default; dashboard/report payloads are summary-sized.",
       run: () => runListGrowthSuite(config),
     },
     {
@@ -168,7 +171,11 @@ async function main() {
   ];
 
   try {
-    for (const job of jobs) {
+    const selected = suiteFilter ? jobs.filter((job) => job.key === suiteFilter) : jobs;
+    if (suiteFilter && selected.length === 0) {
+      throw new Error(`Unknown gap suite "${suiteFilter}". Valid: ${jobs.map((j) => j.key).join(", ")}`);
+    }
+    for (const job of selected) {
       console.log(`\n=== Running gap suite: ${job.key} ===`);
       const suite = await job.run();
       const id = `${batchId}-${job.key}`;

@@ -136,6 +136,63 @@ function validateOpeningBalanceRows(rows, entityLabel) {
   return { ok: true, parsed };
 }
 
+/**
+ * Standard password policy for user accounts (signup, reset, admin set).
+ * - 8–128 characters
+ * - at least one letter
+ * - at least one number
+ */
+function validatePassword(value, options = {}) {
+  const min = options.minLength ?? 8;
+  const max = options.maxLength ?? 128;
+  const required = options.required ?? true;
+  const label = options.fieldName ?? options.fieldLabel ?? "Password";
+  const password = String(value ?? "");
+
+  if (!password) {
+    return required
+      ? { valid: false, error: `${label} is required.` }
+      : { valid: true, error: null };
+  }
+
+  if (password.length < min) {
+    return {
+      valid: false,
+      error: `${label} must be at least ${min} characters.`,
+    };
+  }
+
+  if (password.length > max) {
+    return {
+      valid: false,
+      error: `${label} cannot exceed ${max} characters.`,
+    };
+  }
+
+  if (/\s/.test(password)) {
+    return {
+      valid: false,
+      error: `${label} cannot contain spaces.`,
+    };
+  }
+
+  if (!/[A-Za-z]/.test(password)) {
+    return {
+      valid: false,
+      error: `${label} must include at least one letter.`,
+    };
+  }
+
+  if (!/[0-9]/.test(password)) {
+    return {
+      valid: false,
+      error: `${label} must include at least one number.`,
+    };
+  }
+
+  return { valid: true, error: null };
+}
+
 module.exports = {
   PHONE_REGEX,
   EMAIL_REGEX,
@@ -145,6 +202,7 @@ module.exports = {
   validateEmail,
   validateText,
   validateNumber,
+  validatePassword,
   parseNonNegativeMoney,
   validateOpeningBalanceRows,
 };

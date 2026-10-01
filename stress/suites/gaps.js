@@ -46,15 +46,34 @@ async function concurrentGet(config, auth, pathName, concurrency, iterations = 1
   return summary;
 }
 
+function parseHighConcurrencyLevels(config) {
+  const fromEnv = String(process.env.STRESS_HIGH_CONCURRENCY_LEVELS || "").trim();
+  if (fromEnv) {
+    const parsed = fromEnv
+      .split(/[,\s]+/)
+      .map((v) => Number(v))
+      .filter((n) => Number.isFinite(n) && n > 0);
+    if (parsed.length) return parsed;
+  }
+  if (config.profileName === "heavy") return [100, 200, 500];
+  return [100, 200, 300];
+}
+
 async function runHighConcurrencySuite(config) {
   const auth = await ensureAnchor(config);
-  const levels = config.profileName === "heavy" ? [100, 200, 500] : [100, 200, 300];
+  const levels = parseHighConcurrencyLevels(config);
+  const continueOnSlow = process.env.STRESS_HIGH_CONCURRENCY_CONTINUE === "true";
   const stages = [];
   const stops = [];
 
+  console.log(
+    `high-concurrency levels: ${levels.join(", ")}` +
+      (continueOnSlow ? " (continue through FAIL stages)" : ""),
+  );
+
   for (const concurrency of levels) {
     console.log(`high-concurrency level ${concurrency}`);
-    for (const pathName of ["/health", "/products", "/admin/staff", "/dashboard", "/business/my-businesses"]) {
+    for (const pathName of ["/health", "/products?page=1&limit=50", "/admin/staff?page=1&limit=50", "/dashboard", "/business/my-businesses"]) {
       const requiresAuth = pathName !== "/health";
       const samples = [];
       const started = performance.now();
@@ -134,11 +153,17 @@ async function runHighConcurrencySuite(config) {
         errorRate: mixed.errorRate,
         at: new Date().toISOString(),
       });
-      break;
+      if (!continueOnSlow) break;
     }
   }
 
-  return { kind: "gap-high-concurrency", stages, stops, scenario: "Hundreds of concurrent API users" };
+  return {
+    kind: "gap-high-concurrency",
+    stages,
+    stops,
+    scenario: `Concurrent API users up to ${levels[levels.length - 1] || 0}`,
+    levels,
+  };
 }
 
 async function seedSaleHistory(businessId, userId, target) {
@@ -381,11 +406,12 @@ async function runImageCatalogSuite(config) {
 async function runListGrowthSuite(config) {
   const auth = await seedOwnerSession(config);
   const endpoints = [
-    "/products",
-    "/admin/staff",
+    "/products?page=1&limit=50",
+    "/admin/staff?page=1&limit=50",
     "/business/my-businesses",
     "/dashboard",
     "/sales?page=1&limit=25",
+    "/customers?page=1&limit=50",
   ];
   const stages = [];
   for (const endpoint of endpoints) {
@@ -396,12 +422,13 @@ async function runListGrowthSuite(config) {
   }
   return {
     kind: "gap-list-growth",
-    scenario: "Unbounded list endpoint growth under concurrent read load on the large tenant",
+    scenario: "Paginated list / dashboard payload sizes under concurrent read load on the large tenant",
     stages,
     stops: [],
     notes: [
-      "GET /products and GET /admin/staff return full collections with no page parameter.",
+      "GET /products, /admin/staff, and /customers are paginated (default limit 50).",
       "GET /sales is paginated (page/limit).",
+      "GET /dashboard returns summary + top-N only.",
       "Response byte sizes in the stage detail show payload growth risk.",
     ],
   };

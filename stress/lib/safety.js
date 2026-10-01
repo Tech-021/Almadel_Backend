@@ -21,6 +21,11 @@ function loadStressEnv() {
   }
 
   dotenv.config({ path: envFile, override: true });
+  // Stress DB runners must not keep a Redis client open (blocks process exit).
+  // Live API Redis is unrelated to direct DB ACID scripts.
+  if (process.env.ENABLE_REDIS === "true" && process.env.STRESS_ALLOW_REDIS !== "true") {
+    process.env.ENABLE_REDIS = "false";
+  }
   return envFile;
 }
 

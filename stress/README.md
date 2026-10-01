@@ -14,21 +14,24 @@ Derived from the current routes:
 | Business list | `GET /business/my-businesses` | |
 | Business detail | `GET /business/:id` | |
 | Team create | `POST /admin/staff` | `fullName`, `email`, `password`, `role` = `staff` or `accountant` |
-| Team list | `GET /admin/staff` | Returns every member. No page parameter. |
+| Team list | `GET /admin/staff` | Paginated: `page` (default 1), `limit` (default 50, max 100). Response `{ staff, pagination }` |
 | Product create | `POST /products` | `barcode`, `name`, `sku`, `category`, `costPrice`, `sellingPrice`, `stock` |
-| Product list | `GET /products` | Returns every product. No page parameter. |
+| Product list | `GET /products` | Paginated: `page`/`limit` (default 50, max 250). Response `{ products, pagination }`. Use `?legacy=1` for bare array. Full dump via export. |
 | Product search | `GET /products/search?q=` | Stops at 50 rows. |
 | Product lookup | `GET /products/barcode/:barcode` | |
+| Product import | `POST /products/import` | Body `{ products: [...] }`. Max 2000 rows/request; batched upsert. |
+| Product export | `GET /products/export` | Streamed CSV (chunked cursor). |
 | Stock add | `POST /stock/add` | `barcode`, `quantity`, `note` |
 | Sale decrement | `POST /sales/checkout` | `items[{ productId, quantity }]`, `paymentMethod`, `discountType` |
 | Customer create | `POST /customers` | `name`, `mobile`, `email?` |
-| Customer list / history | `GET /customers`, `GET /customers/:id/history` | List is not paginated |
+| Customer list / history | `GET /customers`, `GET /customers/:id/history` | Paginated: `page`/`limit` (default 50, max 100). List returns `{ customers, pagination }` |
+| Activity logs | `GET /logs` | Paginated: `page`/`limit` (default 50, max 100) |
 | Finance account | `POST /finance/accounts` | `name`, `type?`, `openingBalance?` |
 | Finance expense | `POST /finance/expenses` | `accountId`, `amount`, `category` |
 | Finance ledger | `POST /finance/transactions` | `accountId`, `amount`, `direction` |
-| Finance lists / summary | `GET /finance/accounts|expenses|payments|reports/summary` | Date filters default to today |
-| Reports | `GET /reports/sales|products|stock` | Read-only analytics |
-| Dashboard | `GET /dashboard` | |
+| Finance lists / summary | `GET /finance/accounts|expenses|payments|reports/summary` | Date filters default to today; account balances via aggregate SQL |
+| Reports | `GET /reports/sales|products|stock` | Products/stock use aggregates; default date window last 30 days (`from`/`to`, max 366 days). Sales detail is paginated. |
+| Dashboard | `GET /dashboard` | Summary metrics + top-N only (short TTL cache) |
 | Sales list | `GET /sales` | |
 
 There is no stock table. Stock is `products.stock`. History is `stock_logs`, written by `POST /stock/add`. Checkout decrements stock inside a transaction.
@@ -119,6 +122,21 @@ npm run stress:db
 npm run stress:combine
 ```
 
+### Pagination / payload retest (after performance fixes)
+
+List endpoints default to `page=1&limit=50`. Compare grades for `GET /customers`, `GET /reports/products`, `GET /reports/stock`, and dashboard/list-growth stages before vs after.
+
+```bash
+npm run stress:seed:customers
+npm run stress:seed:products   # if needed
+npm run stress:customers -- --profile standard
+npm run stress:reports -- --profile standard
+npm run stress:reads -- --profile standard
+npm run stress:gaps -- --profile standard
+```
+
+See also `docs/API_PAGINATION_CHANGELOG.md`.
+
 ## Gap suites (high concurrency, history, images, lists, frontend)
 
 These close the “not proven yet” items from the combined standard report:
@@ -145,6 +163,26 @@ npm run stress:db
 ```
 
 This checks Atomicity, Consistency, Isolation, and Durability, times the large-tenant queries (products, staff, owner businesses), and records table/index stats.
+
+Dedicated ACID-only suite (all application tables, no query benchmarks):
+
+```bash
+npm run stress:db:acid -- --profile standard
+```
+
+Report path: `stress/results/stress-db-acid-<timestamp>/report.md`.
+
+API/service-layer ACID concurrency (checkout, payments, close, stock, categories):
+
+```bash
+npm run stress:db:acid-api -- --profile standard
+```
+
+Money precision unit tests:
+
+```bash
+npm run test:integrity
+```
 
 ### Database scalability curve (approved standard path)
 
