@@ -17,6 +17,19 @@ const {
   updateOnboardingWorkspaceMode,
 } = require("./onboarding.service");
 
+/** PATCH: undefined = omit field; null = clear; string = trim (blank -> null). */
+function patchNullableString(value) {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  const trimmed = String(value).trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function patchTrimmedString(value) {
+  if (value === undefined) return undefined;
+  return String(value ?? "").trim();
+}
+
 function buildOnboardingPayload(body) {
   const {
     name,
@@ -183,6 +196,12 @@ function formatBusinessSubscription(biz, { slim = false } = {}) {
       name: biz.name,
       businessType: biz.businessType,
       mobileNumber: biz.mobileNumber,
+      whatsappNumber: biz.whatsappNumber,
+      email: biz.email,
+      address: biz.address,
+      city: biz.city,
+      logoUrl: biz.logoUrl,
+      allowDiscounts: biz.allowDiscounts,
       workspaceMode: biz.workspaceMode,
       subscriptionStatus: biz.subscriptionStatus,
       trialEndsAt: biz.trialEndsAt,
@@ -224,6 +243,12 @@ async function getMyBusinesses(req, res) {
             name: true,
             businessType: true,
             mobileNumber: true,
+            whatsappNumber: true,
+            email: true,
+            address: true,
+            city: true,
+            logoUrl: true,
+            allowDiscounts: true,
             workspaceMode: true,
             subscriptionStatus: true,
             trialEndsAt: true,
@@ -339,17 +364,17 @@ async function updateBusiness(req, res) {
     const updated = await bizModel.update({
       where: { id: businessId },
       data: {
-        name: name !== undefined ? name.trim() : undefined,
-        businessType: businessType !== undefined ? businessType.trim() : undefined,
-        businessCategory: businessCategory !== undefined ? businessCategory.trim() : undefined,
-        mobileNumber: mobileNumber !== undefined ? mobileNumber.trim() : undefined,
-        whatsappNumber: whatsappNumber !== undefined ? whatsappNumber.trim() : undefined,
-        email: email !== undefined ? email.trim() : undefined,
-        address: address !== undefined ? address.trim() : undefined,
-        city: city !== undefined ? city.trim() : undefined,
-        area: area !== undefined ? area.trim() : undefined,
-        province: province !== undefined ? province.trim() : undefined,
-        logoUrl: logoUrl !== undefined ? (logoUrl ? String(logoUrl).trim() : null) : undefined,
+        name: patchTrimmedString(name),
+        businessType: patchNullableString(businessType),
+        businessCategory: patchNullableString(businessCategory),
+        mobileNumber: patchNullableString(mobileNumber),
+        whatsappNumber: patchNullableString(whatsappNumber),
+        email: patchNullableString(email),
+        address: patchNullableString(address),
+        city: patchNullableString(city),
+        area: patchNullableString(area),
+        province: patchNullableString(province),
+        logoUrl: patchNullableString(logoUrl),
         allowDiscounts: allowDiscounts !== undefined ? Boolean(allowDiscounts) : undefined,
         workspaceMode: normalizedWorkspaceMode,
       },
