@@ -259,7 +259,7 @@ async function updateProduct(req, res) {
         costPrice,
         discountType: parsedDiscountType,
         discountValue,
-        imageUrl: imageUrl || null,
+        imageUrl: imageUrl || existing.imageUrl || null,
         lowStockThreshold,
         name,
         price: sellingPrice,
