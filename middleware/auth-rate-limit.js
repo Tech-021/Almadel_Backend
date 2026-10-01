@@ -111,6 +111,31 @@ const forgotPasswordLimiters = [
   forgotPasswordEmailLimiter,
 ];
 
+const magicLinkIpLimiter = createIpLimiter("AUTH_MAGIC_LINK_MAX_PER_IP", 15);
+const magicLinkEmailLimiter = createEmailLimiter("AUTH_MAGIC_LINK_MAX_PER_EMAIL", 5);
+const magicLinkVerifyIpLimiter = createIpLimiter("AUTH_MAGIC_LINK_VERIFY_MAX_PER_IP", 30);
+const magicLinkVerifyTokenLimiter = rateLimit({
+  windowMs: windowMs(),
+  max: maxFromEnv("AUTH_MAGIC_LINK_VERIFY_MAX_PER_TOKEN", 5),
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: () => rateLimitDisabled(),
+  keyGenerator: (req) => {
+    const tokenKey = tokenKeyFromBody(req);
+    if (tokenKey) {
+      return tokenKey;
+    }
+    return clientIp(req);
+  },
+  handler: createJson429Handler(),
+});
+
+const magicLinkRequestLimiters = [magicLinkIpLimiter, magicLinkEmailLimiter];
+const magicLinkVerifyLimiters = [
+  magicLinkVerifyIpLimiter,
+  magicLinkVerifyTokenLimiter,
+];
+
 const resetPasswordLimiters = [
   resetPasswordIpLimiter,
   resetPasswordTokenLimiter,
@@ -120,6 +145,8 @@ const signUpLimiters = [signUpIpLimiter, signUpEmailLimiter];
 
 module.exports = {
   forgotPasswordLimiters,
+  magicLinkRequestLimiters,
+  magicLinkVerifyLimiters,
   resetPasswordLimiters,
   signInIpLimiter,
   signInEmailLimiter,
