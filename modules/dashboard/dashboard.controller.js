@@ -1,4 +1,4 @@
-const { prisma } = require("../../db");
+const { prismaRead } = require("../../db");
 const { saleResponse } = require("../../utils/serializers");
 const { cacheGet, cacheSet } = require("../../utils/ttl-cache");
 
@@ -32,7 +32,7 @@ async function getAdminDashboard(req, res) {
     topSellingRaw,
     lowStockProductsRaw,
   ] = await Promise.all([
-    prisma.sale.findMany({
+    prismaRead.sale.findMany({
       where: { businessId },
       orderBy: { createdAt: "desc" },
       take: 20,
@@ -54,16 +54,16 @@ async function getAdminDashboard(req, res) {
         branchId: true,
       },
     }),
-    prisma.businessMember.count({ where: { businessId, role: "staff" } }),
-    prisma.product.count({ where: { businessId, createdByUserId: req.user.id } }),
-    prisma.product.count({ where: { businessId, createdByUser: { role: "staff" } } }),
-    prisma.product.count({ where: { businessId, createdByUserId: null } }),
-    prisma.sale.aggregate({
+    prismaRead.businessMember.count({ where: { businessId, role: "staff" } }),
+    prismaRead.product.count({ where: { businessId, createdByUserId: req.user.id } }),
+    prismaRead.product.count({ where: { businessId, createdByUser: { role: "staff" } } }),
+    prismaRead.product.count({ where: { businessId, createdByUserId: null } }),
+    prismaRead.sale.aggregate({
       where: { businessId, createdAt: { gte: startOfDay, lt: endOfDay } },
       _sum: { totalAmount: true },
       _count: { id: true },
     }),
-    prisma.$queryRaw`
+    prismaRead.$queryRaw`
       SELECT
         COALESCE(SUM(stock * COALESCE("sellingPrice", price, 0)), 0)::float AS inventory_value,
         COUNT(*) FILTER (
@@ -72,14 +72,14 @@ async function getAdminDashboard(req, res) {
       FROM products
       WHERE "businessId" = ${businessId}
     `,
-    prisma.saleItem.groupBy({
+    prismaRead.saleItem.groupBy({
       by: ["productId", "name"],
       where: { sale: { businessId } },
       _sum: { quantity: true, total: true },
       orderBy: { _sum: { quantity: "desc" } },
       take: 5,
     }),
-    prisma.$queryRaw`
+    prismaRead.$queryRaw`
       SELECT id, name, barcode, stock, "lowStockThreshold", "sellingPrice", price, category
       FROM products
       WHERE "businessId" = ${businessId}
@@ -96,7 +96,7 @@ async function getAdminDashboard(req, res) {
 
   const topProductIds = topSellingRaw.map((item) => item.productId).filter(Boolean);
   const topProducts = topProductIds.length
-    ? await prisma.product.findMany({
+    ? await prismaRead.product.findMany({
         where: { businessId, id: { in: topProductIds } },
         select: { id: true, stock: true, sellingPrice: true, price: true, category: true, imageUrl: true },
       })
@@ -188,7 +188,7 @@ async function getMyDashboard(req, res) {
   }
 
   const [sales, todayAgg, topSellingRaw, lowStockProductsRaw] = await Promise.all([
-    prisma.sale.findMany({
+    prismaRead.sale.findMany({
       orderBy: { createdAt: "desc" },
       take: 20,
       where: { businessId, userId: req.user.id },
@@ -210,7 +210,7 @@ async function getMyDashboard(req, res) {
         branchId: true,
       },
     }),
-    prisma.sale.aggregate({
+    prismaRead.sale.aggregate({
       where: {
         businessId,
         userId: req.user.id,
@@ -219,14 +219,14 @@ async function getMyDashboard(req, res) {
       _sum: { totalAmount: true },
       _count: { id: true },
     }),
-    prisma.saleItem.groupBy({
+    prismaRead.saleItem.groupBy({
       by: ["productId", "name"],
       where: { sale: { businessId, userId: req.user.id } },
       _sum: { quantity: true, total: true },
       orderBy: { _sum: { quantity: "desc" } },
       take: 5,
     }),
-    prisma.$queryRaw`
+    prismaRead.$queryRaw`
       SELECT id, name, barcode, stock, "lowStockThreshold", "sellingPrice", price, category
       FROM products
       WHERE "businessId" = ${businessId}
@@ -241,7 +241,7 @@ async function getMyDashboard(req, res) {
 
   const topProductIds = topSellingRaw.map((item) => item.productId).filter(Boolean);
   const topProducts = topProductIds.length
-    ? await prisma.product.findMany({
+    ? await prismaRead.product.findMany({
         where: { businessId, id: { in: topProductIds } },
         select: { id: true, stock: true, sellingPrice: true, price: true, category: true, imageUrl: true },
       })

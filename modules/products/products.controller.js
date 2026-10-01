@@ -1,4 +1,4 @@
-const { prisma } = require("../../db");
+const { prisma, prismaRead } = require("../../db");
 const { toNonNegativeNumber } = require("../../utils/numbers");
 const {
   canViewCostPrice,
@@ -7,6 +7,7 @@ const {
   serializeProducts,
 } = require("./product-access");
 const { emitBusinessEvent } = require("../realtime/socket");
+const { searchProductsElasticsearch } = require("../search/elasticsearch");
 
 async function listProducts(req, res) {
   // Interactive list is always paginated. Full dumps belong on GET /products/export.
@@ -19,13 +20,13 @@ async function listProducts(req, res) {
   const where = productAccessWhere(req);
 
   const [products, total] = await Promise.all([
-    prisma.product.findMany({
+    prismaRead.product.findMany({
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       where,
       skip,
       take: limit,
     }),
-    prisma.product.count({ where }),
+    prismaRead.product.count({ where }),
   ]);
 
   if (String(req.query.legacy || "") === "1") {
@@ -44,7 +45,27 @@ async function searchProducts(req, res) {
     return res.json({ durationMs: 0, products: [] });
   }
 
-  const products = await prisma.product.findMany({
+  const businessId = Number(req.businessId);
+  const esResult = await searchProductsElasticsearch({
+    businessId,
+    query,
+    limit: 50,
+  });
+
+  if (esResult?.ids?.length) {
+    const products = await prismaRead.product.findMany({
+      where: productAccessWhere(req, { id: { in: esResult.ids } }),
+    });
+    const byId = new Map(products.map((p) => [p.id, p]));
+    const ordered = esResult.ids.map((id) => byId.get(id)).filter(Boolean);
+    return res.json({
+      durationMs: Math.round(performance.now() - startedAt),
+      products: serializeProducts(ordered, req),
+      source: "elasticsearch",
+    });
+  }
+
+  const products = await prismaRead.product.findMany({
     orderBy: { name: "asc" },
     take: 50,
     where: productAccessWhere(req, {
@@ -61,12 +82,13 @@ async function searchProducts(req, res) {
   return res.json({
     durationMs: Math.round(performance.now() - startedAt),
     products: serializeProducts(products, req),
+    source: "postgres",
   });
 }
 
 async function findProductByBarcode(req, res) {
   const barcode = String(req.params.barcode ?? "").trim();
-  const product = await prisma.product.findFirst({
+  const product = await prismaRead.product.findFirst({
     where: productAccessWhere(req, {
       OR: [{ barcode }, { qrCode: barcode }],
     }),
@@ -344,7 +366,7 @@ async function importProducts(req, res) {
     const barcodes = [...new Set(rows.map((r) => r.barcode))];
     const existingList =
       barcodes.length > 0
-        ? await prisma.product.findMany({
+        ? await prismaRead.product.findMany({
             where: { businessId, barcode: { in: barcodes } },
             select: {
               id: true,
@@ -543,7 +565,7 @@ async function exportProductsCsv(req, res) {
     let cursorId = null;
     // Stable cursor walk by id (name order would need keyset on name+id)
     for (;;) {
-      const batch = await prisma.product.findMany({
+      const batch = await prismaRead.product.findMany({
         where,
         orderBy: { id: "asc" },
         take: CHUNK,

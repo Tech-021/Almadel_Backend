@@ -1,6 +1,6 @@
 {
   "email": "loadtest_anchor_owner@example.test",
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdXRoVmVyc2lvbiI6MCwiaWQiOjMyNTE3LCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3OTA2ODg4NjAsImV4cCI6MTc5MTI5MzY2MH0.ODX_c7cIZ50-9FAyoQdKSOs_GNqaQvEIcfkayjeOuX8",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdXRoVmVyc2lvbiI6MCwiaWQiOjMyNTE3LCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3OTA4NTQ3NTEsImV4cCI6MTc5MTQ1OTU1MX0.N0ihEEwhrrqhfwhkAjW_rdPHfLc9xSuW1nFZR08Y79g",
   "userId": 32517,
   "businessId": 31195,
   "businessName": "loadtest_anchor_business"

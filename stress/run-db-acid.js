@@ -105,8 +105,9 @@ function writeAcidReport(dir, report) {
 
 async function main() {
   const config = loadConfig(["--suite", "database", ...process.argv.slice(2)]);
-  const { prisma, resetPrismaClient } = require("../db");
-  await resetPrismaClient();
+  const db = require("../db");
+  await db.resetPrismaClient();
+  const prisma = db.prisma;
   await assertConnectedStressDatabase(prisma);
 
   const runId = `stress-db-acid-${new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z")}`;

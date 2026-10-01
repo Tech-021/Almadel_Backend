@@ -1,4 +1,5 @@
 const { rateLimit } = require("express-rate-limit");
+const { createRedisRateLimitStore } = require("./redis-rate-limit-store");
 
 const RATE_LIMIT_MESSAGE = {
   message: "Too many attempts. Please wait a few minutes and try again.",
@@ -16,6 +17,20 @@ function windowMs() {
 function maxFromEnv(name, fallback) {
   const parsed = Number(process.env[name]);
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+}
+
+function baseRateLimitOptions(extra = {}) {
+  const ms = windowMs();
+  const store = createRedisRateLimitStore(ms);
+  return {
+    windowMs: ms,
+    standardHeaders: true,
+    legacyHeaders: false,
+    skip: () => rateLimitDisabled(),
+    handler: createJson429Handler(),
+    ...(store ? { store } : {}),
+    ...extra,
+  };
 }
 
 function normalizeEmailFromBody(req) {
@@ -43,50 +58,41 @@ function clientIp(req) {
 }
 
 function createIpLimiter(maxEnvName, fallbackMax) {
-  return rateLimit({
-    windowMs: windowMs(),
-    max: maxFromEnv(maxEnvName, fallbackMax),
-    standardHeaders: true,
-    legacyHeaders: false,
-    skip: () => rateLimitDisabled(),
-    handler: createJson429Handler(),
-  });
+  return rateLimit(
+    baseRateLimitOptions({
+      max: maxFromEnv(maxEnvName, fallbackMax),
+    }),
+  );
 }
 
 function createEmailLimiter(maxEnvName, fallbackMax) {
-  return rateLimit({
-    windowMs: windowMs(),
-    max: maxFromEnv(maxEnvName, fallbackMax),
-    standardHeaders: true,
-    legacyHeaders: false,
-    skip: () => rateLimitDisabled(),
-    keyGenerator: (req) => {
-      const email = normalizeEmailFromBody(req);
-      if (email) {
-        return `email:${email}`;
-      }
-      return clientIp(req);
-    },
-    handler: createJson429Handler(),
-  });
+  return rateLimit(
+    baseRateLimitOptions({
+      max: maxFromEnv(maxEnvName, fallbackMax),
+      keyGenerator: (req) => {
+        const email = normalizeEmailFromBody(req);
+        if (email) {
+          return `email:${email}`;
+        }
+        return clientIp(req);
+      },
+    }),
+  );
 }
 
 function createResetTokenLimiter() {
-  return rateLimit({
-    windowMs: windowMs(),
-    max: maxFromEnv("AUTH_RESET_PASSWORD_MAX_PER_TOKEN", 5),
-    standardHeaders: true,
-    legacyHeaders: false,
-    skip: () => rateLimitDisabled(),
-    keyGenerator: (req) => {
-      const tokenKey = tokenKeyFromBody(req);
-      if (tokenKey) {
-        return tokenKey;
-      }
-      return clientIp(req);
-    },
-    handler: createJson429Handler(),
-  });
+  return rateLimit(
+    baseRateLimitOptions({
+      max: maxFromEnv("AUTH_RESET_PASSWORD_MAX_PER_TOKEN", 5),
+      keyGenerator: (req) => {
+        const tokenKey = tokenKeyFromBody(req);
+        if (tokenKey) {
+          return tokenKey;
+        }
+        return clientIp(req);
+      },
+    }),
+  );
 }
 
 const signInIpLimiter = createIpLimiter("AUTH_SIGNIN_MAX_PER_IP", 30);
@@ -114,21 +120,18 @@ const forgotPasswordLimiters = [
 const magicLinkIpLimiter = createIpLimiter("AUTH_MAGIC_LINK_MAX_PER_IP", 15);
 const magicLinkEmailLimiter = createEmailLimiter("AUTH_MAGIC_LINK_MAX_PER_EMAIL", 5);
 const magicLinkVerifyIpLimiter = createIpLimiter("AUTH_MAGIC_LINK_VERIFY_MAX_PER_IP", 30);
-const magicLinkVerifyTokenLimiter = rateLimit({
-  windowMs: windowMs(),
-  max: maxFromEnv("AUTH_MAGIC_LINK_VERIFY_MAX_PER_TOKEN", 5),
-  standardHeaders: true,
-  legacyHeaders: false,
-  skip: () => rateLimitDisabled(),
-  keyGenerator: (req) => {
-    const tokenKey = tokenKeyFromBody(req);
-    if (tokenKey) {
-      return tokenKey;
-    }
-    return clientIp(req);
-  },
-  handler: createJson429Handler(),
-});
+const magicLinkVerifyTokenLimiter = rateLimit(
+  baseRateLimitOptions({
+    max: maxFromEnv("AUTH_MAGIC_LINK_VERIFY_MAX_PER_TOKEN", 5),
+    keyGenerator: (req) => {
+      const tokenKey = tokenKeyFromBody(req);
+      if (tokenKey) {
+        return tokenKey;
+      }
+      return clientIp(req);
+    },
+  }),
+);
 
 const magicLinkRequestLimiters = [magicLinkIpLimiter, magicLinkEmailLimiter];
 const magicLinkVerifyLimiters = [

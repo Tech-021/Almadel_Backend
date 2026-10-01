@@ -1,4 +1,4 @@
-const { prisma } = require("../../db");
+const { prisma, prismaRead } = require("../../db");
 
 function requireScopedBusinessId(req, res) {
   const businessId = Number(req.businessId);
@@ -144,13 +144,13 @@ async function getLogs(req, res) {
     }
 
     const [rawLogs, total] = await Promise.all([
-      prisma.activityLog.findMany({
+      prismaRead.activityLog.findMany({
         where,
         orderBy: [{ timestamp: "desc" }, { id: "desc" }],
         skip,
         take: limitNum,
       }),
-      prisma.activityLog.count({ where }),
+      prismaRead.activityLog.count({ where }),
     ]);
 
     const logs = rawLogs.map((item) => ({

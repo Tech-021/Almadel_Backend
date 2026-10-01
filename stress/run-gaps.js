@@ -83,8 +83,9 @@ function combineGapReports(outDir, reports) {
 
 async function main() {
   const config = loadConfig(["--profile", process.env.STRESS_PROFILE || "standard", ...process.argv.slice(2)]);
-  const { prisma, resetPrismaClient } = require("../db");
-  await resetPrismaClient();
+  const db = require("../db");
+  await db.resetPrismaClient();
+  const prisma = db.prisma;
   const connectedDatabase = await assertConnectedStressDatabase(prisma);
 
   await assertApiUsesStressDatabase(config, prisma);

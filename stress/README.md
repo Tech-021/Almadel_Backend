@@ -142,7 +142,10 @@ See also `docs/API_PAGINATION_CHANGELOG.md`.
 These close the “not proven yet” items from the combined standard report:
 
 ```bash
-# Stress API must be on 4010 and using almadel_stress
+# Terminal 1 — stress API (almadel_stress on port 4010)
+npm run stress:api
+
+# Terminal 2 — load tests
 npm run stress:db:scale -- --profile standard --fresh
 npm run stress:gaps -- --profile standard
 ```

@@ -1,0 +1,38 @@
+# Example: Nginx load balancing across multiple Node ports (alternative to PM2 cluster on one port).
+# PM2 cluster mode on 4001 is usually simpler — use this when API runs on 4001, 4002, ...
+
+upstream almadel_backend {
+    least_conn;
+    server 127.0.0.1:4001 max_fails=3 fail_timeout=30s;
+    server 127.0.0.1:4002 max_fails=3 fail_timeout=30s;
+}
+
+server {
+    listen 4443 ssl;
+    listen [::]:4443 ssl;
+    server_name 65.108.249.169;
+
+    ssl_certificate /etc/letsencrypt/live/almadel-ip/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/almadel-ip/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+    client_max_body_size 20m;
+
+    location /health/ready {
+        proxy_pass http://almadel_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+    }
+
+    location / {
+        proxy_pass http://almadel_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_read_timeout 75s;
+    }
+}

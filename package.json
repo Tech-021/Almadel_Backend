@@ -10,6 +10,7 @@
     "db:migrate": "prisma migrate dev",
     "db:stress:seed": "node stress-seed.js",
     "stress": "node stress/run.js",
+    "stress:api": "node scripts/start-stress-api.js",
     "stress:all": "node stress/run.js --suite all",
     "stress:business": "node stress/run.js --suite business",
     "stress:team": "node stress/run.js --suite team",
@@ -41,7 +42,8 @@
     "db:studio": "prisma studio",
     "admin:create": "node create-admin.js",
     "seed": "node seed.js",
-    "seed:manual-qa": "node scripts/seed-manual-qa-volume.js"
+    "seed:manual-qa": "node scripts/seed-manual-qa-volume.js",
+    "start:pm2": "pm2 start ecosystem.config.js --update-env"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",

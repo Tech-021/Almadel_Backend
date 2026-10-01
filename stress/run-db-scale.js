@@ -172,8 +172,9 @@ async function main() {
   const config = loadConfig(["--suite", "database-scale", ...argv]);
   const fresh = parseFresh(argv);
 
-  const { prisma, resetPrismaClient } = require("../db");
-  await resetPrismaClient();
+  const db = require("../db");
+  await db.resetPrismaClient();
+  const prisma = db.prisma;
   const connectedDatabase = await assertConnectedStressDatabase(prisma);
 
   const runId = `stress-db-scale-${new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z")}`;

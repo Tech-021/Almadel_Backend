@@ -1,4 +1,5 @@
-const { prisma } = require("../db");
+const { prisma, getClientsForBusiness } = require("../db");
+const { runWithTenantDb } = require("../utils/tenant-db-context");
 const { verifyAccessToken } = require("../modules/auth/token.service");
 
 async function requireAuth(req, res, next) {
@@ -124,7 +125,8 @@ async function requireBusiness(req, res, next) {
 
   req.businessId = businessId;
   req.businessRole = member.role;
-  return next();
+  const clients = getClientsForBusiness(businessId);
+  return runWithTenantDb(clients, () => next());
 }
 
 /**
@@ -162,7 +164,8 @@ async function optionalBusiness(req, res, next) {
       if (membership) {
         req.businessId = businessId;
         req.businessRole = membership.role;
-        return next();
+        const clients = getClientsForBusiness(businessId);
+        return runWithTenantDb(clients, () => next());
       }
       // Forged / foreign header — do not assign; fall through to primary membership.
       businessId = null;
@@ -175,6 +178,8 @@ async function optionalBusiness(req, res, next) {
     if (primary) {
       req.businessId = primary.businessId;
       req.businessRole = primary.role;
+      const clients = getClientsForBusiness(primary.businessId);
+      return runWithTenantDb(clients, () => next());
     }
   } catch {
     // leave business unset

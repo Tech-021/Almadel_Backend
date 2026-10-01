@@ -1,4 +1,4 @@
-const { prisma } = require("../../db");
+const { prismaRead } = require("../../db");
 const { parseReportRange } = require("../../utils/report-range");
 const { parsePagination, paginationMeta } = require("../../utils/pagination");
 const { cacheGet, cacheSet } = require("../../utils/ttl-cache");
@@ -43,18 +43,18 @@ async function getSalesReport(req, res) {
   const { page, limit, skip } = parsePagination(req.query, { defaultLimit: 50, maxLimit: 100 });
 
   const [agg, paymentGroups, dayRows, sales, totalOrders] = await Promise.all([
-    prisma.sale.aggregate({
+    prismaRead.sale.aggregate({
       where: saleWhere,
       _sum: { totalAmount: true, totalItems: true, discountAmount: true },
       _count: { id: true },
     }),
-    prisma.sale.groupBy({
+    prismaRead.sale.groupBy({
       by: ["paymentMethod"],
       where: saleWhere,
       _sum: { totalAmount: true },
     }),
     period === "weekly" || period === "monthly"
-      ? prisma.$queryRaw`
+      ? prismaRead.$queryRaw`
           SELECT
             to_char(date_trunc('day', "createdAt"), 'YYYY-MM-DD') AS day,
             COUNT(*)::int AS orders,
@@ -69,7 +69,7 @@ async function getSalesReport(req, res) {
           ORDER BY 1
         `
       : Promise.resolve([]),
-    prisma.sale.findMany({
+    prismaRead.sale.findMany({
       where: saleWhere,
       select: {
         id: true,
@@ -89,7 +89,7 @@ async function getSalesReport(req, res) {
       skip,
       take: limit,
     }),
-    prisma.sale.count({ where: saleWhere }),
+    prismaRead.sale.count({ where: saleWhere }),
   ]);
 
   const totalRevenue = Number(agg._sum?.totalAmount || 0);
@@ -181,8 +181,8 @@ async function getProductReport(req, res) {
   }
 
   const [catalogCount, salesTotals, bestRaw, leastRaw, zeroSalesCount] = await Promise.all([
-    prisma.product.count({ where: { businessId } }),
-    prisma.$queryRaw`
+    prismaRead.product.count({ where: { businessId } }),
+    prismaRead.$queryRaw`
       SELECT
         COUNT(DISTINCT si."productId")::int AS products_with_sales,
         COALESCE(SUM(si.quantity), 0)::int AS total_units,
@@ -193,7 +193,7 @@ async function getProductReport(req, res) {
         AND s."createdAt" >= ${from}
         AND s."createdAt" <= ${to}
     `,
-    prisma.$queryRaw`
+    prismaRead.$queryRaw`
       SELECT si."productId", MAX(si.name) AS name,
              SUM(si.quantity)::int AS quantity,
              SUM(si.total)::float AS revenue
@@ -206,7 +206,7 @@ async function getProductReport(req, res) {
       ORDER BY SUM(si.quantity) DESC, SUM(si.total) DESC
       LIMIT ${TOP_N}
     `,
-    prisma.$queryRaw`
+    prismaRead.$queryRaw`
       SELECT si."productId", MAX(si.name) AS name,
              SUM(si.quantity)::int AS quantity,
              SUM(si.total)::float AS revenue
@@ -219,7 +219,7 @@ async function getProductReport(req, res) {
       ORDER BY SUM(si.quantity) ASC, SUM(si.total) ASC
       LIMIT ${TOP_N}
     `,
-    prisma.$queryRaw`
+    prismaRead.$queryRaw`
       SELECT COUNT(*)::int AS count
       FROM products p
       WHERE p."businessId" = ${businessId}
@@ -249,7 +249,7 @@ async function getProductReport(req, res) {
   const productIds = [...new Set([...itemSales, ...leastSlice].map((r) => r.productId).filter(Boolean))];
 
   const productRows = productIds.length
-    ? await prisma.product.findMany({
+    ? await prismaRead.product.findMany({
         where: { businessId, id: { in: productIds } },
         select: {
           id: true,
@@ -303,7 +303,7 @@ async function getProductReport(req, res) {
   // Append a sample of zero-sales products into leastSelling when room remains
   if (leastSelling.length < TOP_N) {
     const remaining = TOP_N - leastSelling.length;
-    const deadStock = await prisma.$queryRaw`
+    const deadStock = await prismaRead.$queryRaw`
       SELECT p.id, p.name, p.barcode, p.sku, p.category, p."sellingPrice", p.price, p."costPrice",
              p.stock, p."lowStockThreshold"
       FROM products p
@@ -378,7 +378,7 @@ async function getStockReport(req, res) {
   const LIST_CAP = 50;
 
   const [summaryRows, lowStock, outOfStock] = await Promise.all([
-    prisma.$queryRaw`
+    prismaRead.$queryRaw`
       SELECT
         COUNT(*)::int AS total_products,
         COALESCE(SUM(GREATEST(stock, 0)), 0)::int AS total_units,
@@ -390,7 +390,7 @@ async function getStockReport(req, res) {
       FROM products
       WHERE "businessId" = ${businessId}
     `,
-    prisma.$queryRaw`
+    prismaRead.$queryRaw`
       SELECT id, name, barcode, sku, category, stock, "lowStockThreshold",
              COALESCE("sellingPrice", price, 0)::float AS "sellingPrice",
              COALESCE("costPrice", 0)::float AS "costPrice"
@@ -401,7 +401,7 @@ async function getStockReport(req, res) {
       ORDER BY stock ASC, id ASC
       LIMIT ${LIST_CAP}
     `,
-    prisma.$queryRaw`
+    prismaRead.$queryRaw`
       SELECT id, name, barcode, sku, category, stock, "lowStockThreshold",
              COALESCE("sellingPrice", price, 0)::float AS "sellingPrice",
              COALESCE("costPrice", 0)::float AS "costPrice"

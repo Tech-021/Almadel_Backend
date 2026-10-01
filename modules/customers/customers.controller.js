@@ -1,4 +1,4 @@
-const { prisma } = require("../../db");
+const { prisma, prismaRead } = require("../../db");
 const { customerResponse } = require("../../utils/serializers");
 const { validatePhone, validateEmail, validateText } = require("../../utils/validators");
 const { parsePagination, paginationMeta } = require("../../utils/pagination");
@@ -26,13 +26,13 @@ async function getCustomers(req, res) {
   };
 
   const [customers, total] = await Promise.all([
-    prisma.customer.findMany({
+    prismaRead.customer.findMany({
       where,
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       skip,
       take: limit,
     }),
-    prisma.customer.count({ where }),
+    prismaRead.customer.count({ where }),
   ]);
 
   const mapped = customers.map(customerResponse);
@@ -74,7 +74,7 @@ async function getCustomerHistory(req, res) {
   };
 
   const [sales, total] = await Promise.all([
-    prisma.sale.findMany({
+    prismaRead.sale.findMany({
       where: saleWhere,
       include: {
         items: true,
@@ -84,7 +84,7 @@ async function getCustomerHistory(req, res) {
       skip,
       take: limit,
     }),
-    prisma.sale.count({ where: saleWhere }),
+    prismaRead.sale.count({ where: saleWhere }),
   ]);
 
   const { invoiceResponse } = require("../../utils/serializers");
