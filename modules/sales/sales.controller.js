@@ -1,7 +1,13 @@
 ﻿const { prisma } = require("../../db");
 const { invoiceResponse } = require("../../utils/serializers");
-const { createSale } = require("./checkout.service");
+const {
+  createSale,
+  DuplicateOfflineSaleError,
+  findExistingOfflineSale,
+} = require("./checkout.service");
 const { emitBusinessEvent } = require("../realtime/socket");
+const { toHttpError } = require("../../utils/domain-errors");
+const { invalidateBusinessCaches } = require("../../utils/cache-invalidate");
 
 async function checkout(req, res) {
   try {
@@ -15,11 +21,23 @@ async function checkout(req, res) {
       createSale(tx, { ...req.user, businessId: req.businessId }, items, req.body),
     );
 
+    invalidateBusinessCaches(req.businessId);
     emitBusinessEvent(req.businessId, "sale.created", invoiceResponse(sale));
     return res.status(201).json(invoiceResponse(sale));
   } catch (error) {
+    if (error instanceof DuplicateOfflineSaleError || error.code === "DUPLICATE_OFFLINE_SALE") {
+      const existing = await findExistingOfflineSale(prisma, req.businessId, error.invoiceNumber);
+      if (existing) {
+        return res.status(200).json(invoiceResponse(existing));
+      }
+    }
+
+    const mapped = toHttpError(error);
+    if (mapped) return res.status(mapped.status).json(mapped.body);
+
     return res.status(400).json({
       message: error.message ?? "Could not complete sale.",
+      ...(error.code ? { code: error.code } : {}),
     });
   }
 }
@@ -35,7 +53,9 @@ async function getInvoice(req, res) {
     where: {
       id: saleId,
       businessId: req.businessId,
-      ...(req.user.role === "admin" ? {} : { userId: req.user.id }),
+      ...(req.businessRole === "owner" || req.businessRole === "admin"
+        ? {}
+        : { userId: req.user.id }),
     },
   });
 

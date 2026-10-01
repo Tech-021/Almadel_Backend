@@ -4,8 +4,8 @@ const { summarizeSamples } = require("../lib/metrics");
 const READS = [
   { test: "business-list", path: "/business/my-businesses", paginated: false },
   { test: "dashboard", path: "/dashboard", paginated: false },
-  { test: "team-list", path: "/admin/staff", paginated: false },
-  { test: "product-list", path: "/products", paginated: false },
+  { test: "team-list", path: "/admin/staff?page=1&limit=50", paginated: true, limited: 50 },
+  { test: "product-list", path: "/products?page=1&limit=50", paginated: true, limited: 50 },
   { test: "product-search", path: "/products/search?q=Loadtest", paginated: false, limited: 50 },
   { test: "sales-list", path: "/sales", paginated: false },
 ];
@@ -87,11 +87,11 @@ async function runReadSuite(config, anchor, businessId = anchor.businessId) {
 
 function notesForReads() {
   return [
-    "GET /products returns every product for the business in one response. The route has no page or limit parameter.",
-    "GET /admin/staff returns every staff and accountant member and aggregates sales, products, and stock logs for those users. The route has no page parameter.",
+    "GET /products is paginated (default limit 50, max 250) and returns `{ products, pagination }`. Use GET /products/export for full dumps.",
+    "GET /admin/staff is paginated (default 50, max 100) and aggregates stats only for the current page of members.",
     "GET /products/search stops at 50 rows.",
     "There is no separate stock-list route. Stock is a column on products. Stock changes go through POST /stock/add, POST /stock/receive-one, and sale checkout.",
-    "GET /dashboard loads the business product list as part of the admin dashboard.",
+    "GET /dashboard returns summary metrics + top-N low-stock / top sellers (no full catalog).",
   ];
 }
 

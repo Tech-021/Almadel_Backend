@@ -9,6 +9,11 @@ node_modules/
 # uploads
 uploads/
 
+# runtime logs (kept on disk, never commit)
+logs/*
+!logs/.gitkeep
+*.log
+
 # Prisma generated client (if ever generated inside the repo)
 prisma/generated/
 

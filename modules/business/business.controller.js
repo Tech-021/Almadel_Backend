@@ -1,180 +1,169 @@
 const db = require("../../db");
 const prisma = db.prisma || db;
-const { validatePhone, validateEmail, validateText, validateNumber } = require("../../utils/validators");
+const {
+  validatePhone,
+  validateEmail,
+  validateText,
+  validateNumber,
+  validateOpeningBalanceRows,
+} = require("../../utils/validators");
+const {
+  assertBusinessManagementAccess,
+  assertBusinessMemberAccess,
+} = require("./business-access");
+const {
+  getOnboardingDraft,
+  saveOnboardingDraft,
+  updateOnboardingWorkspaceMode,
+} = require("./onboarding.service");
 
-// POST /business/setup - Create new business & link owner
+function buildOnboardingPayload(body) {
+  const {
+    name,
+    businessType,
+    businessCategory,
+    mobileNumber,
+    whatsappNumber,
+    email,
+    address,
+    city,
+    area,
+    province,
+    accountingStartDate,
+    openingCashBalance,
+  } = body;
+
+  const nameVal = validateText(name, { minLength: 2, maxLength: 100, fieldName: "Business name" });
+  if (!nameVal.valid) {
+    return { error: nameVal.error };
+  }
+
+  const phoneVal = validatePhone(mobileNumber, { required: true, fieldName: "Primary mobile number" });
+  if (!phoneVal.valid) {
+    return { error: phoneVal.error };
+  }
+
+  if (whatsappNumber) {
+    const whatsappVal = validatePhone(whatsappNumber, { required: false, fieldName: "WhatsApp number" });
+    if (!whatsappVal.valid) {
+      return { error: whatsappVal.error };
+    }
+  }
+
+  if (email) {
+    const emailVal = validateEmail(email, { required: false, fieldName: "Business email" });
+    if (!emailVal.valid) {
+      return { error: emailVal.error };
+    }
+  }
+
+  const openingBalanceNum = Number(openingCashBalance) || 0;
+  const startDate = accountingStartDate ? new Date(accountingStartDate) : new Date();
+
+  return {
+    payload: {
+      name: String(name).trim(),
+      businessType: businessType?.trim() || "Mobile Shop",
+      businessCategory: businessCategory?.trim() || null,
+      mobileNumber: String(mobileNumber).trim(),
+      whatsappNumber: whatsappNumber?.trim() || null,
+      email: email?.trim() || null,
+      address: address?.trim() || null,
+      city: city?.trim() || null,
+      area: area?.trim() || null,
+      province: province?.trim() || null,
+      accountingStartDate: startDate.toISOString(),
+      openingCashBalance: openingBalanceNum,
+    },
+  };
+}
+
+// POST /business/setup — save onboarding draft (business created after Stripe checkout)
 async function setupBusiness(req, res) {
   try {
-    const {
-      name,
-      businessType,
-      businessCategory,
-      mobileNumber,
-      whatsappNumber,
-      email,
-      address,
-      city,
-      area,
-      province,
-      accountingStartDate,
-      openingCashBalance,
-    } = req.body;
-
-    const nameVal = validateText(name, { minLength: 2, maxLength: 100, fieldName: "Business name" });
-    if (!nameVal.valid) {
-      return res.status(400).json({ message: nameVal.error });
-    }
-
-    const phoneVal = validatePhone(mobileNumber, { required: true, fieldName: "Primary mobile number" });
-    if (!phoneVal.valid) {
-      return res.status(400).json({ message: phoneVal.error });
-    }
-
-    if (whatsappNumber) {
-      const whatsappVal = validatePhone(whatsappNumber, { required: false, fieldName: "WhatsApp number" });
-      if (!whatsappVal.valid) {
-        return res.status(400).json({ message: whatsappVal.error });
-      }
-    }
-
-    if (email) {
-      const emailVal = validateEmail(email, { required: false, fieldName: "Business email" });
-      if (!emailVal.valid) {
-        return res.status(400).json({ message: emailVal.error });
-      }
+    const built = buildOnboardingPayload(req.body);
+    if (built.error) {
+      return res.status(400).json({ message: built.error });
     }
 
     const userId = Number(req.user?.id);
-    const openingBalanceNum = Number(openingCashBalance) || 0;
-    const startDate = accountingStartDate ? new Date(accountingStartDate) : new Date();
+    const workspaceMode =
+      req.body.workspaceMode === "financial" || req.body.workspaceMode === "pos"
+        ? req.body.workspaceMode
+        : undefined;
 
-    // Enforce 1 Admin = 1 Business: Check if user already owns or belongs to a business
-    const existingOwnerBiz = await (prisma.business || prisma.Business).findUnique({
-      where: { ownerId: userId },
-    });
-    if (existingOwnerBiz) {
-      return res.status(400).json({
-        message: "You already have a registered business with this account. Each account is strictly limited to one business.",
-        business: formatBusinessSubscription(existingOwnerBiz),
-      });
-    }
-
-    const memberModel = prisma.businessMember || prisma.BusinessMember;
-    if (memberModel) {
-      const existingMembership = await memberModel.findUnique({
-        where: { userId },
-        include: { business: true },
-      });
-      if (existingMembership) {
-        return res.status(400).json({
-          message: "You already belong to a registered business. Each account is strictly limited to one business.",
-          business: formatBusinessSubscription(existingMembership.business),
-        });
-      }
-    }
-
-    const business = await prisma.$transaction(async (tx) => {
-      // Safe model references
-      const bizClient = tx.business || tx.Business || tx.businesses;
-      const memberClient = tx.businessMember || tx.BusinessMember || tx.business_members;
-      const logClient = tx.activityLog || tx.ActivityLog || tx.activity_logs;
-
-      if (!bizClient) {
-        throw new Error(`Prisma 'business' model not found on tx. Available models: ${Object.keys(tx).join(', ')}`);
-      }
-
-      // 1. Create Business
-      const newBiz = await bizClient.create({
-        data: {
-          name: name.trim(),
-          businessType: businessType?.trim() || "Mobile Shop",
-          businessCategory: businessCategory?.trim() || null,
-          mobileNumber: mobileNumber.trim(),
-          whatsappNumber: whatsappNumber?.trim() || null,
-          email: email?.trim() || null,
-          address: address?.trim() || null,
-          city: city?.trim() || null,
-          area: area?.trim() || null,
-          province: province?.trim() || null,
-          accountingStartDate: startDate,
-          openingCashBalance: openingBalanceNum,
-          subscriptionStatus: "trialing",
-          trialEndsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-          ownerId: userId,
-        },
-      });
-
-      // 2. Link User as Owner
-      if (memberClient) {
-        await memberClient.create({
-          data: {
-            businessId: newBiz.id,
-            userId: userId,
-            role: "owner",
-          },
-        });
-      }
-
-      // 3. Create Default Primary Branch (single branch MVP & seamless multi-branch expansion)
-      const branchClient = tx.branch || tx.Branch || tx.branches;
-      if (branchClient) {
-        try {
-          await branchClient.create({
-            data: {
-              businessId: newBiz.id,
-              name: "Main Branch",
-              address: address?.trim() || null,
-              phone: mobileNumber.trim(),
-              isMain: true,
-              isActive: true,
-            },
-          });
-        } catch (branchErr) {
-          console.warn("Branch creation notice:", branchErr.message);
-        }
-      }
-
-      // 4. Initial log
-      if (logClient) {
-        try {
-          await logClient.create({
-            data: {
-              businessId: newBiz.id,
-              action: "BUSINESS_SETUP",
-              category: "Business",
-              details: `Business '${newBiz.name}' initialized by ${req.user.fullName || req.user.email}`,
-              target: newBiz.name,
-              meta: {
-                businessType: newBiz.businessType,
-                businessCategory: newBiz.businessCategory,
-                openingCashBalance: openingBalanceNum,
-              },
-              userId,
-              userName: req.user.fullName || req.user.name || "Owner",
-              userEmail: req.user.email,
-              userRole: "admin",
-            },
-          });
-        } catch (e) {
-          console.warn("Log creation notice:", e.message);
-        }
-      }
-
-      return newBiz;
-    });
+    const draft = await saveOnboardingDraft(userId, built.payload, workspaceMode);
 
     return res.status(201).json({
       success: true,
-      message: "Business created and configured successfully.",
-      business,
+      message: "Business details saved. Complete Stripe checkout to activate your store.",
+      requiresStripe: true,
+      draft: {
+        workspaceMode: draft.workspaceMode,
+        businessName: built.payload.name,
+      },
     });
   } catch (error) {
+    if (error.status === 400 && error.business) {
+      return res.status(400).json({
+        message: error.message,
+        business: formatBusinessSubscription(error.business),
+      });
+    }
+    if (error.status) {
+      return res.status(error.status).json({ message: error.message });
+    }
     console.error("Setup business error:", error);
-    return res.status(500).json({ message: "Failed to setup business.", error: error.message });
+    return res.status(500).json({ message: "Failed to save business setup.", error: error.message });
   }
 }
 
-function formatBusinessSubscription(biz) {
+// PATCH /business/onboarding/workspace-mode
+async function patchOnboardingWorkspaceMode(req, res) {
+  try {
+    const userId = Number(req.user?.id);
+    const { workspaceMode } = req.body;
+    const draft = await updateOnboardingWorkspaceMode(userId, workspaceMode);
+    return res.json({
+      success: true,
+      workspaceMode: draft.workspaceMode,
+    });
+  } catch (error) {
+    if (error.status) {
+      return res.status(error.status).json({ message: error.message });
+    }
+    console.error("Patch onboarding workspace error:", error);
+    return res.status(500).json({ message: "Failed to update workspace preference." });
+  }
+}
+
+// GET /business/onboarding/status
+async function getOnboardingStatus(req, res) {
+  try {
+    const userId = Number(req.user?.id);
+    const [draft, membership] = await Promise.all([
+      getOnboardingDraft(userId),
+      prisma.businessMember.findUnique({ where: { userId } }),
+    ]);
+
+    return res.json({
+      success: true,
+      hasBusiness: Boolean(membership),
+      hasDraft: Boolean(draft),
+      draft: draft
+        ? {
+            workspaceMode: draft.workspaceMode,
+            businessName: draft.payload?.name ?? null,
+          }
+        : null,
+    });
+  } catch (error) {
+    console.error("Onboarding status error:", error);
+    return res.status(500).json({ message: "Failed to read onboarding status." });
+  }
+}
+
+function formatBusinessSubscription(biz, { slim = false } = {}) {
   if (!biz) return biz;
   const hasStripeSub = Boolean(biz.stripeSubscriptionId);
   const isSubscribed = biz.subscriptionStatus === "active" || (hasStripeSub && biz.subscriptionStatus !== "canceled");
@@ -187,6 +176,22 @@ function formatBusinessSubscription(biz) {
   let daysRemaining = 0;
   if (biz.trialEndsAt) {
     daysRemaining = Math.max(0, Math.ceil((new Date(biz.trialEndsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
+  }
+  if (slim) {
+    return {
+      id: biz.id,
+      name: biz.name,
+      businessType: biz.businessType,
+      mobileNumber: biz.mobileNumber,
+      workspaceMode: biz.workspaceMode,
+      subscriptionStatus: biz.subscriptionStatus,
+      trialEndsAt: biz.trialEndsAt,
+      ownerId: biz.ownerId,
+      isTrial,
+      isSubscribed,
+      isTrialExpired: trialExpired,
+      trialDaysRemaining: daysRemaining,
+    };
   }
   return {
     ...biz,
@@ -208,12 +213,27 @@ async function getMyBusinesses(req, res) {
       return res.json({ success: true, businesses: [] });
     }
 
-    // Single Business Per Admin Rule:
-    // Query memberships for this user and return ONLY the primary single business
+    // One-business-per-user: return at most one slim membership (no nested collections).
     const memberships = await memberModel.findMany({
       where: { userId },
-      include: { business: true },
+      select: {
+        role: true,
+        business: {
+          select: {
+            id: true,
+            name: true,
+            businessType: true,
+            mobileNumber: true,
+            workspaceMode: true,
+            subscriptionStatus: true,
+            trialEndsAt: true,
+            ownerId: true,
+            stripeSubscriptionId: true,
+          },
+        },
+      },
       orderBy: { createdAt: "desc" },
+      take: 5,
     });
 
     if (!memberships.length) {
@@ -228,7 +248,7 @@ async function getMyBusinesses(req, res) {
 
     const businesses = [
       {
-        ...formatBusinessSubscription(primary.business),
+        ...formatBusinessSubscription(primary.business, { slim: true }),
         membershipRole: primary.role,
       },
     ];
@@ -252,18 +272,21 @@ async function getBusinessDetails(req, res) {
       return res.status(500).json({ message: "Business model not available." });
     }
 
-    const membership = memberModel ? await memberModel.findUnique({
-      where: { businessId_userId: { businessId, userId } },
-      include: { business: true },
-    }) : null;
-
-    if (!membership && req.user.role !== "admin") {
-      return res.status(403).json({ message: "You do not have access to this business." });
+    const access = await assertBusinessMemberAccess(userId, businessId);
+    if (!access.ok) {
+      return res.status(access.status).json({ message: access.message });
     }
+
+    const membership = memberModel
+      ? await memberModel.findUnique({
+          where: { businessId_userId: { businessId, userId } },
+          include: { business: true },
+        })
+      : null;
 
     const rawBiz = membership
       ? { ...membership.business, membershipRole: membership.role }
-      : await bizModel.findUnique({ where: { id: businessId } });
+      : null;
 
     if (!rawBiz) {
       return res.status(404).json({ message: "Business not found." });
@@ -289,13 +312,9 @@ async function updateBusiness(req, res) {
       return res.status(500).json({ message: "Business model not available." });
     }
 
-    if (memberModel) {
-      const membership = await memberModel.findUnique({
-        where: { businessId_userId: { businessId, userId } },
-      });
-      if (!membership || (membership.role !== "owner" && membership.role !== "admin")) {
-        return res.status(403).json({ message: "Only business owners can update business settings." });
-      }
+    const manageAccess = await assertBusinessManagementAccess(userId, businessId);
+    if (!manageAccess.ok) {
+      return res.status(manageAccess.status).json({ message: manageAccess.message });
     }
 
     const {
@@ -311,7 +330,11 @@ async function updateBusiness(req, res) {
       province,
       logoUrl,
       allowDiscounts,
+      workspaceMode,
     } = req.body;
+
+    const normalizedWorkspaceMode =
+      workspaceMode === "pos" || workspaceMode === "financial" ? workspaceMode : undefined;
 
     const updated = await bizModel.update({
       where: { id: businessId },
@@ -328,6 +351,7 @@ async function updateBusiness(req, res) {
         province: province !== undefined ? province.trim() : undefined,
         logoUrl: logoUrl !== undefined ? (logoUrl ? String(logoUrl).trim() : null) : undefined,
         allowDiscounts: allowDiscounts !== undefined ? Boolean(allowDiscounts) : undefined,
+        workspaceMode: normalizedWorkspaceMode,
       },
     });
 
@@ -359,15 +383,11 @@ async function completeFinancialSetup(req, res) {
       return res.status(500).json({ message: "Business model not available." });
     }
 
-    // Verify ownership / membership
-    if (memberModel) {
-      const membership = await memberModel.findUnique({
-        where: { businessId_userId: { businessId, userId } },
-      });
-      if (!membership && req.user.role !== "admin") {
-        return res.status(403).json({ message: "You do not have access to manage this business." });
-      }
+    const manageAccess = await assertBusinessManagementAccess(userId, businessId);
+    if (!manageAccess.ok) {
+      return res.status(manageAccess.status).json({ message: manageAccess.message });
     }
+    const setupMembership = manageAccess.membership;
 
     const {
       accountingStartDate,
@@ -431,6 +451,16 @@ async function completeFinancialSetup(req, res) {
       }
     }
 
+    const customerRows = validateOpeningBalanceRows(customers, "Customer");
+    if (!customerRows.ok) {
+      return res.status(400).json({ message: customerRows.error });
+    }
+
+    const supplierRows = validateOpeningBalanceRows(suppliers, "Supplier");
+    if (!supplierRows.ok) {
+      return res.status(400).json({ message: supplierRows.error });
+    }
+
     await prisma.$transaction(async (tx) => {
       const txBiz = tx.business || tx.Business;
       const txCust = tx.customer || tx.Customer;
@@ -462,12 +492,37 @@ async function completeFinancialSetup(req, res) {
         },
       });
 
+      // Keep operational cash account openingBalance coherent with business config
+      // only when the account has no ledger history yet (do not rewrite historical openings).
+      const cashAccount = await tx.account.findUnique({
+        where: { businessId_name: { businessId, name: "Cash in hand" } },
+      });
+      if (!cashAccount) {
+        await tx.account.create({
+          data: {
+            businessId,
+            name: "Cash in hand",
+            type: "cash",
+            openingBalance: cashNum,
+          },
+        });
+      } else {
+        const ledgerCount = await tx.ledgerTransaction.count({
+          where: { businessId, accountId: cashAccount.id },
+        });
+        if (ledgerCount === 0) {
+          await tx.account.update({
+            where: { id: cashAccount.id },
+            data: { openingBalance: cashNum },
+          });
+        }
+      }
+
       // 2. Section 5: Add initial customers if provided
-      if (Array.isArray(customers) && customers.length > 0 && txCust) {
-        for (const c of customers) {
+      if (customerRows.parsed.length > 0 && txCust) {
+        for (const { row: c, openingBalance: cBal } of customerRows.parsed) {
           const cName = String(c.name || "").trim();
           const cMobile = String(c.mobile || "").trim();
-          const cBal = Number(c.openingBalance) || 0;
           if (cName && cMobile) {
             const existing = await txCust.findUnique({
               where: { businessId_mobile: { businessId, mobile: cMobile } },
@@ -488,12 +543,11 @@ async function completeFinancialSetup(req, res) {
       }
 
       // 3. Section 5: Add initial suppliers if provided
-      if (Array.isArray(suppliers) && suppliers.length > 0 && txSupp) {
-        for (const s of suppliers) {
+      if (supplierRows.parsed.length > 0 && txSupp) {
+        for (const { row: s, openingBalance: sBal } of supplierRows.parsed) {
           const sName = String(s.name || "").trim();
           const sMobile = String(s.mobile || "").trim() || null;
           const sEmail = String(s.email || "").trim() || null;
-          const sBal = Number(s.openingBalance) || 0;
           if (sName) {
             await txSupp.create({
               data: {
@@ -584,7 +638,7 @@ async function completeFinancialSetup(req, res) {
               userId,
               userName: req.user?.fullName || req.user?.name || "Owner",
               userEmail: req.user?.email || "admin@almadel.com",
-              userRole: req.user?.role || "admin",
+              userRole: setupMembership?.role || req.user?.role || "owner",
             },
           });
         } catch (e) {
@@ -615,6 +669,8 @@ async function completeFinancialSetup(req, res) {
 
 module.exports = {
   setupBusiness,
+  patchOnboardingWorkspaceMode,
+  getOnboardingStatus,
   completeFinancialSetup,
   getMyBusinesses,
   getBusinessDetails,

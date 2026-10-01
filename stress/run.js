@@ -111,8 +111,9 @@ async function main() {
     return;
   }
 
-  const { prisma, resetPrismaClient } = require("../db");
-  await resetPrismaClient();
+  const db = require("../db");
+  await db.resetPrismaClient();
+  const prisma = db.prisma;
   await assertConnectedStressDatabase(prisma);
   const runId = `stress-${new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z")}`;
   const dir = ensureDir(path.join(config.root, "stress", "results", runId));

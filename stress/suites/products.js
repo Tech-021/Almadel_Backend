@@ -45,7 +45,7 @@ async function probeProductReads(config, anchor, concurrencyLevels) {
   const barcode = search.json?.products?.[0]?.barcode;
 
   const endpoints = [
-    { test: "product-list", path: "/products" },
+    { test: "product-list", path: "/products?page=1&limit=50" },
     { test: "product-search", path: "/products/search?q=Loadtest" },
   ];
   if (barcode) {

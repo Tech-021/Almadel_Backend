@@ -10,6 +10,7 @@
     "db:migrate": "prisma migrate dev",
     "db:stress:seed": "node stress-seed.js",
     "stress": "node stress/run.js",
+    "stress:api": "node scripts/start-stress-api.js",
     "stress:all": "node stress/run.js --suite all",
     "stress:business": "node stress/run.js --suite business",
     "stress:team": "node stress/run.js --suite team",
@@ -18,7 +19,11 @@
     "stress:reads": "node stress/run.js --suite reads",
     "stress:mixed": "node stress/run.js --suite mixed",
     "stress:db": "node stress/run-db.js",
+    "stress:db:acid": "node stress/run-db-acid.js",
+    "stress:db:acid-api": "node stress/run-db-acid-api.js",
     "stress:db:scale": "node stress/run-db-scale.js",
+    "test:integrity": "node --test tests/integrity/**/*.test.js",
+    "test:redis": "node --test tests/integrity/redis-cache.test.js",
     "stress:gaps": "node stress/run-gaps.js",
     "stress:combine": "node stress/combine-reports.js",
     "stress:seed:businesses": "node stress/seed/seed-businesses.js",
@@ -39,7 +44,8 @@
     "db:studio": "prisma studio",
     "admin:create": "node create-admin.js",
     "seed": "node seed.js",
-    "seed:manual-qa": "node scripts/seed-manual-qa-volume.js"
+    "seed:manual-qa": "node scripts/seed-manual-qa-volume.js",
+    "start:pm2": "pm2 start ecosystem.config.js --update-env"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",
@@ -49,6 +55,7 @@
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
+    "express-rate-limit": "^7.5.1",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.2.0",
     "nodemailer": "^10.0.10",

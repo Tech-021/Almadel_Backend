@@ -1,9 +1,56 @@
-const { prisma } = require("../../db");
+const { prisma, prismaRead } = require("../../db");
 
-// POST /admin/logs or POST /logs - Record new activity event
+function requireScopedBusinessId(req, res) {
+  const businessId = Number(req.businessId);
+  if (!Number.isInteger(businessId) || businessId <= 0) {
+    res.status(400).json({
+      success: false,
+      message: "Active business is required.",
+      requiresBusinessSetup: true,
+    });
+    return null;
+  }
+  return businessId;
+}
+
+function resolveLogActor(req) {
+  const authUser = req.user;
+  if (!authUser?.id) {
+    return null;
+  }
+
+  const membershipRole = req.businessRole;
+  let userRole = "staff";
+  if (membershipRole === "owner" || membershipRole === "admin") {
+    userRole = "admin";
+  } else if (membershipRole === "accountant") {
+    userRole = "accountant";
+  } else if (membershipRole === "staff") {
+    userRole = "staff";
+  }
+
+  const userName =
+    String(authUser.fullName || authUser.name || "").trim() ||
+    String(authUser.email || "").trim() ||
+    "Unknown user";
+  const userEmail = String(authUser.email || "").trim();
+
+  return {
+    userId: Number(authUser.id),
+    userName,
+    userEmail,
+    userRole,
+  };
+}
+
+// POST /logs - Record new activity event (scoped to the caller's business)
 async function createLog(req, res) {
   try {
-    const { action, category, details, target, meta, userName: bodyName, userEmail: bodyEmail, userRole: bodyRole, userId: bodyId } = req.body;
+    const businessId = requireScopedBusinessId(req, res);
+    if (!businessId) return;
+
+    const { action, category, details, target, meta } = req.body;
+    // Ignore any client-supplied userName, userEmail, userRole, userId (AUD-F10).
 
     if (!action || !category || !details) {
       return res.status(400).json({
@@ -12,16 +59,20 @@ async function createLog(req, res) {
       });
     }
 
-    const authUser = req.user;
-    const userName = authUser?.fullName || authUser?.name || bodyName || "System Operator";
-    const userEmail = authUser?.email || bodyEmail || "system@almadel.com";
-    const userRole = authUser?.role || bodyRole || "staff";
-    const userId = authUser?.id ? Number(authUser.id) : (bodyId ? Number(bodyId) : null);
+    const actor = resolveLogActor(req);
+    if (!actor) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required to record activity.",
+      });
+    }
+
+    const { userId, userName, userEmail, userRole } = actor;
 
     const log = await prisma.activityLog.create({
       data: {
         action: String(action),
-        businessId: req.businessId,
+        businessId,
         category: String(category),
         details: String(details),
         target: target ? String(target) : null,
@@ -29,7 +80,7 @@ async function createLog(req, res) {
         userId,
         userName,
         userEmail,
-        userRole,
+        userRole: String(userRole),
       },
     });
 
@@ -48,13 +99,21 @@ async function createLog(req, res) {
   }
 }
 
-// GET /admin/logs or GET /logs - Retrieve logs with filter & search
+// GET /logs - Retrieve logs for the active business only
 async function getLogs(req, res) {
   try {
-    const { category, action, search, page = 1, limit = 100 } = req.query;
+    const businessId = requireScopedBusinessId(req, res);
+    if (!businessId) return;
+
+    const { category, action, search } = req.query;
+    const { parsePagination, paginationMeta } = require("../../utils/pagination");
+    const { page: pageNum, limit: limitNum, skip } = parsePagination(req.query, {
+      defaultLimit: 50,
+      maxLimit: 100,
+    });
 
     const where = {
-      businessId: req.businessId,
+      businessId,
     };
 
     if (category && category !== "All") {
@@ -84,18 +143,14 @@ async function getLogs(req, res) {
       ];
     }
 
-    const pageNum = Math.max(1, parseInt(page, 10) || 1);
-    const limitNum = Math.min(500, Math.max(1, parseInt(limit, 10) || 100));
-    const skip = (pageNum - 1) * limitNum;
-
     const [rawLogs, total] = await Promise.all([
-      prisma.activityLog.findMany({
+      prismaRead.activityLog.findMany({
         where,
-        orderBy: { timestamp: "desc" },
+        orderBy: [{ timestamp: "desc" }, { id: "desc" }],
         skip,
         take: limitNum,
       }),
-      prisma.activityLog.count({ where }),
+      prismaRead.activityLog.count({ where }),
     ]);
 
     const logs = rawLogs.map((item) => ({
@@ -114,11 +169,13 @@ async function getLogs(req, res) {
       meta: item.meta,
     }));
 
+    const pagination = paginationMeta(pageNum, limitNum, total);
     return res.status(200).json({
       success: true,
-      total,
-      page: pageNum,
-      limit: limitNum,
+      total: pagination.total,
+      page: pagination.page,
+      limit: pagination.limit,
+      pagination,
       logs,
     });
   } catch (error) {
@@ -131,15 +188,20 @@ async function getLogs(req, res) {
   }
 }
 
-// DELETE /admin/logs or DELETE /logs - Clear logs
+// DELETE /logs - Clear logs for the active business only (owner/admin)
 async function clearLogs(req, res) {
   try {
-    await prisma.activityLog.deleteMany({
-      where: { businessId: req.businessId },
+    const businessId = requireScopedBusinessId(req, res);
+    if (!businessId) return;
+
+    const result = await prisma.activityLog.deleteMany({
+      where: { businessId },
     });
+
     return res.status(200).json({
       success: true,
       message: "All activity logs have been cleared successfully.",
+      deleted: result.count,
     });
   } catch (error) {
     console.error("Error in clearLogs:", error);

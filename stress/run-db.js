@@ -13,8 +13,9 @@ const { runDatabaseSuite } = require("./suites/database");
 async function main() {
   const config = loadConfig(["--suite", "database", ...process.argv.slice(2)]);
 
-  const { prisma, resetPrismaClient } = require("../db");
-  await resetPrismaClient();
+  const db = require("../db");
+  await db.resetPrismaClient();
+  const prisma = db.prisma;
   await assertConnectedStressDatabase(prisma);
   const runId = `stress-db-${new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z")}`;
   const dir = ensureDir(path.join(config.root, "stress", "results", runId));

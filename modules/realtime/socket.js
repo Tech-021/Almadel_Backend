@@ -1,20 +1,12 @@
 const { Server } = require("socket.io");
 const { createAdapter } = require("@socket.io/redis-adapter");
-const { createClient } = require("redis");
 const { prisma } = require("../../db");
 const { verifyAccessToken } = require("../auth/token.service");
+const { isAllowedCorsOrigin } = require("../../utils/cors-origins");
+const { isRedisEnabled, createPubSubClients } = require("../../utils/redis");
+const { logger } = require("../../utils/logger");
 
 let ioInstance = null;
-
-function isAllowedOrigin(origin) {
-  if (!origin) return true;
-  const defaults = ["http://localhost:3000", "http://localhost:3001", "http://127.0.0.1:3000"];
-  const custom = (process.env.CORS_ORIGINS || "").split(",").map((value) => value.trim()).filter(Boolean);
-  return (
-    [...defaults, ...custom, process.env.FRONTEND_URL].filter(Boolean).includes(origin) ||
-    origin.endsWith(".vercel.app")
-  );
-}
 
 async function authenticateSocket(socket, next) {
   try {
@@ -54,7 +46,10 @@ async function joinBusiness(socket, businessId) {
 
 async function registerSocketHandlers(httpServer) {
   const io = new Server(httpServer, {
-    cors: { credentials: true, origin: (origin, callback) => callback(null, isAllowedOrigin(origin)) },
+    cors: {
+      credentials: true,
+      origin: (origin, callback) => callback(null, isAllowedCorsOrigin(origin)),
+    },
     maxHttpBufferSize: 1e6,
     pingInterval: 25_000,
     pingTimeout: 20_000,
@@ -70,24 +65,20 @@ async function registerSocketHandlers(httpServer) {
     });
   });
 
-  if (process.env.REDIS_URL && process.env.ENABLE_REDIS === "true") {
+  if (isRedisEnabled()) {
     try {
-      const pubClient = createClient({
-        url: process.env.REDIS_URL,
-        socket: { connectTimeout: 1500, reconnectStrategy: false },
-      });
-      const subClient = pubClient.duplicate();
-      pubClient.on("error", (error) => console.warn("Socket.IO Redis publisher warning:", error.message));
-      subClient.on("error", (error) => console.warn("Socket.IO Redis subscriber warning:", error.message));
-      await Promise.race([
-        Promise.all([pubClient.connect(), subClient.connect()]),
-        new Promise((_, reject) => setTimeout(() => reject(new Error("Redis connection timeout")), 2000)),
-      ]);
-      io.adapter(createAdapter(pubClient, subClient));
-      console.log("Socket.IO Redis adapter enabled");
+      const pair = await createPubSubClients();
+      if (pair) {
+        io.adapter(createAdapter(pair.pubClient, pair.subClient));
+        logger.info("Socket.IO Redis adapter enabled");
+      } else {
+        logger.info("Redis optional adapter skipped (using in-memory): client unavailable");
+      }
     } catch (err) {
-      console.log("Redis optional adapter skipped (using in-memory):", err.message);
+      logger.info("Redis optional adapter skipped (using in-memory):", err.message);
     }
+  } else {
+    logger.info("Socket.IO using in-memory adapter (ENABLE_REDIS not true)");
   }
 
   io.use(authenticateSocket);

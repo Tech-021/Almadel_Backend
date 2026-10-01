@@ -1,0 +1,33 @@
+# PostgreSQL tuning reference (apply on DB host — adjust for RAM/CPU).
+# Merge into postgresql.conf or use ALTER SYSTEM, then reload.
+
+# Connections (PgBouncer handles app fan-in; keep Postgres max_connections modest)
+# max_connections = 100
+
+# Memory (example for ~8GB RAM DB box — tune with your DBA)
+# shared_buffers = 2GB
+# effective_cache_size = 6GB
+# work_mem = 16MB
+# maintenance_work_mem = 512MB
+
+# WAL / checkpoints
+# wal_buffers = 16MB
+# checkpoint_completion_target = 0.9
+# max_wal_size = 2GB
+
+# Planner (SSD)
+# random_page_cost = 1.1
+# effective_io_concurrency = 200
+
+# Autovacuum (busy OLTP)
+# autovacuum_vacuum_scale_factor = 0.05
+# autovacuum_analyze_scale_factor = 0.02
+
+# Logging slow queries
+# log_min_duration_statement = 500
+# log_line_prefix = '%m [%p] %u@%d '
+
+# Read replica (streaming) — on primary:
+# wal_level = replica
+# max_wal_senders = 5
+# hot_standby = on   # on replica

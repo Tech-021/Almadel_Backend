@@ -17,6 +17,7 @@ async function main() {
 
   const passwordHash = await bcrypt.hash(password, PASSWORD_HASH_ROUNDS);
 
+  // User.role "admin" is platform-operator only (not assigned on public signup).
   await prisma.user.upsert({
     create: {
       email,
@@ -32,7 +33,7 @@ async function main() {
     where: { email },
   });
 
-  console.log(`Admin ready: ${email}`);
+  console.log(`Platform admin ready: ${email}`);
 }
 
 main()

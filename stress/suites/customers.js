@@ -41,12 +41,12 @@ async function probeCustomerReads(config, anchor, concurrencyLevels) {
   const customers = Array.isArray(list.json?.customers) ? list.json.customers : [];
   const sampleId = customers[0]?.id;
 
-  const endpoints = [{ test: "customer-list", path: "/customers", paginated: false }];
+  const endpoints = [{ test: "customer-list", path: "/customers?page=1&limit=50", paginated: true }];
   if (sampleId) {
     endpoints.push({
       test: "customer-history",
-      path: `/customers/${sampleId}/history`,
-      paginated: false,
+      path: `/customers/${sampleId}/history?page=1&limit=50`,
+      paginated: true,
     });
   }
 

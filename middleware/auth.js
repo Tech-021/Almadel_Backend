@@ -1,4 +1,5 @@
-const { prisma } = require("../db");
+const { prisma, getClientsForBusiness } = require("../db");
+const { runWithTenantDb } = require("../utils/tenant-db-context");
 const { verifyAccessToken } = require("../modules/auth/token.service");
 
 async function requireAuth(req, res, next) {
@@ -43,24 +44,25 @@ async function requireAuth(req, res, next) {
   }
 }
 
-function requireAdmin(req, res, next) {
-  if (req.user?.role !== "admin") {
-    return res.status(403).json({ message: "Admin access required." });
-  }
+/**
+ * Platform operator (created via create-admin.js). Not granted on public signup.
+ * Must not bypass tenant membership checks on business-scoped routes.
+ */
+function isPlatformAdmin(user) {
+  return user?.role === "admin";
+}
 
-  return next();
+/**
+ * Store management (products, stock, staff). Requires business owner/admin membership.
+ * Must run after requireBusiness.
+ */
+function requireAdmin(req, res, next) {
+  return requireBusinessOwnerOrAdmin(req, res, next);
 }
 
 function requireFinanceAccess(req, res, next) {
-  const role = req.user?.role;
   const bizRole = req.businessRole;
-  if (
-    role === "admin" ||
-    role === "accountant" ||
-    bizRole === "admin" ||
-    bizRole === "owner" ||
-    bizRole === "accountant"
-  ) {
+  if (bizRole === "owner" || bizRole === "admin" || bizRole === "accountant") {
     return next();
   }
 
@@ -93,10 +95,16 @@ async function requireBusiness(req, res, next) {
         },
       },
     });
+
+    // Fail closed: client sent x-business-id but user is not a member (forged / stale / cross-tenant).
+    if (!member) {
+      return res.status(403).json({
+        message: "Invalid or unauthorized business context.",
+      });
+    }
   }
 
-  // If header businessId is missing or doesn't belong to this user (e.g. stale localStorage),
-  // fallback to the user's primary/first business
+  // If header businessId is missing, fallback to the user's primary/first business
   if (!member) {
     const primary = await prisma.businessMember.findFirst({
       where: { userId },
@@ -117,9 +125,30 @@ async function requireBusiness(req, res, next) {
 
   req.businessId = businessId;
   req.businessRole = member.role;
-  return next();
+  const clients = getClientsForBusiness(businessId);
+  return runWithTenantDb(clients, () => next());
 }
 
+/**
+ * Requires business membership role owner or admin.
+ * Must run after requireBusiness. Does not treat global User.role === "admin" as cross-tenant access.
+ */
+function requireBusinessOwnerOrAdmin(req, res, next) {
+  const role = req.businessRole;
+  if (role === "owner" || role === "admin") {
+    return next();
+  }
+
+  return res.status(403).json({
+    message: "Only business owners or admins can perform this action.",
+  });
+}
+
+/**
+ * Optional business context with membership validation.
+ * Do not mount on mutating tenant routes. Forged x-business-id is ignored (falls back to primary).
+ * @deprecated Prefer requireBusiness on all tenant-scoped handlers.
+ */
 async function optionalBusiness(req, res, next) {
   if (!req.user || !req.user.id) return next();
 
@@ -127,12 +156,21 @@ async function optionalBusiness(req, res, next) {
   const userId = Number(req.user.id);
   let businessId = headerBizId && !isNaN(Number(headerBizId)) ? Number(headerBizId) : null;
 
-  if (businessId) {
-    req.businessId = businessId;
-    return next();
-  }
-
   try {
+    if (businessId) {
+      const membership = await prisma.businessMember.findUnique({
+        where: { businessId_userId: { businessId, userId } },
+      });
+      if (membership) {
+        req.businessId = businessId;
+        req.businessRole = membership.role;
+        const clients = getClientsForBusiness(businessId);
+        return runWithTenantDb(clients, () => next());
+      }
+      // Forged / foreign header — do not assign; fall through to primary membership.
+      businessId = null;
+    }
+
     const primary = await prisma.businessMember.findFirst({
       where: { userId },
       orderBy: { createdAt: "asc" },
@@ -140,16 +178,22 @@ async function optionalBusiness(req, res, next) {
     if (primary) {
       req.businessId = primary.businessId;
       req.businessRole = primary.role;
+      const clients = getClientsForBusiness(primary.businessId);
+      return runWithTenantDb(clients, () => next());
     }
-  } catch {}
+  } catch {
+    // leave business unset
+  }
 
   return next();
 }
 
 module.exports = {
+  isPlatformAdmin,
   requireAdmin,
   requireAuth,
   requireBusiness,
+  requireBusinessOwnerOrAdmin,
   optionalBusiness,
   requireFinanceAccess,
 };

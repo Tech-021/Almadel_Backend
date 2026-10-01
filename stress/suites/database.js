@@ -239,7 +239,27 @@ async function runIndexAndTableStats() {
   };
 }
 
+async function ensureCashAccount(business) {
+  const existing = await prisma().account.findFirst({
+    where: { businessId: business.id, isActive: true },
+    orderBy: { id: "asc" },
+  });
+  if (existing) return existing;
+  return prisma().account.create({
+    data: {
+      businessId: business.id,
+      name: `STRESS-ACID-CASH-${Date.now()}`,
+      type: "cash",
+      openingBalance: 0,
+    },
+  });
+}
+
 async function testAtomicity(business) {
+  const results = [];
+  const stamp = Date.now();
+
+  // 1) Classic stock + stock_log rollback
   const product = await prisma().product.findFirst({
     where: { businessId: business.id, barcode: { startsWith: "STRESS-P-" } },
     orderBy: { id: "asc" },
@@ -249,7 +269,7 @@ async function testAtomicity(business) {
   const before = await prisma().product.findUnique({ where: { id: product.id } });
   const beforeLogs = await prisma().stockLog.count({ where: { productId: product.id } });
 
-  let aborted = false;
+  let abortedStock = false;
   try {
     await prisma().$transaction(async (tx) => {
       await tx.product.update({
@@ -271,19 +291,278 @@ async function testAtomicity(business) {
       throw new Error("forced rollback");
     });
   } catch (error) {
-    aborted = /forced rollback/.test(error.message);
+    abortedStock = /forced rollback/.test(error.message);
   }
 
   const after = await prisma().product.findUnique({ where: { id: product.id } });
   const afterLogs = await prisma().stockLog.count({ where: { productId: product.id } });
-  const pass = aborted && after.stock === before.stock && afterLogs === beforeLogs;
-  return {
+  results.push({
     principle: "Atomicity",
     test: "Increment stock + create stock log, then force rollback",
     expected: "Neither stock nor stock_log row survives",
     actual: `stock ${before.stock}->${after.stock}, logs ${beforeLogs}->${afterLogs}`,
-    result: pass ? "PASS" : "FAIL",
-  };
+    result: abortedStock && after.stock === before.stock && afterLogs === beforeLogs ? "PASS" : "FAIL",
+  });
+
+  // 2) Sale + sale_item + stock decrement rollback (checkout-shaped write)
+  const saleProduct = await prisma().product.create({
+    data: {
+      businessId: business.id,
+      barcode: `STRESS-ACID-SALE-${stamp}`,
+      name: "Atomicity sale product",
+      price: 25,
+      sellingPrice: 25,
+      stock: 20,
+      createdByUserId: business.ownerId,
+    },
+  });
+  const beforeSaleCount = await prisma().sale.count({ where: { businessId: business.id } });
+  const beforeItemCount = await prisma().saleItem.count({
+    where: { productId: saleProduct.id },
+  });
+  let abortedSale = false;
+  try {
+    await prisma().$transaction(async (tx) => {
+      const sale = await tx.sale.create({
+        data: {
+          businessId: business.id,
+          invoiceNumber: `ACID-INV-${stamp}`,
+          subtotal: 25,
+          totalAmount: 25,
+          totalItems: 1,
+          paymentMethod: "cash",
+          userId: business.ownerId,
+        },
+      });
+      await tx.saleItem.create({
+        data: {
+          saleId: sale.id,
+          productId: saleProduct.id,
+          barcode: saleProduct.barcode,
+          name: saleProduct.name,
+          price: 25,
+          quantity: 1,
+          total: 25,
+        },
+      });
+      await tx.product.update({
+        where: { id: saleProduct.id },
+        data: { stock: { decrement: 1 } },
+      });
+      throw new Error("forced rollback");
+    });
+  } catch (error) {
+    abortedSale = /forced rollback/.test(error.message);
+  }
+  const afterSaleProduct = await prisma().product.findUnique({ where: { id: saleProduct.id } });
+  const afterSaleCount = await prisma().sale.count({ where: { businessId: business.id } });
+  const afterItemCount = await prisma().saleItem.count({
+    where: { productId: saleProduct.id },
+  });
+  const orphanSale = await prisma().sale.findFirst({
+    where: { businessId: business.id, invoiceNumber: `ACID-INV-${stamp}` },
+  });
+  results.push({
+    principle: "Atomicity",
+    test: "Sale + sale_item + stock decrement, then force rollback",
+    expected: "No sale/sale_item survives; product stock unchanged",
+    actual: `sales ${beforeSaleCount}->${afterSaleCount}, items ${beforeItemCount}->${afterItemCount}, stock ${saleProduct.stock}->${afterSaleProduct.stock}, orphan=${Boolean(orphanSale)}`,
+    result:
+      abortedSale &&
+      afterSaleCount === beforeSaleCount &&
+      afterItemCount === beforeItemCount &&
+      afterSaleProduct.stock === saleProduct.stock &&
+      !orphanSale
+        ? "PASS"
+        : "FAIL",
+  });
+  await prisma().product.delete({ where: { id: saleProduct.id } }).catch(() => {});
+
+  // 3) Expense + ledger_transactions.expenseId link rollback
+  const account = await ensureCashAccount(business);
+  const beforeExpenses = await prisma().expense.count({ where: { businessId: business.id } });
+  const beforeLedger = await prisma().ledgerTransaction.count({
+    where: { businessId: business.id },
+  });
+  let abortedExpense = false;
+  try {
+    await prisma().$transaction(async (tx) => {
+      const expense = await tx.expense.create({
+        data: {
+          businessId: business.id,
+          accountId: account.id,
+          amount: 15,
+          category: "STRESS-ACID",
+          description: `atomicity-${stamp}`,
+          createdById: business.ownerId,
+        },
+      });
+      await tx.ledgerTransaction.create({
+        data: {
+          businessId: business.id,
+          accountId: account.id,
+          expenseId: expense.id,
+          type: "expense",
+          direction: "debit",
+          amount: 15,
+          note: `acid-expense-${stamp}`,
+          createdById: business.ownerId,
+        },
+      });
+      throw new Error("forced rollback");
+    });
+  } catch (error) {
+    abortedExpense = /forced rollback/.test(error.message);
+  }
+  const afterExpenses = await prisma().expense.count({ where: { businessId: business.id } });
+  const afterLedger = await prisma().ledgerTransaction.count({
+    where: { businessId: business.id },
+  });
+  const orphanExpense = await prisma().expense.findFirst({
+    where: { businessId: business.id, description: `atomicity-${stamp}` },
+  });
+  const orphanLedger = await prisma().ledgerTransaction.findFirst({
+    where: { businessId: business.id, note: `acid-expense-${stamp}` },
+  });
+  results.push({
+    principle: "Atomicity",
+    test: "Expense + ledger row linked by expenseId, then force rollback",
+    expected: "Neither expense nor ledger_transaction survives",
+    actual: `expenses ${beforeExpenses}->${afterExpenses}, ledger ${beforeLedger}->${afterLedger}, orphanExpense=${Boolean(orphanExpense)}, orphanLedger=${Boolean(orphanLedger)}`,
+    result:
+      abortedExpense &&
+      afterExpenses === beforeExpenses &&
+      afterLedger === beforeLedger &&
+      !orphanExpense &&
+      !orphanLedger
+        ? "PASS"
+        : "FAIL",
+  });
+
+  // 4) Payment + ledger rollback
+  const customer = await prisma().customer.findFirst({
+    where: { businessId: business.id },
+    orderBy: { id: "asc" },
+  });
+  const payCustomer =
+    customer ||
+    (await prisma().customer.create({
+      data: {
+        businessId: business.id,
+        name: "ACID payment customer",
+        mobile: `0399${String(stamp).slice(-7)}`,
+      },
+    }));
+  const beforePayments = await prisma().payment.count({ where: { businessId: business.id } });
+  const beforePayLedger = await prisma().ledgerTransaction.count({
+    where: { businessId: business.id },
+  });
+  let abortedPayment = false;
+  try {
+    await prisma().$transaction(async (tx) => {
+      const payment = await tx.payment.create({
+        data: {
+          businessId: business.id,
+          accountId: account.id,
+          customerId: payCustomer.id,
+          amount: 9,
+          type: "customer",
+          method: "cash",
+          reference: `acid-pay-${stamp}`,
+          createdById: business.ownerId,
+        },
+      });
+      await tx.ledgerTransaction.create({
+        data: {
+          businessId: business.id,
+          accountId: account.id,
+          paymentId: payment.id,
+          type: "payment",
+          direction: "credit",
+          amount: 9,
+          note: `acid-payment-${stamp}`,
+          createdById: business.ownerId,
+        },
+      });
+      throw new Error("forced rollback");
+    });
+  } catch (error) {
+    abortedPayment = /forced rollback/.test(error.message);
+  }
+  const afterPayments = await prisma().payment.count({ where: { businessId: business.id } });
+  const afterPayLedger = await prisma().ledgerTransaction.count({
+    where: { businessId: business.id },
+  });
+  const orphanPayment = await prisma().payment.findFirst({
+    where: { businessId: business.id, reference: `acid-pay-${stamp}` },
+  });
+  results.push({
+    principle: "Atomicity",
+    test: "Payment + ledger row linked by paymentId, then force rollback",
+    expected: "Neither payment nor ledger_transaction survives",
+    actual: `payments ${beforePayments}->${afterPayments}, ledger ${beforePayLedger}->${afterPayLedger}, orphanPayment=${Boolean(orphanPayment)}`,
+    result:
+      abortedPayment &&
+      afterPayments === beforePayments &&
+      afterPayLedger === beforePayLedger &&
+      !orphanPayment
+        ? "PASS"
+        : "FAIL",
+  });
+  if (!customer) {
+    await prisma().customer.delete({ where: { id: payCustomer.id } }).catch(() => {});
+  }
+
+  // 5) Onboarding draft write rollback (business_onboarding_drafts)
+  const draftUser = await prisma().user.create({
+    data: {
+      email: `stress_acid_draft_${stamp}@example.test`,
+      fullName: "ACID draft user",
+      passwordHash: "x",
+      role: "pending",
+    },
+  });
+  const beforeDrafts = await prisma().businessOnboardingDraft.count({
+    where: { userId: draftUser.id },
+  });
+  let abortedDraft = false;
+  try {
+    await prisma().$transaction(async (tx) => {
+      await tx.businessOnboardingDraft.create({
+        data: {
+          userId: draftUser.id,
+          payload: { name: "ACID Draft Shop", mobileNumber: "03001234567" },
+          workspaceMode: "pos",
+        },
+      });
+      await tx.user.update({
+        where: { id: draftUser.id },
+        data: { fullName: "ACID draft user mutated" },
+      });
+      throw new Error("forced rollback");
+    });
+  } catch (error) {
+    abortedDraft = /forced rollback/.test(error.message);
+  }
+  const afterDrafts = await prisma().businessOnboardingDraft.count({
+    where: { userId: draftUser.id },
+  });
+  const draftUserAfter = await prisma().user.findUnique({ where: { id: draftUser.id } });
+  results.push({
+    principle: "Atomicity",
+    test: "Onboarding draft + user update, then force rollback",
+    expected: "No business_onboarding_drafts row; user name unchanged",
+    actual: `drafts ${beforeDrafts}->${afterDrafts}, name=${draftUserAfter?.fullName}`,
+    result:
+      abortedDraft &&
+      afterDrafts === 0 &&
+      draftUserAfter?.fullName === "ACID draft user"
+        ? "PASS"
+        : "FAIL",
+  });
+  await prisma().user.delete({ where: { id: draftUser.id } }).catch(() => {});
+
+  return results;
 }
 
 async function testConsistency(business) {
@@ -373,6 +652,159 @@ async function testConsistency(business) {
   });
 
   await prisma().product.delete({ where: { id: target.id } });
+
+  // Per-business invoice uniqueness (sales_businessId_invoiceNumber_key)
+  const invStamp = Date.now();
+  const invoiceNumber = `ACID-UNIQ-INV-${invStamp}`;
+  await prisma().sale.create({
+    data: {
+      businessId: business.id,
+      invoiceNumber,
+      subtotal: 1,
+      totalAmount: 1,
+      totalItems: 1,
+      paymentMethod: "cash",
+      userId: business.ownerId,
+    },
+  });
+  let uniqueInvoiceBlocked = false;
+  try {
+    await prisma().sale.create({
+      data: {
+        businessId: business.id,
+        invoiceNumber,
+        subtotal: 2,
+        totalAmount: 2,
+        totalItems: 1,
+        paymentMethod: "cash",
+        userId: business.ownerId,
+      },
+    });
+  } catch (error) {
+    uniqueInvoiceBlocked = error.code === "P2002" || /unique/i.test(error.message);
+  }
+  results.push({
+    principle: "Consistency",
+    test: "Duplicate invoiceNumber in same business",
+    expected: "Rejected by unique(businessId, invoiceNumber)",
+    actual: uniqueInvoiceBlocked ? "rejected" : "accepted",
+    result: uniqueInvoiceBlocked ? "PASS" : "FAIL",
+  });
+  await prisma().sale.deleteMany({
+    where: { businessId: business.id, invoiceNumber },
+  });
+
+  // Owner delete restrict (businesses.ownerId ON DELETE RESTRICT)
+  let ownerDeleteBlocked = false;
+  try {
+    await prisma().user.delete({ where: { id: business.ownerId } });
+  } catch (error) {
+    ownerDeleteBlocked =
+      error.code === "P2003" ||
+      /foreign key|restrict|still referenced/i.test(error.message || "");
+  }
+  const ownerStillThere = await prisma().user.findUnique({
+    where: { id: business.ownerId },
+    select: { id: true },
+  });
+  results.push({
+    principle: "Consistency",
+    test: "Delete user who still owns a business",
+    expected: "Rejected by businesses.ownerId ON DELETE RESTRICT",
+    actual: ownerDeleteBlocked && ownerStillThere ? "rejected" : "accepted/missing",
+    result: ownerDeleteBlocked && ownerStillThere ? "PASS" : "FAIL",
+  });
+
+  // Unique onboarding draft per user
+  const draftStamp = Date.now();
+  const draftUser = await prisma().user.create({
+    data: {
+      email: `stress_acid_cons_draft_${draftStamp}@example.test`,
+      fullName: "ACID cons draft",
+      passwordHash: "x",
+      role: "pending",
+    },
+  });
+  await prisma().businessOnboardingDraft.create({
+    data: {
+      userId: draftUser.id,
+      payload: { name: "Draft A" },
+      workspaceMode: "pos",
+    },
+  });
+  let uniqueDraftBlocked = false;
+  try {
+    await prisma().businessOnboardingDraft.create({
+      data: {
+        userId: draftUser.id,
+        payload: { name: "Draft B" },
+        workspaceMode: "pos",
+      },
+    });
+  } catch (error) {
+    uniqueDraftBlocked = error.code === "P2002" || /unique/i.test(error.message);
+  }
+  results.push({
+    principle: "Consistency",
+    test: "Second onboarding draft for same user",
+    expected: "Rejected by unique(business_onboarding_drafts.userId)",
+    actual: uniqueDraftBlocked ? "rejected" : "accepted",
+    result: uniqueDraftBlocked ? "PASS" : "FAIL",
+  });
+  await prisma().businessOnboardingDraft.deleteMany({ where: { userId: draftUser.id } });
+  await prisma().user.delete({ where: { id: draftUser.id } }).catch(() => {});
+
+  // Unique ledger_transactions.expenseId (one ledger row per expense)
+  const account = await ensureCashAccount(business);
+  const expense = await prisma().expense.create({
+    data: {
+      businessId: business.id,
+      accountId: account.id,
+      amount: 5,
+      category: "STRESS-ACID-UNIQ",
+      description: `uniq-expense-${draftStamp}`,
+      createdById: business.ownerId,
+    },
+  });
+  await prisma().ledgerTransaction.create({
+    data: {
+      businessId: business.id,
+      accountId: account.id,
+      expenseId: expense.id,
+      type: "expense",
+      direction: "debit",
+      amount: 5,
+      note: `uniq-ledger-${draftStamp}`,
+      createdById: business.ownerId,
+    },
+  });
+  let uniqueExpenseLedgerBlocked = false;
+  try {
+    await prisma().ledgerTransaction.create({
+      data: {
+        businessId: business.id,
+        accountId: account.id,
+        expenseId: expense.id,
+        type: "expense",
+        direction: "debit",
+        amount: 5,
+        note: `uniq-ledger-dup-${draftStamp}`,
+        createdById: business.ownerId,
+      },
+    });
+  } catch (error) {
+    uniqueExpenseLedgerBlocked = error.code === "P2002" || /unique/i.test(error.message);
+  }
+  results.push({
+    principle: "Consistency",
+    test: "Second ledger row for same expenseId",
+    expected: "Rejected by unique(ledger_transactions.expenseId)",
+    actual: uniqueExpenseLedgerBlocked ? "rejected" : "accepted",
+    result: uniqueExpenseLedgerBlocked ? "PASS" : "FAIL",
+  });
+  await prisma().ledgerTransaction.deleteMany({ where: { expenseId: expense.id } });
+  await prisma().expense.delete({ where: { id: expense.id } }).catch(() => {});
+
   return results;
 }
 
@@ -499,7 +931,7 @@ async function runDatabaseSuite(config) {
   );
 
   const acid = [];
-  acid.push(await testAtomicity(business));
+  acid.push(...(await testAtomicity(business)));
   acid.push(...(await testConsistency(business)));
   const isolationLevels = config.profileName === "smoke" ? [10, 50] : [10, 50, 100, 250];
   const integrity = [];

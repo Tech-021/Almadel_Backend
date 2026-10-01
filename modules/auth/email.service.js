@@ -336,7 +336,166 @@ async function sendPasswordResetEmail({ email, fullName, resetUrl }) {
   throw new Error("No email provider configured. Please check SMTP or Resend settings.");
 }
 
+/**
+ * Sends passwordless sign-in (magic link) email.
+ */
+async function sendMagicLinkEmail({ email, fullName, magicLinkUrl: linkUrl }) {
+  const transporter = getSmtpTransporter();
+  const from = getFromAddress();
+  const greeting = fullName?.trim() ? `Hello ${fullName.trim()},` : "Hello,";
+  const safeGreeting = escapeHtml(greeting);
+  const safeLinkUrl = escapeHtml(linkUrl);
+  const subject = "Sign in to Almadel";
+
+  const textBody = [
+    greeting,
+    "",
+    "Use this secure link to sign in to your Almadel account:",
+    linkUrl,
+    "",
+    "This link expires in 15 minutes and can only be used once.",
+    "",
+    "If you did not request this email, you can safely ignore it.",
+  ].join("\n");
+
+  const htmlBody = `
+    <div style="font-family:Arial,sans-serif;line-height:1.6;color:#0f172a;max-width:560px;margin:auto;padding:20px;border:1px solid #e2e8f0;border-radius:16px;">
+      <h1 style="font-size:22px;color:#00875a;font-weight:800;">Sign in to Almadel</h1>
+      <p>${safeGreeting}</p>
+      <p>Tap the button below to sign in without a password.</p>
+      <p style="margin:24px 0;">
+        <a href="${safeLinkUrl}" style="background:#00875a;color:#ffffff;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;font-weight:700;">
+          Sign in to Almadel &rarr;
+        </a>
+      </p>
+      <p style="font-size:13px;color:#64748b;">This link expires in 15 minutes and can only be used once.</p>
+      <p style="font-size:12px;color:#94a3b8;">If you did not request this email, you can safely ignore it.</p>
+    </div>
+  `;
+
+  if (isStressMailSink()) {
+    recordStressMail("magic-link", 0);
+    return { success: true, provider: "stress-mock", durationMs: 0 };
+  }
+
+  if (transporter) {
+    const info = await transporter.sendMail({
+      from,
+      to: email,
+      subject,
+      text: textBody,
+      html: htmlBody,
+    });
+    return { success: true, messageId: info.messageId, provider: "smtp" };
+  }
+
+  const resendApiKey = process.env.RESEND_API_KEY?.trim();
+  if (resendApiKey) {
+    const response = await fetch(RESEND_ENDPOINT, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${resendApiKey}`,
+        "Content-Type": "application/json",
+        "User-Agent": "Almadel/1.0",
+      },
+      body: JSON.stringify({
+        from,
+        to: [email],
+        subject,
+        text: textBody,
+        html: htmlBody,
+      }),
+    });
+
+    if (!response.ok) {
+      const details = await response.text();
+      throw new Error(`Resend rejected email (${response.status}): ${details}`);
+    }
+    return { success: true, provider: "resend" };
+  }
+
+  throw new Error("No email provider configured. Please check SMTP or Resend settings.");
+}
+
+/**
+ * Notifies an existing Almadel user they were added to a store (no password in email).
+ */
+async function sendStaffInviteEmail({ email, fullName, role, businessName, loginUrl }) {
+  const transporter = getSmtpTransporter();
+  const roleTitle = role === "accountant" ? "Accountant" : "Staff Member";
+  const storeName = businessName?.trim() || "Your Store";
+  const url = loginUrl || `${process.env.FRONTEND_URL || "http://localhost:3000"}/login`;
+  const from = getFromAddress();
+  const greeting = fullName?.trim() ? `Hello ${fullName.trim()},` : "Hello,";
+
+  const subject = `You were added to ${storeName} on Almadel`;
+
+  const textBody = [
+    greeting,
+    "",
+    `You have been added as ${roleTitle} for "${storeName}".`,
+    "",
+    "Sign in with your existing Almadel password:",
+    url,
+    "",
+    "If you forgot your password, use Forgot password on the login page.",
+    "",
+    "Almadel Store Management Team",
+  ].join("\n");
+
+  const htmlBody = `
+    <p>${escapeHtml(greeting)}</p>
+    <p>You have been added as <strong>${escapeHtml(roleTitle)}</strong> for <strong>${escapeHtml(storeName)}</strong>.</p>
+    <p><a href="${escapeHtml(url)}">Sign in to Almadel</a> with your existing password.</p>
+    <p style="font-size:12px;color:#64748b;">If you forgot your password, use <strong>Forgot password</strong> on the login page.</p>
+  `;
+
+  if (isStressMailSink()) {
+    return { success: true, provider: "stress-mock" };
+  }
+
+  if (transporter) {
+    const info = await transporter.sendMail({
+      from,
+      to: email,
+      subject,
+      text: textBody,
+      html: htmlBody,
+    });
+    return { success: true, messageId: info.messageId, provider: "smtp" };
+  }
+
+  const resendApiKey = process.env.RESEND_API_KEY?.trim();
+  if (resendApiKey) {
+    const response = await fetch(RESEND_ENDPOINT, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${resendApiKey}`,
+        "Content-Type": "application/json",
+        "User-Agent": "Almadel/1.0",
+      },
+      body: JSON.stringify({
+        from,
+        to: [email],
+        subject,
+        text: textBody,
+        html: htmlBody,
+      }),
+    });
+
+    if (!response.ok) {
+      const details = await response.text();
+      throw new Error(`Resend rejected email (${response.status}): ${details}`);
+    }
+    return { success: true, provider: "resend" };
+  }
+
+  throw new Error("No email provider configured. Please check SMTP or Resend settings.");
+}
+
 module.exports = {
   sendCredentialsEmail,
+  sendMagicLinkEmail,
   sendPasswordResetEmail,
+  sendStaffInviteEmail,
 };

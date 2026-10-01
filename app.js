@@ -19,39 +19,20 @@ const { reportsRouter } = require("./modules/reports/reports.routes");
 
 const { billingRouter } = require("./modules/billing/billing.routes");
 const { categoriesRouter } = require("./modules/categories/categories.routes");
+const { createCorsOriginCallback } = require("./utils/cors-origins");
+const { requestLogMiddleware } = require("./utils/logger");
 
 function createApp() {
   const app = express();
 
   app.disable("x-powered-by");
   app.set("trust proxy", 1);
-  const defaultAllowedOrigins = [
-    "http://localhost:3000",
-    "http://localhost:3001",
-    "http://127.0.0.1:3000",
-    "https://web-app-allmadal.vercel.app",
-  ];
-  const customOrigins = (process.env.CORS_ORIGINS || "")
-    .split(",")
-    .map((o) => o.trim())
-    .filter(Boolean);
-  const allowedOrigins = [...new Set([...defaultAllowedOrigins, ...customOrigins])];
+
+  app.use(requestLogMiddleware);
 
   app.use(
     cors({
-      origin(origin, callback) {
-        if (
-          !origin ||
-          allowedOrigins.includes(origin) ||
-          origin.endsWith(".vercel.app") ||
-          origin.startsWith("http://localhost:") ||
-          origin.startsWith("http://127.0.0.1:")
-        ) {
-          callback(null, true);
-        } else {
-          callback(new Error(`CORS blocked for origin: ${origin}`));
-        }
-      },
+      origin: createCorsOriginCallback(),
       credentials: true,
     }),
   );

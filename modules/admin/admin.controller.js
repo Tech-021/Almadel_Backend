@@ -3,7 +3,8 @@ const bcrypt = require("bcryptjs");
 const { prisma } = require("../../db");
 const { userResponse } = require("../../utils/serializers");
 const { emitBusinessEvent } = require("../realtime/socket");
-const { sendCredentialsEmail } = require("../auth/email.service");
+const { sendCredentialsEmail, sendStaffInviteEmail } = require("../auth/email.service");
+const { validatePassword } = require("../../utils/validators");
 
 const PASSWORD_HASH_ROUNDS = Number(process.env.PASSWORD_HASH_ROUNDS ?? 10);
 
@@ -18,33 +19,73 @@ function isValidEmail(value) {
   return Boolean(email && email.includes("@"));
 }
 
+/** Blocks mutating/removing the business owner or the acting user via staff APIs. */
+async function assertStaffMutationAllowed(member, businessId, actorUserId) {
+  if (!member) {
+    return { ok: false, status: 404, message: "Member account not found in this business." };
+  }
+
+  if (member.role === "owner") {
+    return {
+      ok: false,
+      status: 403,
+      message: "The business owner cannot be modified or removed from staff management.",
+    };
+  }
+
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    select: { ownerId: true },
+  });
+
+  if (business && Number(business.ownerId) === Number(member.userId)) {
+    return {
+      ok: false,
+      status: 403,
+      message: "The business owner cannot be modified or removed.",
+    };
+  }
+
+  if (Number(actorUserId) === Number(member.userId)) {
+    return {
+      ok: false,
+      status: 403,
+      message: "You cannot modify or remove your own account from this screen.",
+    };
+  }
+
+  return { ok: true };
+}
+
 async function listStaff(req, res) {
   const businessId = req.businessId;
+  const { parsePagination, paginationMeta } = require("../../utils/pagination");
+  const { page, limit, skip } = parsePagination(req.query, {
+    defaultLimit: Number(process.env.STAFF_LIST_DEFAULT_LIMIT || 50),
+    maxLimit: Number(process.env.STAFF_LIST_MAX_LIMIT || 100),
+  });
 
-  // Staff page also has no pagination; 10k members freezes the UI. Cap the list for display.
-  const DEFAULT_LIMIT = Number(process.env.STAFF_LIST_DEFAULT_LIMIT || 200);
-  const MAX_LIMIT = Number(process.env.STAFF_LIST_MAX_LIMIT || 10000);
-  const requested = req.query.limit;
-  const limit =
-    requested === undefined || requested === ""
-      ? DEFAULT_LIMIT
-      : Math.min(Math.max(Number(requested) || DEFAULT_LIMIT, 1), MAX_LIMIT);
+  const memberWhere = { businessId, role: { in: ["staff", "accountant"] } };
 
-  const members = await prisma.businessMember.findMany({
-    where: { businessId, role: { in: ["staff", "accountant"] } },
-    include: {
-      user: {
-        select: {
-          email: true,
-          fullName: true,
-          id: true,
-          role: true,
+  const [members, total] = await Promise.all([
+    prisma.businessMember.findMany({
+      where: memberWhere,
+      include: {
+        user: {
+          select: {
+            email: true,
+            fullName: true,
+            id: true,
+            role: true,
+          },
         },
       },
-    },
-    orderBy: { createdAt: "asc" },
-    take: limit,
-  });
+      orderBy: [{ createdAt: "asc" }, { userId: "asc" }],
+      skip,
+      take: limit,
+    }),
+    prisma.businessMember.count({ where: memberWhere }),
+  ]);
 
   const staffUsers = members.map((m) => ({
     ...m.user,
@@ -81,6 +122,7 @@ async function listStaff(req, res) {
   const productsByUser = new Map(productCounts.map((p) => [p.createdByUserId, p._count.id]));
   const stockLogsByUser = new Map(stockLogCounts.map((s) => [s.userId, s._count.id]));
 
+  const pagination = paginationMeta(page, limit, total);
   res.json({
     staff: staffUsers.map((user) => {
       const saleStat = salesByUser.get(user.id);
@@ -98,6 +140,7 @@ async function listStaff(req, res) {
         user: userResponse(user),
       };
     }),
+    pagination,
   });
 }
 
@@ -115,14 +158,6 @@ async function createStaff(req, res) {
       });
     }
 
-    if (password.length < 8) {
-      return res.status(400).json({
-        message: "Password must contain at least 8 characters.",
-      });
-    }
-
-    const passwordHash = await bcrypt.hash(password, PASSWORD_HASH_ROUNDS);
-
     const business = await prisma.business.findUnique({
       where: { id: businessId },
       select: { name: true },
@@ -130,46 +165,59 @@ async function createStaff(req, res) {
     const businessName = business?.name || "Your Store";
     const loginUrl = `${process.env.FRONTEND_URL || "http://localhost:3000"}/login`;
 
-    let user = await prisma.user.findUnique({ where: { email } });
+    const existingUser = await prisma.user.findUnique({ where: { email } });
 
-    if (user) {
+    if (existingUser) {
       const existingMember = await prisma.businessMember.findUnique({
-        where: { businessId_userId: { businessId, userId: user.id } },
+        where: { businessId_userId: { businessId, userId: existingUser.id } },
       });
       if (existingMember) {
         return res.status(409).json({ message: "Member is already added to this business." });
       }
 
+      const otherMembership = await prisma.businessMember.findUnique({
+        where: { userId: existingUser.id },
+      });
+      if (otherMembership) {
+        return res.status(409).json({
+          message:
+            "This email already belongs to another business. Each account can only belong to one business.",
+        });
+      }
+
       await prisma.businessMember.create({
-        data: { businessId, userId: user.id, role },
+        data: { businessId, userId: existingUser.id, role },
       });
 
-      if (password) {
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { passwordHash, authVersion: { increment: 1 } },
-        });
-      }
-
-      const response = userResponse({ ...user, role });
+      const response = userResponse({ ...existingUser, role });
       emitBusinessEvent(businessId, "staff.created", response);
 
-      // Send credentials email
-      try {
-        await sendCredentialsEmail({
+      setImmediate(() => {
+        sendStaffInviteEmail({
           email,
-          fullName: fullName || user.fullName,
+          fullName: fullName || existingUser.fullName,
           role,
-          password,
           businessName,
           loginUrl,
+        }).catch((mailError) => {
+          console.error("Failed to send staff invite email:", mailError.message);
         });
-      } catch (mailError) {
-        console.error("Failed to send credentials email:", mailError.message);
-      }
+      });
 
-      return res.status(201).json(response);
+      return res.status(201).json({
+        ...response,
+        invitedExistingAccount: true,
+        message:
+          "Existing user added to your team. Their password was not changed; they can sign in with their current password.",
+      });
     }
+
+    const passwordCheck = validatePassword(password);
+    if (!passwordCheck.valid) {
+      return res.status(400).json({ message: passwordCheck.error });
+    }
+
+    const passwordHash = await bcrypt.hash(password, PASSWORD_HASH_ROUNDS);
 
     const newUser = await prisma.$transaction(async (tx) => {
       const created = await tx.user.create({
@@ -184,19 +232,19 @@ async function createStaff(req, res) {
     const response = userResponse(newUser);
     emitBusinessEvent(businessId, "staff.created", response);
 
-    // Send credentials email
-    try {
-      await sendCredentialsEmail({
+    // Never block the HTTP response on SMTP
+    setImmediate(() => {
+      sendCredentialsEmail({
         email,
         fullName,
         role,
         password,
         businessName,
         loginUrl,
+      }).catch((mailError) => {
+        console.error("Failed to send credentials email:", mailError.message);
       });
-    } catch (mailError) {
-      console.error("Failed to send credentials email:", mailError.message);
-    }
+    });
 
     return res.status(201).json(response);
   } catch (error) {
@@ -223,8 +271,9 @@ async function updateStaff(req, res) {
       include: { user: true },
     });
 
-    if (!member) {
-      return res.status(404).json({ message: "Member account not found in this business." });
+    const guard = await assertStaffMutationAllowed(member, businessId, req.user?.id);
+    if (!guard.ok) {
+      return res.status(guard.status).json({ message: guard.message });
     }
 
     const data = {};
@@ -254,10 +303,9 @@ async function updateStaff(req, res) {
     }
 
     if (password) {
-      if (password.length < 8) {
-        return res.status(400).json({
-          message: "Password must contain at least 8 characters.",
-        });
+      const passwordCheck = validatePassword(password);
+      if (!passwordCheck.valid) {
+        return res.status(400).json({ message: passwordCheck.error });
       }
 
       data.authVersion = { increment: 1 };
@@ -270,24 +318,27 @@ async function updateStaff(req, res) {
 
     const user = await prisma.user.update({ data, where: { id } });
 
-    // If password was updated, send new credentials email
+    // If password was updated, send new credentials email (async — don't block response)
     if (password) {
-      try {
-        const business = await prisma.business.findUnique({
-          where: { id: businessId },
-          select: { name: true },
-        });
-        await sendCredentialsEmail({
-          email: user.email,
-          fullName: user.fullName,
-          role: role || member.role,
-          password,
-          businessName: business?.name || "Your Store",
-          loginUrl: `${process.env.FRONTEND_URL || "http://localhost:3000"}/login`,
-        });
-      } catch (mailError) {
-        console.error("Failed to send updated credentials email:", mailError.message);
-      }
+      const loginUrl = `${process.env.FRONTEND_URL || "http://localhost:3000"}/login`;
+      const mailRole = role || member.role;
+      setImmediate(() => {
+        prisma.business
+          .findUnique({ where: { id: businessId }, select: { name: true } })
+          .then((business) =>
+            sendCredentialsEmail({
+              email: user.email,
+              fullName: user.fullName,
+              role: mailRole,
+              password,
+              businessName: business?.name || "Your Store",
+              loginUrl,
+            }),
+          )
+          .catch((mailError) => {
+            console.error("Failed to send updated credentials email:", mailError.message);
+          });
+      });
     }
 
     const response = userResponse({ ...user, role: role || member.role });
@@ -321,21 +372,14 @@ async function deleteStaff(req, res) {
       where: { businessId_userId: { businessId, userId: id } },
     });
 
-    if (!member) {
-      return res.status(404).json({ message: "Staff account not found in this business." });
+    const guard = await assertStaffMutationAllowed(member, businessId, req.user?.id);
+    if (!guard.ok) {
+      return res.status(guard.status).json({ message: guard.message });
     }
 
     await prisma.businessMember.delete({
       where: { businessId_userId: { businessId, userId: id } },
     });
-
-    const remainingMemberships = await prisma.businessMember.count({
-      where: { userId: id },
-    });
-
-    if (remainingMemberships === 0) {
-      await prisma.user.delete({ where: { id } }).catch(() => null);
-    }
 
     emitBusinessEvent(businessId, "staff.deleted", { id });
     return res.json({ deleted: true });
