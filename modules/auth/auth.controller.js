@@ -188,10 +188,15 @@ async function requestMagicLink(req, res) {
     });
 
     try {
-      await sendMagicLinkEmail({
+      const mailResult = await sendMagicLinkEmail({
         email: user.email,
         fullName: user.fullName,
         magicLinkUrl: magicLinkUrl(token),
+      });
+      console.info("Magic link email sent", {
+        provider: mailResult.provider,
+        messageId: mailResult.messageId,
+        userId: user.id,
       });
     } catch (emailError) {
       await prisma.magicLinkToken.delete({ where: { id: magicLinkRecord.id } });
