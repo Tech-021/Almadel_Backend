@@ -1,6 +1,11 @@
 const { prisma } = require("../../db");
 const { toNonNegativeNumber } = require("../../utils/numbers");
-const { productAccessWhere } = require("./product-access");
+const {
+  canViewCostPrice,
+  productAccessWhere,
+  serializeProduct,
+  serializeProducts,
+} = require("./product-access");
 const { emitBusinessEvent } = require("../realtime/socket");
 
 async function listProducts(req, res) {
@@ -24,11 +29,11 @@ async function listProducts(req, res) {
   ]);
 
   if (String(req.query.legacy || "") === "1") {
-    return res.json(products);
+    return res.json(serializeProducts(products, req));
   }
 
   const pagination = paginationMeta(page, limit, total);
-  res.json({ products, pagination });
+  res.json({ products: serializeProducts(products, req), pagination });
 }
 
 async function searchProducts(req, res) {
@@ -55,7 +60,7 @@ async function searchProducts(req, res) {
 
   return res.json({
     durationMs: Math.round(performance.now() - startedAt),
-    products,
+    products: serializeProducts(products, req),
   });
 }
 
@@ -67,7 +72,7 @@ async function findProductByBarcode(req, res) {
     }),
   });
 
-  res.json(product);
+  res.json(serializeProduct(product, req));
 }
 
 async function createProduct(req, res) {
@@ -143,8 +148,8 @@ async function createProduct(req, res) {
       },
     });
 
-    emitBusinessEvent(req.businessId, "product.created", product);
-    return res.status(201).json(product);
+    emitBusinessEvent(req.businessId, "product.created", serializeProduct(product, req));
+    return res.status(201).json(serializeProduct(product, req));
   } catch (error) {
     if (error.code === "P2002") {
       return res.status(409).json({
@@ -244,8 +249,8 @@ async function updateProduct(req, res) {
       where: { id },
     });
 
-    emitBusinessEvent(req.businessId, "product.updated", product);
-    return res.json(product);
+    emitBusinessEvent(req.businessId, "product.updated", serializeProduct(product, req));
+    return res.json(serializeProduct(product, req));
   } catch (error) {
     if (error.code === "P2002") {
       return res.status(409).json({
@@ -515,11 +520,12 @@ async function exportProductsCsv(req, res) {
       return `"${s}"`;
     };
 
+    const includeCost = canViewCostPrice(req);
     const headers = [
       "Barcode",
       "Name",
       "Category",
-      "Cost Price",
+      ...(includeCost ? ["Cost Price"] : []),
       "Selling Price",
       "Stock",
       "Low Stock Threshold",
@@ -563,7 +569,7 @@ async function exportProductsCsv(req, res) {
             escapeCsv(p.barcode),
             escapeCsv(p.name),
             escapeCsv(p.category || ""),
-            p.costPrice ?? 0,
+            ...(includeCost ? [p.costPrice ?? 0] : []),
             p.sellingPrice || p.price || 0,
             p.stock ?? 0,
             p.lowStockThreshold ?? 5,
