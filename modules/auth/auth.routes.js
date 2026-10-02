@@ -4,6 +4,7 @@ const {
   forgotPasswordLimiters,
   magicLinkRequestLimiters,
   magicLinkVerifyLimiters,
+  passkeySignInLimiters,
   resetPasswordLimiters,
   signInIpLimiter,
   signInEmailLimiter,
@@ -20,6 +21,14 @@ const {
   updateMe,
   verifyMagicLink,
 } = require("./auth.controller");
+const {
+  passkeyDeleteCredential,
+  passkeyListCredentials,
+  passkeyRegisterOptions,
+  passkeyRegisterVerify,
+  passkeySignInOptions,
+  passkeySignInVerify,
+} = require("./passkey.controller");
 
 const authRouter = express.Router();
 
@@ -30,6 +39,12 @@ authRouter.post("/sign-in", signInIpLimiter, signInEmailLimiter, signIn);
 authRouter.post("/forgot-password", ...forgotPasswordLimiters, forgotPassword);
 authRouter.post("/magic-link/request", ...magicLinkRequestLimiters, requestMagicLink);
 authRouter.post("/magic-link/verify", ...magicLinkVerifyLimiters, verifyMagicLink);
+authRouter.post("/passkey/register/options", requireAuth, passkeyRegisterOptions);
+authRouter.post("/passkey/register/verify", requireAuth, passkeyRegisterVerify);
+authRouter.get("/passkey/credentials", requireAuth, passkeyListCredentials);
+authRouter.delete("/passkey/credentials/:id", requireAuth, passkeyDeleteCredential);
+authRouter.post("/passkey/sign-in/options", ...passkeySignInLimiters, passkeySignInOptions);
+authRouter.post("/passkey/sign-in/verify", ...passkeySignInLimiters, passkeySignInVerify);
 authRouter.post("/reset-password", ...resetPasswordLimiters, resetPassword);
 authRouter.get("/me", requireAuth, getMe);
 authRouter.patch("/me", requireAuth, updateMe);

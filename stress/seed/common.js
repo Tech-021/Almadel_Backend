@@ -35,11 +35,20 @@ async function ensureWorstCaseBusiness(owner) {
       },
     });
   }
-  await prisma.businessMember.upsert({
-    where: { businessId_userId: { businessId: business.id, userId: owner.id } },
-    update: { role: "owner" },
-    create: { businessId: business.id, userId: owner.id, role: "owner" },
+
+  const membership = await prisma.businessMember.findFirst({
+    where: { businessId: business.id, userId: owner.id },
   });
+  if (!membership) {
+    await prisma.businessMember.create({
+      data: { businessId: business.id, userId: owner.id, role: "owner" },
+    });
+  } else if (membership.role !== "owner") {
+    await prisma.businessMember.update({
+      where: { id: membership.id },
+      data: { role: "owner" },
+    });
+  }
   return business;
 }
 

@@ -20,6 +20,7 @@ const { runMixedSuite } = require("./suites/mixed");
 const { probeCustomerReads, runCustomerSuite } = require("./suites/customers");
 const { runFinanceSuite } = require("./suites/finance");
 const { runReportsSuite } = require("./suites/reports");
+const { runImportExportSuite } = require("./suites/import-export");
 
 const HELP = `Almadel stress runner
 
@@ -28,6 +29,7 @@ const HELP = `Almadel stress runner
   npm run stress:customers
   npm run stress:finance
   npm run stress:reports
+  npm run stress:import-export
   npm run stress -- --suite team --profile standard
   npm run stress:all -- --profile heavy --confirm-heavy
 
@@ -138,7 +140,7 @@ async function main() {
 
     const suite = config.args.suite;
     const selected = suite === "all"
-      ? ["business", "team", "products", "stock", "customers", "finance", "reports", "reads", "mixed"]
+      ? ["business", "team", "products", "stock", "customers", "finance", "reports", "import-export", "reads", "mixed"]
       : String(suite).split(",").map((name) => name.trim()).filter(Boolean);
 
     let anchor = null;
@@ -174,6 +176,10 @@ async function main() {
         const target = await preferSeedTenant(config, anchor, prisma);
         report.suites.reports = await runReportsSuite(config, target);
         report.suites.reports.targetBusinessId = target.businessId;
+      } else if (name === "import-export") {
+        const target = await preferSeedTenant(config, anchor, prisma);
+        report.suites["import-export"] = await runImportExportSuite(config, target, runSalt);
+        report.suites["import-export"].targetBusinessId = target.businessId;
       } else if (name === "reads") {
         const target = await readAnchorForTarget(config, anchor, prisma);
         report.suites.reads = await runReadSuite(config, target);

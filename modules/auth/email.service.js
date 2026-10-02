@@ -61,11 +61,127 @@ function getSmtpTransporter() {
 }
 
 function getFromAddress() {
-  return (
+  const smtpUser = process.env.SMTP_USER?.trim();
+  const raw =
     process.env.SMTP_FROM?.trim() ||
     process.env.EMAIL_FROM?.trim() ||
-    `"Zero To One" <sarim@tech-021.com>`
-  );
+    (smtpUser ? `"Almadel" <${smtpUser}>` : "");
+  if (!raw) {
+    throw new Error("Set SMTP_FROM or EMAIL_FROM (or SMTP_USER for SMTP) before sending mail.");
+  }
+  return raw.replace(/\\"/g, '"');
+}
+
+function getResendFromAddress() {
+  const raw = process.env.EMAIL_FROM?.trim();
+  if (!raw) {
+    throw new Error("EMAIL_FROM is required when sending via Resend.");
+  }
+  return raw.replace(/\\"/g, '"');
+}
+
+function authEmailProviderOrder() {
+  const pref = process.env.AUTH_EMAIL_PROVIDER?.trim().toLowerCase();
+  if (pref === "resend") {
+    return ["resend", "smtp"];
+  }
+  return ["smtp", "resend"];
+}
+
+async function sendViaSmtp(transporter, { from, to, subject, text, html }) {
+  const info = await transporter.sendMail({ from, to, subject, text, html });
+  return { success: true, messageId: info.messageId, provider: "smtp" };
+}
+
+async function sendViaResend({ from, to, subject, text, html }) {
+  const resendApiKey = process.env.RESEND_API_KEY?.trim();
+  if (!resendApiKey) {
+    return null;
+  }
+
+  const response = await fetch(RESEND_ENDPOINT, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${resendApiKey}`,
+      "Content-Type": "application/json",
+      "User-Agent": "Almadel/1.0",
+    },
+    body: JSON.stringify({
+      from,
+      to: [to],
+      subject,
+      text,
+      html,
+    }),
+  });
+
+  if (!response.ok) {
+    const details = await response.text();
+    throw new Error(`Resend rejected email (${response.status}): ${details}`);
+  }
+
+  let messageId;
+  try {
+    const body = await response.json();
+    messageId = body?.id;
+  } catch {
+    messageId = undefined;
+  }
+
+  return { success: true, messageId, provider: "resend" };
+}
+
+/**
+ * Magic link + password reset: try SMTP and/or Resend per AUTH_EMAIL_PROVIDER.
+ */
+async function deliverAuthEmail({ to, subject, text, html }) {
+  const transporter = getSmtpTransporter();
+  const smtpFrom = getFromAddress();
+  const resendFrom = process.env.EMAIL_FROM?.trim() ? getResendFromAddress() : null;
+  const errors = [];
+
+  for (const provider of authEmailProviderOrder()) {
+    if (provider === "smtp") {
+      if (!transporter) {
+        continue;
+      }
+      try {
+        return await sendViaSmtp(transporter, {
+          from: smtpFrom,
+          to,
+          subject,
+          text,
+          html,
+        });
+      } catch (error) {
+        errors.push(`smtp: ${error.message}`);
+      }
+      continue;
+    }
+
+    if (provider === "resend" && resendFrom) {
+      try {
+        const result = await sendViaResend({
+          from: resendFrom,
+          to,
+          subject,
+          text,
+          html,
+        });
+        if (result) {
+          return result;
+        }
+      } catch (error) {
+        errors.push(`resend: ${error.message}`);
+      }
+    }
+  }
+
+  if (errors.length) {
+    throw new Error(errors.join("; "));
+  }
+
+  throw new Error("No email provider configured. Please check SMTP or Resend settings.");
 }
 
 /**
@@ -261,8 +377,6 @@ async function sendCredentialsEmail({
  * Sends password reset email.
  */
 async function sendPasswordResetEmail({ email, fullName, resetUrl }) {
-  const transporter = getSmtpTransporter();
-  const from = getFromAddress();
   const greeting = fullName?.trim() ? `Hello ${fullName.trim()},` : "Hello,";
   const safeGreeting = escapeHtml(greeting);
   const safeResetUrl = escapeHtml(resetUrl);
@@ -297,51 +411,18 @@ async function sendPasswordResetEmail({ email, fullName, resetUrl }) {
     return { success: true, provider: "stress-mock", durationMs: 0 };
   }
 
-  if (transporter) {
-    const info = await transporter.sendMail({
-      from,
-      to: email,
-      subject,
-      text: textBody,
-      html: htmlBody,
-    });
-    return { success: true, messageId: info.messageId, provider: "smtp" };
-  }
-
-  const resendApiKey = process.env.RESEND_API_KEY?.trim();
-  if (resendApiKey) {
-    const response = await fetch(RESEND_ENDPOINT, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${resendApiKey}`,
-        "Content-Type": "application/json",
-        "User-Agent": "Almadel/1.0",
-      },
-      body: JSON.stringify({
-        from,
-        to: [email],
-        subject,
-        text: textBody,
-        html: htmlBody,
-      }),
-    });
-
-    if (!response.ok) {
-      const details = await response.text();
-      throw new Error(`Resend rejected email (${response.status}): ${details}`);
-    }
-    return { success: true, provider: "resend" };
-  }
-
-  throw new Error("No email provider configured. Please check SMTP or Resend settings.");
+  return deliverAuthEmail({
+    to: email,
+    subject,
+    text: textBody,
+    html: htmlBody,
+  });
 }
 
 /**
  * Sends passwordless sign-in (magic link) email.
  */
 async function sendMagicLinkEmail({ email, fullName, magicLinkUrl: linkUrl }) {
-  const transporter = getSmtpTransporter();
-  const from = getFromAddress();
   const greeting = fullName?.trim() ? `Hello ${fullName.trim()},` : "Hello,";
   const safeGreeting = escapeHtml(greeting);
   const safeLinkUrl = escapeHtml(linkUrl);
@@ -378,43 +459,12 @@ async function sendMagicLinkEmail({ email, fullName, magicLinkUrl: linkUrl }) {
     return { success: true, provider: "stress-mock", durationMs: 0 };
   }
 
-  if (transporter) {
-    const info = await transporter.sendMail({
-      from,
-      to: email,
-      subject,
-      text: textBody,
-      html: htmlBody,
-    });
-    return { success: true, messageId: info.messageId, provider: "smtp" };
-  }
-
-  const resendApiKey = process.env.RESEND_API_KEY?.trim();
-  if (resendApiKey) {
-    const response = await fetch(RESEND_ENDPOINT, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${resendApiKey}`,
-        "Content-Type": "application/json",
-        "User-Agent": "Almadel/1.0",
-      },
-      body: JSON.stringify({
-        from,
-        to: [email],
-        subject,
-        text: textBody,
-        html: htmlBody,
-      }),
-    });
-
-    if (!response.ok) {
-      const details = await response.text();
-      throw new Error(`Resend rejected email (${response.status}): ${details}`);
-    }
-    return { success: true, provider: "resend" };
-  }
-
-  throw new Error("No email provider configured. Please check SMTP or Resend settings.");
+  return deliverAuthEmail({
+    to: email,
+    subject,
+    text: textBody,
+    html: htmlBody,
+  });
 }
 
 /**

@@ -1,0 +1,2 @@
+ALTER TABLE "businesses"
+  ADD COLUMN IF NOT EXISTS "allowDiscounts" BOOLEAN NOT NULL DEFAULT true;

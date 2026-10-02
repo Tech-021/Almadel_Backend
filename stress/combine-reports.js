@@ -101,6 +101,12 @@ function combineMarkdown(api, db, combinedId, apiPath, dbPath) {
   const customers = firstCreateStage(api.suites?.customers);
   const finance = firstCreateStage(api.suites?.finance);
   const reports = (api.suites?.reports?.stages || [])[0];
+  const importExport = (api.suites?.["import-export"]?.stages || []).find((stage) =>
+    /product-import/i.test(stage.test || ""),
+  );
+  const exportProbe = (api.suites?.["import-export"]?.stages || []).find((stage) =>
+    /product-export/i.test(stage.test || ""),
+  );
   const mixed = firstCreateStage(api.suites?.mixed);
 
   const slowQueries = [...benches].sort((a, b) => b.p95Ms - a.p95Ms).slice(0, 3);
@@ -166,7 +172,7 @@ function combineMarkdown(api, db, combinedId, apiPath, dbPath) {
   lines.push("## 4. API load testing findings");
   lines.push("");
   lines.push(
-    "The API suite called the real application routes over HTTP. Business creation used owner sign-up followed by business setup. Team creation used `POST /admin/staff` for both staff and accountant roles. Product and stock operations used the live product and inventory endpoints. Customers / Khata, Cash / Accounts, and Reports & Balance Sheet suites exercise the newer UI areas. Mixed traffic simulated a more realistic blend of reads and writes.",
+    "The API suite called the real application routes over HTTP. Business creation used owner sign-up followed by business setup. Team creation used `POST /admin/staff` for both staff and accountant roles. Product and stock operations used the live product and inventory endpoints. Customers / Khata, Cash / Accounts, Reports, and CSV import/export suites exercise the newer UI areas. Mixed traffic simulated a more realistic blend of reads and writes.",
   );
   lines.push("");
   lines.push("### 4.1 Business creation");
@@ -243,7 +249,24 @@ function combineMarkdown(api, db, combinedId, apiPath, dbPath) {
     lines.push("Reports & Balance Sheet was not included in the selected API run.");
   }
   lines.push("");
-  lines.push("### 4.7 Mixed realistic traffic");
+  lines.push("### 4.7 Product CSV import / export");
+  lines.push("");
+  if (importExport || exportProbe) {
+    if (importExport) {
+      lines.push(
+        `Bulk import via \`POST /products/import\` completed stage size **${importExport.stage || importExport.target}** with p95 **${ms(importExport.latency.p95Ms)}** (**${importExport.grade}**). Created **${importExport.created ?? "n/a"}**, updated **${importExport.updated ?? "n/a"}**, failed rows **${importExport.failedRows ?? "n/a"}**. Import is sequential per row, so large batches are intentionally slower than single product creates.`,
+      );
+    }
+    if (exportProbe) {
+      lines.push(
+        `Full-catalog export via \`GET /products/export\` at concurrency **${exportProbe.concurrency}** had p95 **${ms(exportProbe.latency.p95Ms)}** (**${exportProbe.grade}**), average response size about **${exportProbe.responseBytesAvg ?? "n/a"}** bytes.`,
+      );
+    }
+  } else {
+    lines.push("Product CSV import / export was not included in the selected API run.");
+  }
+  lines.push("");
+  lines.push("### 4.8 Mixed realistic traffic");
   lines.push("");
   if (mixed) {
     lines.push(
