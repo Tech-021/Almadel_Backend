@@ -79,14 +79,31 @@ async function passkeyRegisterOptions(req, res) {
       return res.status(401).json({ message: "Authentication required." });
     }
 
-    const options = await registrationOptionsForUser(user, requestOrigin(req));
+    const attachment = String(req.body?.attachment ?? "").trim().toLowerCase();
+    const hints =
+      attachment === "platform" || attachment === "cross-platform"
+        ? { attachment }
+        : {};
+    const options = await registrationOptionsForUser(user, requestOrigin(req), hints);
     return res.json(options);
   } catch (error) {
     if (error.code === "ORIGIN_NOT_ALLOWED") {
       return res.status(403).json({ message: error.message });
     }
+    if (error.code === "P2021") {
+      return res.status(503).json({
+        message:
+          "Passkey database table is missing. In Almadel_Backend run: npm run db:passkey (or npx prisma migrate deploy), then restart the API.",
+      });
+    }
     console.error("Passkey register options error:", error);
-    return res.status(400).json({ message: "Could not start passkey registration." });
+    const detail =
+      process.env.NODE_ENV !== "production" && error?.message
+        ? String(error.message).split("\n")[0]
+        : null;
+    return res.status(400).json({
+      message: detail || "Could not start passkey registration.",
+    });
   }
 }
 
@@ -134,6 +151,9 @@ async function passkeySignInOptions(req, res) {
   } catch (error) {
     if (error.code === "ORIGIN_NOT_ALLOWED") {
       return res.status(403).json({ message: error.message });
+    }
+    if (error.statusCode === 400 && error.message) {
+      return res.status(400).json({ message: error.message });
     }
     console.error("Passkey sign-in options error:", error);
     return res.status(400).json({ message: "Could not start passkey sign-in." });

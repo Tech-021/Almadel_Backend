@@ -46,4 +46,8 @@ Use `@simplewebauthn/browser` on the **web app**. Do **not** gate passkey UI wit
 - Same API and `rpId` for PC, Mac, and phone browsers.
 - Backend does **not** filter by `User-Agent`.
 - Credential `transports` are **not** sent in `allowCredentials` so a passkey registered on a phone can still be used on a laptop (synced passkeys) and vice versa.
-- Registration uses `credProps` and `residentKey: preferred` for discoverable passkeys (passkey autofill on Chrome/Edge desktop).
+- Registration uses `credProps` and resident keys for discoverable passkeys (Chrome/Edge desktop).
+- Optional registration body: `{ "attachment": "platform" | "cross-platform" }` (used by the Settings UI).
+- Local DB: `npm run db:passkey` or `npx prisma migrate deploy` for `passkey_credentials`.
+
+**Full guide (setup, testing, Windows, production):** [`docs/PASSKEYS.md`](../../docs/PASSKEYS.md) at the repo root.
