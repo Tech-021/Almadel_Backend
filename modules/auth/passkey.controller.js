@@ -1,7 +1,7 @@
 const { prisma } = require("../../db");
 const { formatBusinessSubscription } = require("../business/business.controller");
 const { createAccessToken } = require("./token.service");
-const { isPasskeyEnabled } = require("../../utils/webauthn-config");
+const { isPasskeyEnabled, passkeyPublicConfig } = require("../../utils/webauthn-config");
 const {
   authenticationOptions,
   deleteCredentialForUser,
@@ -163,6 +163,10 @@ async function passkeySignInVerify(req, res) {
   }
 }
 
+async function passkeyConfig(_req, res) {
+  return res.json(passkeyPublicConfig());
+}
+
 async function passkeyListCredentials(req, res) {
   if (!isPasskeyEnabled()) {
     return passkeyDisabled(req, res);
@@ -191,6 +195,7 @@ async function passkeyDeleteCredential(req, res) {
 }
 
 module.exports = {
+  passkeyConfig,
   passkeyDeleteCredential,
   passkeyListCredentials,
   passkeyRegisterOptions,

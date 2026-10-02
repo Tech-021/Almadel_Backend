@@ -58,6 +58,48 @@ function resolveRpName() {
   return process.env.WEBAUTHN_RP_NAME?.trim() || "Almadel";
 }
 
+/** RP ID(s) accepted at verification (desktop + mobile browsers share the same web rpId). */
+function resolveExpectedRpIds() {
+  const primary = resolveRpId();
+  const extras = parseOriginList(process.env.WEBAUTHN_RP_IDS)
+    .map((entry) => entry.replace(/^https?:\/\//, "").split(":")[0])
+    .filter(Boolean);
+  const ids = new Set([primary, ...extras]);
+  return ids.size === 1 ? primary : [...ids];
+}
+
+/**
+ * WebAuthn authenticator selection for registration.
+ * Do not set authenticatorAttachment to "platform" only — that blocks USB security keys
+ * and confused frontends into treating passkeys as mobile-only. Platform authenticators
+ * (Windows Hello, Touch ID) still work without attachment restriction.
+ */
+function resolveAuthenticatorSelection() {
+  const attachment = process.env.WEBAUTHN_AUTHENTICATOR_ATTACHMENT?.trim().toLowerCase();
+  const selection = {
+    residentKey: "preferred",
+    requireResidentKey: false,
+    userVerification: "preferred",
+  };
+  if (attachment === "platform" || attachment === "cross-platform") {
+    selection.authenticatorAttachment = attachment;
+  }
+  return selection;
+}
+
+function passkeyPublicConfig() {
+  return {
+    enabled: isPasskeyEnabled(),
+    rpId: resolveRpId(),
+    rpName: resolveRpName(),
+    origins: resolveWebAuthnOrigins(),
+    /** Backend accepts platform (Windows Hello / Touch ID) and cross-platform (USB keys). */
+    authenticatorTypes: ["platform", "cross-platform"],
+    userVerification: "preferred",
+    residentKey: "preferred",
+  };
+}
+
 function isPasskeyEnabled() {
   return process.env.ENABLE_PASSKEY !== "false";
 }
@@ -74,6 +116,9 @@ function assertOriginAllowed(requestOrigin) {
 module.exports = {
   assertOriginAllowed,
   isPasskeyEnabled,
+  passkeyPublicConfig,
+  resolveAuthenticatorSelection,
+  resolveExpectedRpIds,
   resolveRpId,
   resolveRpName,
   resolveWebAuthnOrigins,

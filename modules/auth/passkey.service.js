@@ -1,4 +1,3 @@
-const crypto = require("crypto");
 const {
   generateAuthenticationOptions,
   generateRegistrationOptions,
@@ -9,6 +8,8 @@ const {
 const { prisma } = require("../../db");
 const {
   assertOriginAllowed,
+  resolveAuthenticatorSelection,
+  resolveExpectedRpIds,
   resolveRpId,
   resolveRpName,
   resolveWebAuthnOrigins,
@@ -70,6 +71,15 @@ async function listCredentialsForUser(userId) {
   });
 }
 
+function mapAllowCredentials(creds) {
+  if (!creds?.length) {
+    return undefined;
+  }
+  return creds.map((row) => ({
+    id: row.credentialId,
+  }));
+}
+
 async function registrationOptionsForUser(user, requestOrigin) {
   assertOriginAllowed(requestOrigin);
 
@@ -87,11 +97,10 @@ async function registrationOptionsForUser(user, requestOrigin) {
     attestationType: "none",
     excludeCredentials: existing.map((row) => ({
       id: row.credentialId,
-      transports: row.transports?.length ? row.transports : undefined,
     })),
-    authenticatorSelection: {
-      residentKey: "preferred",
-      userVerification: "preferred",
+    authenticatorSelection: resolveAuthenticatorSelection(),
+    extensions: {
+      credProps: true,
     },
   });
 
@@ -120,7 +129,7 @@ async function verifyRegistrationForUser(user, body, requestOrigin) {
     response: body,
     expectedChallenge,
     expectedOrigin: resolveWebAuthnOrigins(),
-    expectedRPID: resolveRpId(),
+    expectedRPID: resolveExpectedRpIds(),
     requireUserVerification: false,
   });
 
@@ -131,6 +140,9 @@ async function verifyRegistrationForUser(user, body, requestOrigin) {
   const { registrationInfo } = verification;
   const cred = registrationInfo.credential;
   const credentialId = credentialIdToBase64(cred.id);
+  const reportedTransports = Array.isArray(body.response?.transports)
+    ? body.response.transports
+    : [];
 
   await prisma.passkeyCredential.create({
     data: {
@@ -140,7 +152,7 @@ async function verifyRegistrationForUser(user, body, requestOrigin) {
       counter: BigInt(cred.counter),
       deviceType: registrationInfo.credentialDeviceType,
       backedUp: registrationInfo.credentialBackedUp,
-      transports: body.response?.transports ?? [],
+      transports: reportedTransports,
       aaguid: registrationInfo.aaguid,
       friendlyName:
         String(body?.friendlyName ?? "").trim() ||
@@ -167,12 +179,9 @@ async function authenticationOptions(email, requestOrigin) {
     if (user) {
       const creds = await prisma.passkeyCredential.findMany({
         where: { userId: user.id },
-        select: { credentialId: true, transports: true },
+        select: { credentialId: true },
       });
-      allowCredentials = creds.map((row) => ({
-        id: row.credentialId,
-        transports: row.transports?.length ? row.transports : undefined,
-      }));
+      allowCredentials = mapAllowCredentials(creds);
     }
   }
 
@@ -230,7 +239,7 @@ async function verifyAuthentication(body, requestOrigin) {
     response: body,
     expectedChallenge,
     expectedOrigin: resolveWebAuthnOrigins(),
-    expectedRPID: resolveRpId(),
+    expectedRPID: resolveExpectedRpIds(),
     requireUserVerification: false,
     credential: {
       id: credential.credentialId,

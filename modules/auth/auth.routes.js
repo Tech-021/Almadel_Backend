@@ -22,6 +22,7 @@ const {
   verifyMagicLink,
 } = require("./auth.controller");
 const {
+  passkeyConfig,
   passkeyDeleteCredential,
   passkeyListCredentials,
   passkeyRegisterOptions,
@@ -39,6 +40,7 @@ authRouter.post("/sign-in", signInIpLimiter, signInEmailLimiter, signIn);
 authRouter.post("/forgot-password", ...forgotPasswordLimiters, forgotPassword);
 authRouter.post("/magic-link/request", ...magicLinkRequestLimiters, requestMagicLink);
 authRouter.post("/magic-link/verify", ...magicLinkVerifyLimiters, verifyMagicLink);
+authRouter.get("/passkey/config", passkeyConfig);
 authRouter.post("/passkey/register/options", requireAuth, passkeyRegisterOptions);
 authRouter.post("/passkey/register/verify", requireAuth, passkeyRegisterVerify);
 authRouter.get("/passkey/credentials", requireAuth, passkeyListCredentials);
