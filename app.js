@@ -11,6 +11,7 @@ const { dashboardRouter } = require("./modules/dashboard/dashboard.routes");
 const { healthRouter } = require("./modules/health/health.routes");
 const { productsRouter } = require("./modules/products/products.routes");
 const { salesRouter } = require("./modules/sales/sales.routes");
+const { refundsRouter } = require("./modules/refunds/refund.routes");
 const { stockRouter } = require("./modules/stock/stock.routes");
 const logsRoutes = require("./modules/logs/logs.routes");
 const { financeRouter } = require("./modules/finance/finance.routes");
@@ -57,6 +58,7 @@ function createApp() {
   app.use("/products", productsRouter);
   app.use("/stock", stockRouter);
   app.use("/sales", salesRouter);
+  app.use("/refunds", refundsRouter);
   app.use("/dashboard", dashboardRouter);
   app.use("/customers", customersRouter);
   app.use("/admin", adminRouter);

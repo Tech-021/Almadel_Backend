@@ -66,12 +66,36 @@ async function getInvoice(req, res) {
 async function listSales(req, res) {
   const page = Math.max(1, Number(req.query.page) || 1);
   const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 25));
-  const where = { businessId: req.businessId };
+  const invoiceNumber = String(req.query.invoiceNumber ?? "").trim();
+  const where = {
+    businessId: req.businessId,
+    ...(invoiceNumber
+      ? { invoiceNumber: { equals: invoiceNumber, mode: "insensitive" } }
+      : {}),
+  };
   const [sales, total] = await Promise.all([
-    prisma.sale.findMany({ where, include: { customer: { select: { name: true, mobile: true } }, user: { select: { fullName: true, email: true } }, items: { select: { quantity: true } } }, orderBy: { createdAt: "desc" }, skip: (page - 1) * limit, take: limit }),
+    prisma.sale.findMany({
+      where,
+      include: {
+        customer: { select: { name: true, mobile: true } },
+        user: { select: { fullName: true, email: true } },
+        items: { select: { quantity: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * limit,
+      take: limit,
+    }),
     prisma.sale.count({ where }),
   ]);
-  return res.json({ sales: sales.map((sale) => ({ ...sale, itemCount: sale.items.reduce((sum, item) => sum + item.quantity, 0) })), total, page, limit });
+  return res.json({
+    sales: sales.map((sale) => ({
+      ...sale,
+      itemCount: sale.items.reduce((sum, item) => sum + item.quantity, 0),
+    })),
+    total,
+    page,
+    limit,
+  });
 }
 
 module.exports = { checkout, getInvoice, listSales };
