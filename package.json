@@ -8,6 +8,7 @@
     "dev": "node --watch index.js",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
+    "db:passkey": "node scripts/ensure-passkey-table.js",
     "db:stress:seed": "node stress-seed.js",
     "stress": "node stress/run.js",
     "stress:api": "node scripts/start-stress-api.js",

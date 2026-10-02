@@ -74,12 +74,17 @@ function resolveExpectedRpIds() {
  * and confused frontends into treating passkeys as mobile-only. Platform authenticators
  * (Windows Hello, Touch ID) still work without attachment restriction.
  */
-function resolveAuthenticatorSelection() {
-  const attachment = process.env.WEBAUTHN_AUTHENTICATOR_ATTACHMENT?.trim().toLowerCase();
+function resolveAuthenticatorSelection(overrideAttachment) {
+  const fromRequest = String(overrideAttachment ?? "").trim().toLowerCase();
+  const fromEnv = process.env.WEBAUTHN_AUTHENTICATOR_ATTACHMENT?.trim().toLowerCase();
+  const attachment =
+    fromRequest === "platform" || fromRequest === "cross-platform"
+      ? fromRequest
+      : fromEnv;
   const selection = {
-    residentKey: "preferred",
-    requireResidentKey: false,
-    userVerification: "preferred",
+    residentKey: "required",
+    requireResidentKey: true,
+    userVerification: "required",
   };
   if (attachment === "platform" || attachment === "cross-platform") {
     selection.authenticatorAttachment = attachment;

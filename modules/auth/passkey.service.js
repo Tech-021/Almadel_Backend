@@ -80,7 +80,7 @@ function mapAllowCredentials(creds) {
   }));
 }
 
-async function registrationOptionsForUser(user, requestOrigin) {
+async function registrationOptionsForUser(user, requestOrigin, registrationHints = {}) {
   assertOriginAllowed(requestOrigin);
 
   const existing = await prisma.passkeyCredential.findMany({
@@ -98,7 +98,7 @@ async function registrationOptionsForUser(user, requestOrigin) {
     excludeCredentials: existing.map((row) => ({
       id: row.credentialId,
     })),
-    authenticatorSelection: resolveAuthenticatorSelection(),
+    authenticatorSelection: resolveAuthenticatorSelection(registrationHints.attachment),
     extensions: {
       credProps: true,
     },
@@ -130,7 +130,7 @@ async function verifyRegistrationForUser(user, body, requestOrigin) {
     expectedChallenge,
     expectedOrigin: resolveWebAuthnOrigins(),
     expectedRPID: resolveExpectedRpIds(),
-    requireUserVerification: false,
+    requireUserVerification: true,
   });
 
   if (!verification.verified || !verification.registrationInfo) {
@@ -142,7 +142,9 @@ async function verifyRegistrationForUser(user, body, requestOrigin) {
   const credentialId = credentialIdToBase64(cred.id);
   const reportedTransports = Array.isArray(body.response?.transports)
     ? body.response.transports
-    : [];
+    : registrationInfo.credentialDeviceType === "singleDevice"
+      ? ["internal"]
+      : [];
 
   await prisma.passkeyCredential.create({
     data: {
@@ -169,7 +171,6 @@ async function authenticationOptions(email, requestOrigin) {
   const normalized = String(email ?? "")
     .trim()
     .toLowerCase();
-  let allowCredentials;
 
   if (normalized) {
     const user = await prisma.user.findUnique({
@@ -177,18 +178,24 @@ async function authenticationOptions(email, requestOrigin) {
       select: { id: true },
     });
     if (user) {
-      const creds = await prisma.passkeyCredential.findMany({
+      const count = await prisma.passkeyCredential.count({
         where: { userId: user.id },
-        select: { credentialId: true },
       });
-      allowCredentials = mapAllowCredentials(creds);
+      if (count === 0) {
+        const err = new Error(
+          "No passkey on this account yet. Sign in with password, open Settings → “Add passkey on this PC”, then try again.",
+        );
+        err.statusCode = 400;
+        throw err;
+      }
     }
   }
 
+  // Discoverable ceremony (no allowCredentials) so Windows Hello can use a resident PC passkey.
   const options = await generateAuthenticationOptions({
     rpID: resolveRpId(),
-    userVerification: "preferred",
-    allowCredentials,
+    userVerification: "required",
+    allowCredentials: undefined,
   });
 
   await storeChallenge(options.challenge, {
