@@ -139,6 +139,10 @@ const magicLinkVerifyLimiters = [
   magicLinkVerifyTokenLimiter,
 ];
 
+const passkeySignInIpLimiter = createIpLimiter("AUTH_PASSKEY_SIGNIN_MAX_PER_IP", 30);
+const passkeySignInEmailLimiter = createEmailLimiter("AUTH_PASSKEY_SIGNIN_MAX_PER_EMAIL", 15);
+const passkeySignInLimiters = [passkeySignInIpLimiter, passkeySignInEmailLimiter];
+
 const resetPasswordLimiters = [
   resetPasswordIpLimiter,
   resetPasswordTokenLimiter,
@@ -150,6 +154,7 @@ module.exports = {
   forgotPasswordLimiters,
   magicLinkRequestLimiters,
   magicLinkVerifyLimiters,
+  passkeySignInLimiters,
   resetPasswordLimiters,
   signInIpLimiter,
   signInEmailLimiter,

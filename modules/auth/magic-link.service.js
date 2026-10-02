@@ -21,10 +21,10 @@ function resolveMagicLinkBaseUrl() {
 
   const frontend = process.env.FRONTEND_URL?.trim();
   if (frontend) {
-    return `${frontend.replace(/\/$/, "")}/auth/magic-link`;
+    return `${frontend.replace(/\/$/, "")}/magic-link`;
   }
 
-  return "http://localhost:3000/auth/magic-link";
+  return "http://localhost:3000/magic-link";
 }
 
 function magicLinkUrl(token) {

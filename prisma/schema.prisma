@@ -25,6 +25,7 @@ model User {
   updatedAt           DateTime             @updatedAt
   passwordResetTokens PasswordResetToken[]
   magicLinkTokens     MagicLinkToken[]
+  passkeyCredentials  PasskeyCredential[]
   products            Product[]            @relation("ProductCreator")
   sales               Sale[]
   stockLogs           StockLog[]
@@ -158,6 +159,25 @@ model MagicLinkToken {
 
   @@index([userId, expiresAt])
   @@map("magic_link_tokens")
+}
+
+model PasskeyCredential {
+  id           Int       @id @default(autoincrement())
+  userId       Int
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  credentialId String    @unique
+  publicKey    Bytes
+  counter      BigInt    @default(0)
+  deviceType   String?
+  backedUp     Boolean   @default(false)
+  transports   String[]  @default([])
+  aaguid       String?
+  friendlyName String?
+  createdAt    DateTime  @default(now())
+  lastUsedAt   DateTime?
+
+  @@index([userId])
+  @@map("passkey_credentials")
 }
 
 model Product {
