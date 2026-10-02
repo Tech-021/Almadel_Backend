@@ -49,6 +49,7 @@
     "seed:manual-qa": "node scripts/seed-manual-qa-volume.js",
     "start:pm2": "pm2 start ecosystem.config.js --update-env"
   },
+  "postinstall": "prisma generate",
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.2.0",

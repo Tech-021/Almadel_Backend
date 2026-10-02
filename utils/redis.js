@@ -172,8 +172,10 @@ async function redisDeleteByPattern(pattern) {
   const match = prefixed(pattern);
   let deleted = 0;
   try {
-    for await (const key of c.scanIterator({ MATCH: match, COUNT: 100 })) {
-      deleted += await c.del(key);
+    // node-redis scanIterator yields *arrays* of keys per SCAN page (often []).
+    for await (const keys of c.scanIterator({ MATCH: match, COUNT: 100 })) {
+      const batch = (Array.isArray(keys) ? keys : [keys]).filter(Boolean);
+      if (batch.length) deleted += await c.del(batch);
     }
   } catch (err) {
     logger.warn("redisDeleteByPattern failed:", err.message);

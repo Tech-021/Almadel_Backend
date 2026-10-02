@@ -116,6 +116,12 @@ async function createRefund(tx, ctx, payload) {
     });
   }
 
+  if (typeof tx.refund?.create !== "function") {
+    throw new Error(
+      "Refunds are not available on this API instance. Run: npx prisma generate, npm run db:refunds (or prisma migrate deploy), then restart PM2.",
+    );
+  }
+
   const refund = await tx.refund.create({
     data: {
       businessId,
