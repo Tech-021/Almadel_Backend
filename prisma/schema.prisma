@@ -28,6 +28,7 @@ model User {
   passkeyCredentials  PasskeyCredential[]
   products            Product[]            @relation("ProductCreator")
   sales               Sale[]
+  refunds             Refund[]
   stockLogs           StockLog[]
   ownedBusinesses     Business[]           @relation("BusinessOwner")
   businessMemberships BusinessMember[]
@@ -102,6 +103,7 @@ model Business {
   expenses            Expense[]
   dailyClosings       DailyClosing[]
   payments            Payment[]
+  refunds             Refund[]
   branches            Branch[]
   categories          Category[]
 
@@ -202,6 +204,7 @@ model Product {
   createdByUserId   Int?
   createdByUser     User?      @relation("ProductCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
   saleItems         SaleItem[]
+  refundItems       RefundItem[]
   stockLogs         StockLog[]
 
   @@unique([businessId, barcode])
@@ -225,9 +228,11 @@ model SaleItem {
   discountType   String  @default("none")
   discountValue  Decimal @default(0) @db.Decimal(14, 2)
   discountAmount Decimal @default(0) @db.Decimal(14, 2)
-  total          Decimal @db.Decimal(14, 2)
-  sale           Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
-  product        Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  total              Decimal      @db.Decimal(14, 2)
+  refundedQuantity   Int          @default(0)
+  sale               Sale         @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product            Product      @relation(fields: [productId], references: [id], onDelete: Restrict)
+  refundItems        RefundItem[]
 
   @@index([saleId])
   @@index([productId])
@@ -309,6 +314,7 @@ model Sale {
   discountValue  Decimal    @default(0) @db.Decimal(14, 2)
   discountAmount Decimal    @default(0) @db.Decimal(14, 2)
   totalAmount    Decimal    @db.Decimal(14, 2)
+  refundedAmount Decimal    @default(0) @db.Decimal(14, 2)
   totalItems     Int
   paymentMethod  String     @default("cash")
   customerName   String?
@@ -322,12 +328,55 @@ model Sale {
   branch         Branch?    @relation(fields: [branchId], references: [id], onDelete: SetNull)
   items          SaleItem[]
   payments       Payment[]
+  refunds        Refund[]
 
   @@unique([businessId, invoiceNumber])
   @@index([businessId])
   @@index([businessId, createdAt(sort: Desc)])
   @@index([branchId])
   @@map("sales")
+}
+
+model Refund {
+  id             Int          @id @default(autoincrement())
+  businessId     Int
+  business       Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  saleId         Int
+  sale           Sale         @relation(fields: [saleId], references: [id], onDelete: Restrict)
+  refundNumber   String
+  totalAmount    Decimal      @db.Decimal(14, 2)
+  reason         String?
+  paymentMethod  String       @default("cash")
+  createdAt      DateTime     @default(now())
+  userId         Int?
+  user           User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  branchId       Int?
+  branch         Branch?      @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  items          RefundItem[]
+
+  @@unique([businessId, refundNumber])
+  @@index([businessId, createdAt(sort: Desc)])
+  @@index([saleId])
+  @@map("refunds")
+}
+
+model RefundItem {
+  id         Int      @id @default(autoincrement())
+  refundId   Int
+  refund     Refund   @relation(fields: [refundId], references: [id], onDelete: Cascade)
+  saleItemId Int
+  saleItem   SaleItem @relation(fields: [saleItemId], references: [id], onDelete: Restrict)
+  productId  Int
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+  barcode    String
+  name       String
+  quantity   Int
+  unitAmount Decimal  @db.Decimal(14, 2)
+  total      Decimal  @db.Decimal(14, 2)
+
+  @@index([refundId])
+  @@index([saleItemId])
+  @@map("refund_items")
 }
 
 model ActivityLog {
@@ -483,6 +532,7 @@ model Branch {
   createdAt  DateTime   @default(now())
   updatedAt  DateTime   @updatedAt
   sales      Sale[]
+  refunds    Refund[]
   stockLogs  StockLog[]
 
   @@unique([businessId, name])

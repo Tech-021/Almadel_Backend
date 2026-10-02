@@ -438,6 +438,7 @@ async function createSale(tx, userOrReq, rawItems, rawDetails) {
 module.exports = {
   calculateTotals,
   createSale,
+  ensureSaleAccount,
   normalizeCheckoutDetails,
   DuplicateOfflineSaleError,
   findExistingOfflineSale,
