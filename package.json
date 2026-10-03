@@ -4,6 +4,7 @@
   "private": true,
   "main": "index.js",
   "scripts": {
+    "db:seed:demo": "node scripts/seed-demo.js",
     "start": "node index.js",
     "dev": "node --watch index.js",
     "db:generate": "prisma generate",
